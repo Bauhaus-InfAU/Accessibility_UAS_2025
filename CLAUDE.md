@@ -20,20 +20,29 @@ Students define a custom distance decay function f(d) graphically, then see how 
 
 ## Tech Stack
 - TypeScript + React + Vite
-- MapLibre GL JS (3D building rendering)
+- MapLibre GL JS (3D building rendering + custom markers)
 - Tailwind CSS (styling)
 - SVG (interactive curve editor)
 - Web Worker (Dijkstra precomputation)
 
+## Key Features
+- **Distance Decay Curve**: Polyline or Bezier curve editor with preset options
+- **Amenity Selection**: 14 predefined land use types from Weimar data
+- **Custom Pins**: User-placed amenity markers on the map (click to add, drag to move, right-click to delete)
+- **Attractivity Modes**: Floor area, volume, or count-based weighting
+- **3D Visualization**: Buildings colored by accessibility score (blue=low, red=high)
+
 ## Project Structure
 ```
 src/
-├── config/          # Types + constants
-├── data/            # GeoJSON loading, building/street processing
+├── config/          # Types (LandUse, CustomPin, Building) + constants
+├── data/            # GeoJSON loading, building/street processing, graph building
 ├── computation/     # Dijkstra worker, distance matrix, accessibility calc, curve eval
 ├── components/      # React UI (App, CurveEditor, panels, map)
+│   ├── panels/      # AmenitySelector, AttractivityMode, CurveModeSelector
+│   └── map/         # MapView (includes custom pin marker management)
 ├── visualization/   # MapLibre setup + building color updates
-├── context/         # React Context for global state
+├── context/         # React Context for global state (AppContext)
 └── lib/             # Utilities
 ```
 
