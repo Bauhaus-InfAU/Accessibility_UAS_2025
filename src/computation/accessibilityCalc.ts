@@ -1,4 +1,4 @@
-import type { Building, DistanceMatrix, AttractivityMode, LandUse } from '../config/types'
+import type { Building, DistanceMatrix, AttractivityMode, LandUse, CustomPin } from '../config/types'
 import { getDistance } from './distanceMatrix'
 
 function getAttractivity(building: Building, landUse: LandUse, mode: AttractivityMode): number {
@@ -40,6 +40,37 @@ export function calculateAccessibility(
       if (attractivity <= 0) continue
 
       acc += attractivity * decay
+    }
+
+    rawScores.set(resBuilding.id, acc)
+  }
+
+  return rawScores
+}
+
+export function calculateAccessibilityFromPins(
+  residentialBuildings: Building[],
+  customPins: CustomPin[],
+  distanceMatrix: DistanceMatrix,
+  curveEvaluator: (distance: number) => number
+): Map<string, number> {
+  const rawScores = new Map<string, number>()
+
+  for (const resBuilding of residentialBuildings) {
+    if (!resBuilding.nearestNodeId) continue
+
+    let acc = 0
+    for (const pin of customPins) {
+      if (!pin.nearestNodeId) continue
+
+      const dist = getDistance(distanceMatrix, resBuilding.nearestNodeId, pin.nearestNodeId)
+      if (dist === undefined) continue
+
+      const decay = curveEvaluator(dist)
+      if (decay <= 0) continue
+
+      // Each pin has attractivity = 1 (count mode)
+      acc += decay
     }
 
     rawScores.set(resBuilding.id, acc)

@@ -17,6 +17,13 @@ export type LandUse =
   | 'Generic Transportation Service'
   | 'Generic Utilities'
   | 'Undefined Land use'
+  | 'Custom'
+
+export interface CustomPin {
+  id: string
+  coord: [number, number]
+  nearestNodeId: string
+}
 
 export interface Building {
   id: string

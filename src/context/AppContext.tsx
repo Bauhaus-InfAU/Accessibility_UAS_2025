@@ -1,11 +1,11 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react'
-import type { Building, ControlPoint, CurveMode, AttractivityMode, DistanceMatrix, LandUse, StreetGraph } from '../config/types'
+import type { Building, ControlPoint, CurveMode, AttractivityMode, DistanceMatrix, LandUse, StreetGraph, CustomPin } from '../config/types'
 import { MAX_DISTANCE_DEFAULT, DEFAULT_POLYLINE_POINTS, DEFAULT_BEZIER_HANDLES } from '../config/constants'
 import { loadBuildingsGeoJSON, loadStreetsGeoJSON } from '../data/dataLoader'
 import { processBuildings, getBuildingsWithLandUse, getAvailableLandUses } from '../data/buildingStore'
-import { buildStreetGraph, mapBuildingsToNodes, serializeGraph } from '../data/streetGraph'
+import { buildStreetGraph, mapBuildingsToNodes, serializeGraph, findNearestNode } from '../data/streetGraph'
 import { computeDistanceMatrix } from '../computation/distanceMatrix'
-import { calculateAccessibility, normalizeScores } from '../computation/accessibilityCalc'
+import { calculateAccessibility, calculateAccessibilityFromPins, normalizeScores } from '../computation/accessibilityCalc'
 import { createCurveEvaluator } from '../computation/curveEvaluator'
 
 interface AppState {
@@ -28,6 +28,9 @@ interface AppState {
   selectedLandUse: LandUse
   attractivityMode: AttractivityMode
 
+  // Custom pins
+  customPins: CustomPin[]
+
   // Results
   accessibilityScores: Map<string, number>
 }
@@ -38,6 +41,10 @@ interface AppContextValue extends AppState {
   setBezierHandles: (handles: [[number, number], [number, number]]) => void
   setSelectedLandUse: (landUse: LandUse) => void
   setAttractivityMode: (mode: AttractivityMode) => void
+  addCustomPin: (coord: [number, number]) => void
+  updateCustomPin: (id: string, coord: [number, number]) => void
+  removeCustomPin: (id: string) => void
+  clearCustomPins: () => void
 }
 
 const AppContext = createContext<AppContextValue | null>(null)
@@ -66,6 +73,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [attractivityMode, setAttractivityMode] = useState<AttractivityMode>('floorArea')
 
   const [accessibilityScores, setAccessibilityScores] = useState<Map<string, number>>(new Map())
+  const [customPins, setCustomPins] = useState<CustomPin[]>([])
 
   // Recalculation ref to debounce
   const recalcTimeoutRef = useRef<number | null>(null)
@@ -130,11 +138,59 @@ export function AppProvider({ children }: { children: ReactNode }) {
     init()
   }, [])
 
+  // Custom pin actions
+  const addCustomPin = useCallback((coord: [number, number]) => {
+    if (!graph) return
+    const nearestNodeId = findNearestNode(graph, coord)
+    const newPin: CustomPin = {
+      id: `pin-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+      coord,
+      nearestNodeId,
+    }
+    setCustomPins(prev => [...prev, newPin])
+  }, [graph])
+
+  const updateCustomPin = useCallback((id: string, coord: [number, number]) => {
+    if (!graph) return
+    const nearestNodeId = findNearestNode(graph, coord)
+    setCustomPins(prev => prev.map(pin =>
+      pin.id === id ? { ...pin, coord, nearestNodeId } : pin
+    ))
+  }, [graph])
+
+  const removeCustomPin = useCallback((id: string) => {
+    setCustomPins(prev => prev.filter(pin => pin.id !== id))
+  }, [])
+
+  const clearCustomPins = useCallback(() => {
+    setCustomPins([])
+  }, [])
+
   // Recalculate accessibility when inputs change
   const recalculate = useCallback(() => {
     if (!distanceMatrix || buildings.length === 0) return
 
     const residentialBuildings = buildings.filter(b => b.isResidential)
+
+    // Handle Custom mode with pins
+    if (selectedLandUse === 'Custom') {
+      if (customPins.length === 0) {
+        setAccessibilityScores(new Map())
+        return
+      }
+      const evaluator = createCurveEvaluator(curveMode, polylinePoints, bezierHandles, maxDistance)
+      const rawScores = calculateAccessibilityFromPins(
+        residentialBuildings,
+        customPins,
+        distanceMatrix,
+        evaluator
+      )
+      const normalized = normalizeScores(rawScores)
+      setAccessibilityScores(normalized)
+      return
+    }
+
+    // Handle regular amenity types
     const amenityBuildings = getBuildingsWithLandUse(buildings, selectedLandUse)
 
     if (amenityBuildings.length === 0) {
@@ -153,7 +209,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     )
     const normalized = normalizeScores(rawScores)
     setAccessibilityScores(normalized)
-  }, [buildings, distanceMatrix, curveMode, polylinePoints, bezierHandles, maxDistance, selectedLandUse, attractivityMode])
+  }, [buildings, distanceMatrix, curveMode, polylinePoints, bezierHandles, maxDistance, selectedLandUse, attractivityMode, customPins])
 
   // Debounced recalculation
   useEffect(() => {
@@ -187,12 +243,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     maxDistance,
     selectedLandUse,
     attractivityMode,
+    customPins,
     accessibilityScores,
     setCurveMode,
     setPolylinePoints,
     setBezierHandles,
     setSelectedLandUse,
     setAttractivityMode,
+    addCustomPin,
+    updateCustomPin,
+    removeCustomPin,
+    clearCustomPins,
   }
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>

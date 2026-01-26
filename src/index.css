@@ -10,3 +10,17 @@ body {
 .maplibregl-canvas {
   outline: none;
 }
+
+/* Custom pin styles */
+.custom-pin {
+  cursor: grab;
+  transition: transform 0.1s;
+}
+
+.custom-pin:hover {
+  transform: scale(1.15);
+}
+
+.custom-pin:active {
+  cursor: grabbing;
+}

@@ -14,6 +14,9 @@ export function updateBuildingColors(
   const source = map.getSource('buildings') as maplibregl.GeoJSONSource
   if (!source) return
 
+  // For Custom mode, pins are rendered as markers, not building highlights
+  const isCustomMode = selectedLandUse === 'Custom'
+
   const features = buildings.map(b => ({
     ...b.feature,
     properties: {
@@ -21,7 +24,7 @@ export function updateBuildingColors(
       id: b.id,
       score: scores.get(b.id) ?? -1,
       isResidential: b.isResidential ? 1 : 0,
-      hasSelectedAmenity: (b.landUseAreas[selectedLandUse] || 0) > 0 ? 1 : 0,
+      hasSelectedAmenity: isCustomMode ? 0 : ((b.landUseAreas[selectedLandUse] || 0) > 0 ? 1 : 0),
     },
   }))
 

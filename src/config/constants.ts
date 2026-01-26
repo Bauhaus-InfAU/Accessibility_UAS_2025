@@ -23,6 +23,7 @@ export const LAND_USE_COLORS: Record<LandUse, string> = {
   'Generic Transportation Service': '#708090',
   'Generic Utilities': '#606060',
   'Undefined Land use': '#a0a0a0',
+  'Custom': '#fcdb02',
 }
 
 export const LAND_USE_SHORT_NAMES: Record<LandUse, string> = {
@@ -42,6 +43,7 @@ export const LAND_USE_SHORT_NAMES: Record<LandUse, string> = {
   'Generic Transportation Service': 'Transport',
   'Generic Utilities': 'Utilities',
   'Undefined Land use': 'Undefined',
+  'Custom': 'Custom',
 }
 
 // Land uses that can be destinations (everything except Residential, Utilities, Undefined)

@@ -24,3 +24,13 @@ Updated `src/components/map/MapView.tsx`:
 - Map's 'load' event now triggers initial color update
 - Color update effect runs whenever scores/settings change AND map is ready
 - Proper cleanup of event listener on unmount
+
+### Regression Fix
+The initial fix caused the map to recreate on every parameter change because `updateColors` was in the map initialization effect's dependency array.
+
+**Additional fix applied:**
+- Added `updateColorsRef` ref to always point to the latest `updateColors` function
+- Changed `onLoad` handler to call `updateColorsRef.current()` instead of `updateColors()` directly
+- Removed `updateColors` from map initialization effect dependencies: `[isLoading, buildings]`
+
+This ensures the map only initializes once while still calling the latest color update logic when needed.
