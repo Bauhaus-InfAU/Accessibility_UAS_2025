@@ -1,8 +1,8 @@
 import { useAppContext } from '../../context/AppContext'
-import { LAND_USE_SHORT_NAMES, LAND_USE_COLORS } from '../../config/constants'
+import { LAND_USE_SHORT_NAMES } from '../../config/constants'
 
 export function AmenitySelector() {
-  const { availableLandUses, selectedLandUse, setSelectedLandUse, showAmenityPreview, setShowAmenityPreview } = useAppContext()
+  const { availableLandUses, selectedLandUse, setSelectedLandUse } = useAppContext()
 
   return (
     <div>
@@ -24,23 +24,10 @@ export function AmenitySelector() {
               onChange={() => setSelectedLandUse(lu)}
               className="w-3 h-3"
             />
-            <span
-              className="w-3 h-3 rounded-sm flex-shrink-0"
-              style={{ backgroundColor: LAND_USE_COLORS[lu] }}
-            />
             <span>{LAND_USE_SHORT_NAMES[lu]}</span>
           </label>
         ))}
       </div>
-      <label className="flex items-center gap-2 mt-3 pt-2 border-t text-xs text-gray-600">
-        <input
-          type="checkbox"
-          checked={showAmenityPreview}
-          onChange={(e) => setShowAmenityPreview(e.target.checked)}
-          className="w-3 h-3"
-        />
-        Highlight amenity buildings
-      </label>
     </div>
   )
 }

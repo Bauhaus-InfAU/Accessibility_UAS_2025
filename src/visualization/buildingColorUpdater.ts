@@ -9,8 +9,7 @@ export function updateBuildingColors(
   map: maplibregl.Map,
   buildings: Building[],
   scores: Map<string, number>,
-  selectedLandUse: LandUse,
-  showAmenityPreview: boolean
+  selectedLandUse: LandUse
 ) {
   const source = map.getSource('buildings') as maplibregl.GeoJSONSource
   if (!source) return
@@ -22,7 +21,7 @@ export function updateBuildingColors(
       id: b.id,
       score: scores.get(b.id) ?? -1,
       isResidential: b.isResidential ? 1 : 0,
-      hasSelectedAmenity: showAmenityPreview && (b.landUseAreas[selectedLandUse] || 0) > 0 ? 1 : 0,
+      hasSelectedAmenity: (b.landUseAreas[selectedLandUse] || 0) > 0 ? 1 : 0,
     },
   }))
 

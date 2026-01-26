@@ -27,7 +27,6 @@ interface AppState {
   maxDistance: number
   selectedLandUse: LandUse
   attractivityMode: AttractivityMode
-  showAmenityPreview: boolean
 
   // Results
   accessibilityScores: Map<string, number>
@@ -39,7 +38,6 @@ interface AppContextValue extends AppState {
   setBezierHandles: (handles: [[number, number], [number, number]]) => void
   setSelectedLandUse: (landUse: LandUse) => void
   setAttractivityMode: (mode: AttractivityMode) => void
-  setShowAmenityPreview: (show: boolean) => void
 }
 
 const AppContext = createContext<AppContextValue | null>(null)
@@ -66,7 +64,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const maxDistance = MAX_DISTANCE_DEFAULT
   const [selectedLandUse, setSelectedLandUse] = useState<LandUse>('Generic Retail')
   const [attractivityMode, setAttractivityMode] = useState<AttractivityMode>('floorArea')
-  const [showAmenityPreview, setShowAmenityPreview] = useState<boolean>(true)
 
   const [accessibilityScores, setAccessibilityScores] = useState<Map<string, number>>(new Map())
 
@@ -190,14 +187,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     maxDistance,
     selectedLandUse,
     attractivityMode,
-    showAmenityPreview,
     accessibilityScores,
     setCurveMode,
     setPolylinePoints,
     setBezierHandles,
     setSelectedLandUse,
     setAttractivityMode,
-    setShowAmenityPreview,
   }
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>

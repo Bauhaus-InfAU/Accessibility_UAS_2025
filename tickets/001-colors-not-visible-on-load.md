@@ -15,4 +15,12 @@ The initial accessibility calculation may run before the MapLibre source is read
 - Map update: `src/components/map/MapView.tsx`
 
 ## Status
-Open
+**Resolved**
+
+## Fix
+Updated `src/components/map/MapView.tsx`:
+- Added `mapLoadedRef` to track when map is truly ready
+- Memoized `updateColors` callback using `useCallback`
+- Map's 'load' event now triggers initial color update
+- Color update effect runs whenever scores/settings change AND map is ready
+- Proper cleanup of event listener on unmount

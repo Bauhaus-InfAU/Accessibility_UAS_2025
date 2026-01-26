@@ -9,7 +9,7 @@ export function Legend() {
         <div
           className="flex-1 h-3 rounded"
           style={{
-            background: 'linear-gradient(to right, #2166ac, #f7f7f7, #b2182b)',
+            background: 'linear-gradient(to right, #4A3AB4, #FD681D, #FD1D1D)',
           }}
         />
         <span className="text-[10px] text-gray-500">High</span>

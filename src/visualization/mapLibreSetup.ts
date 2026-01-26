@@ -91,11 +91,11 @@ function addBuildingLayer(map: maplibregl.Map, buildings: Building[]) {
     type: 'fill',
     source: 'buildings',
     paint: {
-      'fill-color': '#dc2626',  // Tailwind red-600
+      'fill-color': '#fcdb02',  // Bright yellow
       'fill-opacity': [
         'case',
         ['==', ['get', 'hasSelectedAmenity'], 1],
-        0.6,
+        0.9,
         0,
       ],
     },
@@ -108,27 +108,37 @@ function addBuildingLayer(map: maplibregl.Map, buildings: Building[]) {
     paint: {
       'fill-extrusion-color': [
         'case',
-        // Selected amenity buildings: bright amber/gold
+        // Selected amenity buildings: bright yellow
         ['==', ['get', 'hasSelectedAmenity'], 1],
-        '#f59e0b',  // Tailwind amber-500
+        '#fcdb02',  // Bright yellow
         // Residential buildings with scores
         ['all', ['==', ['get', 'isResidential'], 1], ['>=', ['get', 'score'], 0]],
         [
           'interpolate',
           ['linear'],
           ['get', 'score'],
-          0, '#2166ac',    // Blue (low)
-          0.5, '#f7f7f7',  // White (mid)
-          1, '#b2182b',    // Red (high)
+          0, '#4A3AB4',    // Purple (low)
+          0.5, '#FD681D',  // Orange (mid)
+          1, '#FD1D1D',    // Red (high)
         ],
         // Unscored residential
         ['==', ['get', 'isResidential'], 1],
         BUILDING_UNSCORED_COLOR,
-        // Non-residential (not selected amenity)
-        '#e0ddd8',
+        // Non-residential (not selected amenity) - grey
+        '#a0a0a0',
       ],
-      'fill-extrusion-height': ['to-number', ['get', 'Height'], 3],
-      'fill-extrusion-base': 0,
+      'fill-extrusion-height': [
+        'case',
+        ['==', ['get', 'hasSelectedAmenity'], 1],
+        ['+', ['to-number', ['get', 'Height'], 3], 3],  // Add 3m to compensate for elevated base
+        ['to-number', ['get', 'Height'], 3],
+      ],
+      'fill-extrusion-base': [
+        'case',
+        ['==', ['get', 'hasSelectedAmenity'], 1],
+        3,  // Amenity buildings float 3m above ground to show halo
+        0,
+      ],
       'fill-extrusion-opacity': 0.85,
     },
   })
