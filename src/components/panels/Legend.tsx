@@ -1,10 +1,28 @@
 import { useAppContext } from '../../context/AppContext'
 
 export function Legend() {
-  const { minRawScore, maxRawScore } = useAppContext()
+  const { minRawScore, maxRawScore, selectedLandUse } = useAppContext()
 
   return (
     <div className="absolute bottom-8 right-8 glass-panel floating-panel px-5 py-4">
+      {/* Selected Amenity Indicator */}
+      <div className="flex items-center gap-3">
+        <span className="text-xs text-gray-500 invisible">Low</span>
+        <div className="flex items-center gap-2">
+          <div
+            className="w-4 h-4 rounded"
+            style={{ backgroundColor: '#fcdb02' }}
+          />
+          <span className="text-sm text-gray-600">
+            {selectedLandUse === 'Custom' ? 'Custom Pins' : selectedLandUse}
+          </span>
+        </div>
+      </div>
+
+      {/* Divider */}
+      <div className="border-t border-gray-200 my-4" />
+
+      {/* Accessibility Score */}
       <label className="text-base font-medium text-gray-600 block mb-3">
         Accessibility Score
       </label>
