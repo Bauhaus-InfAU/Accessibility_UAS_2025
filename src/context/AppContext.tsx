@@ -33,6 +33,8 @@ interface AppState {
 
   // Results
   accessibilityScores: Map<string, number>
+  minRawScore: number
+  maxRawScore: number
 }
 
 interface AppContextValue extends AppState {
@@ -73,6 +75,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [attractivityMode, setAttractivityMode] = useState<AttractivityMode>('floorArea')
 
   const [accessibilityScores, setAccessibilityScores] = useState<Map<string, number>>(new Map())
+  const [minRawScore, setMinRawScore] = useState(0)
+  const [maxRawScore, setMaxRawScore] = useState(0)
   const [customPins, setCustomPins] = useState<CustomPin[]>([])
 
   // Recalculation ref to debounce
@@ -172,10 +176,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const residentialBuildings = buildings.filter(b => b.isResidential)
 
+    // Helper to compute min/max and update state
+    const processScores = (rawScores: Map<string, number>) => {
+      if (rawScores.size === 0) {
+        setMinRawScore(0)
+        setMaxRawScore(0)
+        setAccessibilityScores(new Map())
+        return
+      }
+      const values = Array.from(rawScores.values())
+      setMinRawScore(Math.min(...values))
+      setMaxRawScore(Math.max(...values))
+      setAccessibilityScores(normalizeScores(rawScores))
+    }
+
     // Handle Custom mode with pins
     if (selectedLandUse === 'Custom') {
       if (customPins.length === 0) {
-        setAccessibilityScores(new Map())
+        processScores(new Map())
         return
       }
       const evaluator = createCurveEvaluator(curveMode, polylinePoints, bezierHandles, maxDistance)
@@ -185,8 +203,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         distanceMatrix,
         evaluator
       )
-      const normalized = normalizeScores(rawScores)
-      setAccessibilityScores(normalized)
+      processScores(rawScores)
       return
     }
 
@@ -194,7 +211,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const amenityBuildings = getBuildingsWithLandUse(buildings, selectedLandUse)
 
     if (amenityBuildings.length === 0) {
-      setAccessibilityScores(new Map())
+      processScores(new Map())
       return
     }
 
@@ -207,8 +224,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       evaluator,
       attractivityMode
     )
-    const normalized = normalizeScores(rawScores)
-    setAccessibilityScores(normalized)
+    processScores(rawScores)
   }, [buildings, distanceMatrix, curveMode, polylinePoints, bezierHandles, maxDistance, selectedLandUse, attractivityMode, customPins])
 
   // Debounced recalculation
@@ -245,6 +261,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     attractivityMode,
     customPins,
     accessibilityScores,
+    minRawScore,
+    maxRawScore,
     setCurveMode,
     setPolylinePoints,
     setBezierHandles,
