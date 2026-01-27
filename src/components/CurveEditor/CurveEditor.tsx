@@ -128,9 +128,9 @@ export function CurveEditor({
   }
 
   return (
-    <div>
+    <div className="w-full">
       {/* Tabs */}
-      <div className="tab-container">
+      <div className="tab-container curve-tabs">
         {TABS.map((tab) => (
           <button
             key={tab.id}
