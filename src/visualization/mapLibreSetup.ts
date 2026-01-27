@@ -1,9 +1,10 @@
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import type { Building } from '../config/types'
+import type { Building, HexCell } from '../config/types'
 import { BUILDING_UNSCORED_COLOR } from '../config/constants'
+import { hexCellsToGeoJSON } from '../data/hexagonGrid'
 
-export function createMap(container: HTMLElement, buildings: Building[]): maplibregl.Map {
+export function createMap(container: HTMLElement, buildings: Building[], hexCells: HexCell[]): maplibregl.Map {
   const map = new maplibregl.Map({
     container,
     style: {
@@ -24,12 +25,64 @@ export function createMap(container: HTMLElement, buildings: Building[]): maplib
   })
 
   map.on('load', () => {
+    addHexagonLayer(map, hexCells)
     addStreetLayer(map)
     addBuildingLayer(map, buildings)
     fitMapToBounds(map, buildings)
   })
 
   return map
+}
+
+function addHexagonLayer(map: maplibregl.Map, hexCells: HexCell[]) {
+  // Add hexagon source with initial data
+  const hexGeoJSON = hexCellsToGeoJSON(hexCells)
+
+  map.addSource('hexagons', {
+    type: 'geojson',
+    data: hexGeoJSON,
+  })
+
+  // Hexagon fill layer with accessibility score gradient
+  map.addLayer({
+    id: 'hexagons-fill',
+    type: 'fill',
+    source: 'hexagons',
+    layout: {
+      'visibility': 'none',  // Hidden by default (Buildings mode)
+    },
+    paint: {
+      'fill-color': [
+        'case',
+        ['>=', ['get', 'score'], 0],
+        [
+          'interpolate',
+          ['linear'],
+          ['get', 'score'],
+          0, '#4A3AB4',    // Purple (low)
+          0.5, '#FD681D',  // Orange (mid)
+          1, '#FD1D1D',    // Red (high)
+        ],
+        '#cccccc',  // Unscored hexagons
+      ],
+      'fill-opacity': 0.8,
+    },
+  })
+
+  // Hexagon outline layer for cell boundaries
+  map.addLayer({
+    id: 'hexagons-outline',
+    type: 'line',
+    source: 'hexagons',
+    layout: {
+      'visibility': 'none',  // Hidden by default (Buildings mode)
+    },
+    paint: {
+      'line-color': '#ffffff',
+      'line-width': 0.5,
+      'line-opacity': 0.5,
+    },
+  })
 }
 
 function addStreetLayer(map: maplibregl.Map) {

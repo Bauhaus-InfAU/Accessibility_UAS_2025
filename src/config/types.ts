@@ -74,6 +74,25 @@ export type CurveMode = CustomCurveType
 
 export type AttractivityMode = 'floorArea' | 'volume' | 'count'
 
+// Analysis mode: Buildings (original) or Grid (hexagon-based)
+export type AnalysisMode = 'buildings' | 'grid'
+
+// Attractor for grid mode (user-placed points that serve as destinations)
+export interface GridAttractor {
+  id: string
+  coord: [number, number]
+  nearestNodeId: string
+}
+
+// Hexagon cell for grid analysis
+export interface HexCell {
+  id: string
+  center: [number, number]
+  vertices: [number, number][]  // 6 vertices
+  nearestNodeId: string
+  intersectsStreet: boolean
+}
+
 export type DistanceMatrix = Map<string, Map<string, number>> // fromNodeId -> toNodeId -> distance
 
 export type BuildingsGeoJSON = FeatureCollection<MultiPolygon>

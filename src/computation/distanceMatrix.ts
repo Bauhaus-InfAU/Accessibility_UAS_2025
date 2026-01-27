@@ -53,6 +53,53 @@ export async function computeDistanceMatrix(
   })
 }
 
+/**
+ * Compute full network distance matrix (all nodes to all nodes).
+ * Used for Grid mode where hexagons can be at any network node.
+ */
+export async function computeFullNetworkMatrix(
+  serializedGraph: SerializedGraph,
+  onProgress: (percent: number) => void
+): Promise<DistanceMatrix> {
+  // Use ALL network nodes as sources
+  const allNodeIds = serializedGraph.nodes.map(n => n.id)
+
+  return new Promise<DistanceMatrix>((resolve, reject) => {
+    const worker = new DijkstraWorker()
+
+    worker.onmessage = (event: MessageEvent<WorkerProgress | WorkerResult>) => {
+      const data = event.data
+      if (data.type === 'progress') {
+        onProgress(data.percent)
+      } else if (data.type === 'result') {
+        // Convert serialized matrix back to Map<string, Map<string, number>>
+        const matrix: DistanceMatrix = new Map()
+        for (const [sourceId, distArray] of data.matrix) {
+          const distMap = new Map<string, number>()
+          for (const [targetId, dist] of distArray) {
+            distMap.set(targetId, dist)
+          }
+          matrix.set(sourceId, distMap)
+        }
+        worker.terminate()
+        resolve(matrix)
+      }
+    }
+
+    worker.onerror = (error) => {
+      worker.terminate()
+      reject(new Error(`Worker error: ${error.message}`))
+    }
+
+    const input: WorkerInput = {
+      nodes: serializedGraph.nodes,
+      edges: serializedGraph.edges,
+      sourceNodeIds: allNodeIds,
+    }
+    worker.postMessage(input)
+  })
+}
+
 export function getDistance(
   matrix: DistanceMatrix,
   fromNodeId: string,

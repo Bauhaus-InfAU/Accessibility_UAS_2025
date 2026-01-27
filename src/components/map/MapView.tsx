@@ -4,6 +4,7 @@ import { useAppContext } from '../../context/AppContext'
 import { useMapContext } from '../../context/MapContext'
 import { createMap } from '../../visualization/mapLibreSetup'
 import { updateBuildingColors } from '../../visualization/buildingColorUpdater'
+import { updateHexagonColors, setHexagonLayersVisibility, setBuildingLayersVisibility } from '../../visualization/hexagonColorUpdater'
 
 // Calculate color from normalized score (0-1) using the accessibility gradient
 // Purple (#4A3AB4) → Orange (#FD681D) → Red (#FD1D1D)
@@ -52,6 +53,7 @@ export function MapView() {
   const mapRef = useRef<maplibregl.Map | null>(null)
   const mapLoadedRef = useRef(false)
   const markersRef = useRef<Map<string, maplibregl.Marker>>(new Map())
+  const attractorMarkersRef = useRef<Map<string, maplibregl.Marker>>(new Map())
   const popupRef = useRef<maplibregl.Popup | null>(null)
   const {
     buildings,
@@ -63,12 +65,22 @@ export function MapView() {
     addCustomPin,
     updateCustomPin,
     removeCustomPin,
+    // Grid mode state
+    analysisMode,
+    hexCells,
+    gridAttractors,
+    gridAccessibilityScores,
+    gridRawAccessibilityScores,
+    addGridAttractor,
+    updateGridAttractor,
+    removeGridAttractor,
   } = useAppContext()
   const { setMapInstance, setInitialBounds } = useMapContext()
 
   const isCustomMode = selectedLandUse === 'Custom'
+  const isGridMode = analysisMode === 'grid'
 
-  // Memoized color update function
+  // Memoized color update function for buildings
   const updateColors = useCallback(() => {
     const map = mapRef.current
     if (!map || !mapLoadedRef.current || buildings.length === 0) return
@@ -77,31 +89,55 @@ export function MapView() {
     }
   }, [buildings, accessibilityScores, selectedLandUse])
 
+  // Memoized color update function for hexagons
+  const updateHexColors = useCallback(() => {
+    const map = mapRef.current
+    if (!map || !mapLoadedRef.current || hexCells.length === 0) return
+    if (map.getSource('hexagons')) {
+      updateHexagonColors(map, hexCells, gridAccessibilityScores)
+    }
+  }, [hexCells, gridAccessibilityScores])
+
   // Ref to always access latest updateColors in onLoad handler
   const updateColorsRef = useRef(updateColors)
   updateColorsRef.current = updateColors
+
+  const updateHexColorsRef = useRef(updateHexColors)
+  updateHexColorsRef.current = updateHexColors
 
   // Refs for event handlers
   const addCustomPinRef = useRef(addCustomPin)
   const updateCustomPinRef = useRef(updateCustomPin)
   const removeCustomPinRef = useRef(removeCustomPin)
   const isCustomModeRef = useRef(isCustomMode)
+  const isGridModeRef = useRef(isGridMode)
   const rawAccessibilityScoresRef = useRef(rawAccessibilityScores)
   const accessibilityScoresRef = useRef(accessibilityScores)
+  const gridRawAccessibilityScoresRef = useRef(gridRawAccessibilityScores)
+  const gridAccessibilityScoresRef = useRef(gridAccessibilityScores)
+  const addGridAttractorRef = useRef(addGridAttractor)
+  const updateGridAttractorRef = useRef(updateGridAttractor)
+  const removeGridAttractorRef = useRef(removeGridAttractor)
 
   addCustomPinRef.current = addCustomPin
   updateCustomPinRef.current = updateCustomPin
   removeCustomPinRef.current = removeCustomPin
   isCustomModeRef.current = isCustomMode
+  isGridModeRef.current = isGridMode
   rawAccessibilityScoresRef.current = rawAccessibilityScores
   accessibilityScoresRef.current = accessibilityScores
+  gridRawAccessibilityScoresRef.current = gridRawAccessibilityScores
+  gridAccessibilityScoresRef.current = gridAccessibilityScores
+  addGridAttractorRef.current = addGridAttractor
+  updateGridAttractorRef.current = updateGridAttractor
+  removeGridAttractorRef.current = removeGridAttractor
 
   // Initialize map (only depends on isLoading and buildings)
   useEffect(() => {
     if (isLoading || !containerRef.current || buildings.length === 0) return
     if (mapRef.current) return // already initialized
 
-    const map = createMap(containerRef.current, buildings)
+    const map = createMap(containerRef.current, buildings, hexCells)
     mapRef.current = map
     mapLoadedRef.current = false
     setMapInstance(map)
@@ -126,6 +162,9 @@ export function MapView() {
 
       // Building hover handlers for score popup
       map.on('mousemove', 'buildings-fill', (e) => {
+        // Skip if in grid mode
+        if (isGridModeRef.current) return
+
         const feature = e.features?.[0]
         if (!feature?.properties) return
 
@@ -178,15 +217,79 @@ export function MapView() {
           popupRef.current.remove()
           popupRef.current = null
         }
-        map.getCanvas().style.cursor = isCustomModeRef.current ? 'crosshair' : ''
+        if (!isGridModeRef.current) {
+          map.getCanvas().style.cursor = isCustomModeRef.current ? 'crosshair' : ''
+        }
+      })
+
+      // Hexagon hover handlers for score popup
+      map.on('mousemove', 'hexagons-fill', (e) => {
+        // Skip if not in grid mode
+        if (!isGridModeRef.current) return
+
+        const feature = e.features?.[0]
+        if (!feature?.properties) return
+
+        const { id } = feature.properties
+        const rawScore = gridRawAccessibilityScoresRef.current.get(id)
+        const normalizedScore = gridAccessibilityScoresRef.current.get(id)
+
+        // Skip unscored hexagons
+        if (rawScore === undefined || normalizedScore === undefined) {
+          if (popupRef.current) {
+            popupRef.current.remove()
+            popupRef.current = null
+          }
+          map.getCanvas().style.cursor = 'crosshair'
+          return
+        }
+
+        // Show pointer cursor for scored hexagons
+        map.getCanvas().style.cursor = 'pointer'
+
+        // Get color matching the hexagon's color
+        const color = getScoreColor(normalizedScore)
+
+        // Create or update popup
+        if (!popupRef.current) {
+          popupRef.current = new maplibregl.Popup({
+            closeButton: false,
+            closeOnClick: false,
+            className: 'score-popup',
+          })
+        }
+
+        popupRef.current
+          .setLngLat(e.lngLat)
+          .setHTML(`<div class="score-value" style="color: ${color}">${rawScore.toFixed(1)}</div>`)
+          .addTo(map)
+      })
+
+      map.on('mouseleave', 'hexagons-fill', () => {
+        if (popupRef.current) {
+          popupRef.current.remove()
+          popupRef.current = null
+        }
+        if (isGridModeRef.current) {
+          map.getCanvas().style.cursor = 'crosshair'
+        }
       })
     }
 
-    // Handle map click for adding pins
+    // Handle map click for adding pins or attractors
     const onClick = (e: maplibregl.MapMouseEvent) => {
-      if (!isCustomModeRef.current) return
       const { lng, lat } = e.lngLat
-      addCustomPinRef.current([lng, lat])
+
+      // Grid mode: add attractor
+      if (isGridModeRef.current) {
+        addGridAttractorRef.current([lng, lat])
+        return
+      }
+
+      // Buildings mode: add custom pin (only in Custom amenity mode)
+      if (isCustomModeRef.current) {
+        addCustomPinRef.current([lng, lat])
+      }
     }
 
     map.on('load', onLoad)
@@ -200,6 +303,10 @@ export function MapView() {
         marker.remove()
       }
       markersRef.current.clear()
+      for (const marker of attractorMarkersRef.current.values()) {
+        marker.remove()
+      }
+      attractorMarkersRef.current.clear()
       // Clean up popup
       if (popupRef.current) {
         popupRef.current.remove()
@@ -210,25 +317,46 @@ export function MapView() {
       mapLoadedRef.current = false
       setMapInstance(null)
     }
-  }, [isLoading, buildings, setMapInstance, setInitialBounds])
+  }, [isLoading, buildings, hexCells, setMapInstance, setInitialBounds])
 
   // Update building colors when scores or settings change
   useEffect(() => {
     updateColors()
   }, [updateColors])
 
-  // Update cursor when Custom mode is active
+  // Update hexagon colors when grid scores change
+  useEffect(() => {
+    updateHexColors()
+  }, [updateHexColors])
+
+  // Update layer visibility when analysis mode changes
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapLoadedRef.current) return
+
+    if (isGridMode) {
+      setBuildingLayersVisibility(map, false)
+      setHexagonLayersVisibility(map, true)
+    } else {
+      setHexagonLayersVisibility(map, false)
+      setBuildingLayersVisibility(map, true)
+    }
+  }, [isGridMode])
+
+  // Update cursor when mode changes
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapLoadedRef.current) return
 
     const canvas = map.getCanvas()
-    if (isCustomMode) {
+    if (isGridMode) {
+      canvas.style.cursor = 'crosshair'
+    } else if (isCustomMode) {
       canvas.style.cursor = 'crosshair'
     } else {
       canvas.style.cursor = ''
     }
-  }, [isCustomMode])
+  }, [isCustomMode, isGridMode])
 
   // Sync markers with customPins (only show when in Custom mode)
   useEffect(() => {
@@ -296,6 +424,73 @@ export function MapView() {
       }
     }
   }, [customPins, isCustomMode])
+
+  // Sync attractor markers with gridAttractors (only show when in Grid mode)
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapLoadedRef.current) return
+
+    // If not in Grid mode, remove all attractor markers
+    if (!isGridMode) {
+      for (const marker of attractorMarkersRef.current.values()) {
+        marker.remove()
+      }
+      attractorMarkersRef.current.clear()
+      return
+    }
+
+    const existingIds = new Set(attractorMarkersRef.current.keys())
+    const currentIds = new Set(gridAttractors.map(a => a.id))
+
+    // Remove markers for deleted attractors
+    for (const id of existingIds) {
+      if (!currentIds.has(id)) {
+        const marker = attractorMarkersRef.current.get(id)
+        marker?.remove()
+        attractorMarkersRef.current.delete(id)
+      }
+    }
+
+    // Add or update markers for current attractors
+    for (const attractor of gridAttractors) {
+      let marker = attractorMarkersRef.current.get(attractor.id)
+
+      if (!marker) {
+        // Create new marker
+        const el = createPinElement()
+        marker = new maplibregl.Marker({
+          element: el,
+          draggable: true,
+          anchor: 'bottom',
+        })
+          .setLngLat(attractor.coord)
+          .addTo(map)
+
+        // Handle drag end
+        marker.on('dragend', () => {
+          const lngLat = marker!.getLngLat()
+          updateGridAttractorRef.current(attractor.id, [lngLat.lng, lngLat.lat])
+        })
+
+        // Handle right-click to delete
+        el.addEventListener('contextmenu', (e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          removeGridAttractorRef.current(attractor.id)
+        })
+
+        // Prevent click from propagating to map (prevents adding new attractor when clicking existing)
+        el.addEventListener('click', (e) => {
+          e.stopPropagation()
+        })
+
+        attractorMarkersRef.current.set(attractor.id, marker)
+      } else {
+        // Update existing marker position
+        marker.setLngLat(attractor.coord)
+      }
+    }
+  }, [gridAttractors, isGridMode])
 
   return (
     <div ref={containerRef} className="absolute inset-0" />

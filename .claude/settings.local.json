@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__browser__browser_navigate"
+    ]
+  }
+}
