@@ -38,7 +38,7 @@ Students define a custom distance decay function f(d) graphically, then see how 
 - **Grid Attractors**: User-placed attractor points for Grid mode (2 default attractors on startup, same interactions as custom pins)
 - **Attractivity Modes**: Floor area, volume, or count-based weighting
 - **3D Visualization**: Buildings colored by accessibility score (purple=low, red=high)
-- **Hexagon Grid**: ~20m diameter hexagons colored by accessibility (Grid mode)
+- **Hexagon Grid**: ~15m diameter hexagons colored by accessibility (Grid mode), organic boundary within 100m of network
 - **Hover Popups**: Show raw accessibility score on hover (buildings or hexagons)
 
 ## Project Structure
@@ -154,8 +154,9 @@ Score color scale (bottom-right), mode-dependent:
   - Non-residential: Light grey (#d8d8d8)
   - Selected amenity: Yellow (#fcdb02) with floating effect
 - **Hexagon Grid** (visible in Grid mode):
-  - ~20m diameter flat-topped hexagons
+  - ~15m diameter flat-topped hexagons
   - Street-intersecting hexagons excluded (gaps along streets)
+  - Hexagons >100m from nearest network node excluded (organic boundary shape)
   - Scored: Purple→Orange→Red gradient (same as buildings)
   - Unscored: Light grey (#cccccc)
   - Thin white outline (0.5px, 50% opacity) for cell boundaries

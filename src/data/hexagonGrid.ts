@@ -1,10 +1,33 @@
 import type { HexCell, StreetGraph, StreetsGeoJSON } from '../config/types'
 import { DEGREES_TO_METERS } from '../config/constants'
-import { findNearestNode } from './streetGraph'
+
+/**
+ * Find the nearest node and return both ID and distance in meters
+ */
+function findNearestNodeWithDistance(graph: StreetGraph, coord: [number, number]): { nodeId: string; distance: number } {
+  let nearestId = ''
+  let nearestDist = Infinity
+
+  for (const [id, node] of graph.nodes) {
+    const dx = (coord[0] - node.coord[0]) * DEGREES_TO_METERS
+    const dy = (coord[1] - node.coord[1]) * DEGREES_TO_METERS
+    const dist = Math.sqrt(dx * dx + dy * dy)
+    if (dist < nearestDist) {
+      nearestDist = dist
+      nearestId = id
+    }
+  }
+
+  return { nodeId: nearestId, distance: nearestDist }
+}
 
 // Hexagon geometry constants
-const HEX_RADIUS_METERS = 10 // ~20m diameter
+const HEX_RADIUS_METERS = 7.5 // ~15m diameter
 const HEX_RADIUS_DEGREES = HEX_RADIUS_METERS / DEGREES_TO_METERS
+
+// Maximum distance from network to include a hexagon (in meters)
+// Also used for bounding box padding to create organic shape around network
+const MAX_DISTANCE_FROM_NETWORK = 100
 
 /**
  * Calculate the bounding box of the street network
@@ -178,12 +201,13 @@ export function generateHexagonGrid(
   const bounds = getStreetBounds(graph)
   const streetSegments = extractStreetSegments(streetsGeoJSON)
 
-  // Padding around the bounds
-  const padding = HEX_RADIUS_DEGREES * 2
-  const minLng = bounds.minLng - padding
-  const maxLng = bounds.maxLng + padding
-  const minLat = bounds.minLat - padding
-  const maxLat = bounds.maxLat + padding
+  // Padding around the bounds (same as max distance filter for organic shape)
+  const paddingMeters = MAX_DISTANCE_FROM_NETWORK
+  const paddingDegrees = paddingMeters / DEGREES_TO_METERS
+  const minLng = bounds.minLng - paddingDegrees
+  const maxLng = bounds.maxLng + paddingDegrees
+  const minLat = bounds.minLat - paddingDegrees
+  const maxLat = bounds.maxLat + paddingDegrees
 
   // Flat-topped hexagon dimensions
   const hexWidth = HEX_RADIUS_DEGREES * 2 // Width of hexagon
@@ -222,8 +246,13 @@ export function generateHexagonGrid(
       // Check street intersection
       const intersectsStreet = hexagonIntersectsStreets(vertices, streetSegments, hexBounds)
 
-      // Find nearest network node for this hexagon center
-      const nearestNodeId = findNearestNode(graph, [cx, cy])
+      // Find nearest network node and distance for this hexagon center
+      const { nodeId: nearestNodeId, distance: distanceToNetwork } = findNearestNodeWithDistance(graph, [cx, cy])
+
+      // Skip hexagons too far from the network
+      if (distanceToNetwork > MAX_DISTANCE_FROM_NETWORK) {
+        continue
+      }
 
       cells.push({
         id: `hex-${id++}`,

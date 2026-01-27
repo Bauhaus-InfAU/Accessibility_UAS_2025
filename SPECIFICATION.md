@@ -77,8 +77,9 @@ Calculates accessibility on a hexagonal grid based on user-placed attractors. Us
 - Used for Custom amenity pins (Buildings mode) and attractors (Grid mode)
 
 ### Hexagon Grid (Grid Mode)
-- ~20m diameter flat-topped hexagons covering the street network area
+- ~15m diameter flat-topped hexagons covering the street network area
 - Hexagons intersecting streets are excluded (not rendered)
+- Hexagons more than 100m from nearest network node are excluded (organic boundary)
 - Each hexagon mapped to nearest network node for distance calculation
 - Colored by accessibility score: Purple → Orange → Red gradient
 - Thin white outline for cell boundaries
@@ -158,7 +159,7 @@ Using Weimar city center data from reference project:
 - Load GeoJSON files
 - Build street graph (~960 nodes from 1,183 street segments)
 - Map each building to nearest graph node
-- Generate hexagon grid (~7,000 cells at 20m diameter, excluding street intersections)
+- Generate hexagon grid (~7,000 cells at 20m diameter, excluding street intersections and cells >100m from network)
 - Map each hexagon to nearest network node
 - Run multi-source Dijkstra from all residential nodes (Web Worker)
 - Store distance matrix for Buildings mode
