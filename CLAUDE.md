@@ -30,7 +30,8 @@ Students define a custom distance decay function f(d) graphically, then see how 
 - **Amenity Selection**: 14 predefined land use types from Weimar data
 - **Custom Pins**: User-placed amenity markers on the map (click to add, drag to move, right-click to delete)
 - **Attractivity Modes**: Floor area, volume, or count-based weighting
-- **3D Visualization**: Buildings colored by accessibility score (blue=low, red=high)
+- **3D Visualization**: Buildings colored by accessibility score (purple=low, red=high)
+- **Building Hover**: Hover over scored buildings to see raw accessibility score in popup
 
 ## Project Structure
 ```
@@ -43,7 +44,7 @@ src/
 │   ├── panels/      # ParametersPanel, NavigationWidget, Legend, dropdowns
 │   └── map/         # MapView (includes custom pin marker management)
 ├── visualization/   # MapLibre setup + building color updates
-├── context/         # React Context (AppContext, MapContext)
+├── context/         # React Context (AppContext stores scores + rawAccessibilityScores, MapContext)
 └── lib/             # Utilities
 ```
 
@@ -91,6 +92,12 @@ Score color scale (bottom-right):
   - Residential (unscored): Light grey (#d0d0d0 - BUILDING_UNSCORED_COLOR)
   - Non-residential: Light grey (#d8d8d8)
   - Selected amenity: Yellow (#fcdb02) with floating effect
+- **Building Hover Popup** (`MapView.tsx`):
+  - Shows raw accessibility score on hover over scored residential buildings
+  - White rounded box with drop shadow, no visible seam with arrow
+  - Text color matches building's gradient color based on normalized score
+  - Cursor changes to pointer on scored buildings
+  - CSS class: `score-popup` (styled in `index.css`)
 
 ## Commands
 - `npm run dev` — Dev server
