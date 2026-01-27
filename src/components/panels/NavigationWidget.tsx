@@ -33,7 +33,7 @@ export function NavigationWidget() {
       <div className="flex flex-col gap-1">
         <button
           onClick={setTopView}
-          className={`nav-btn text-xs ${activeView === 'top' ? 'nav-btn-active' : ''}`}
+          className={`nav-btn text-sm ${activeView === 'top' ? 'nav-btn-active' : ''}`}
           title="Top view (2D)"
         >
           <TopViewIcon />
@@ -41,7 +41,7 @@ export function NavigationWidget() {
         </button>
         <button
           onClick={setPerspective}
-          className={`nav-btn text-xs ${activeView === 'perspective' ? 'nav-btn-active' : ''}`}
+          className={`nav-btn text-sm ${activeView === 'perspective' ? 'nav-btn-active' : ''}`}
           title="Perspective view (3D)"
         >
           <PerspectiveIcon />
@@ -49,7 +49,7 @@ export function NavigationWidget() {
         </button>
         <button
           onClick={resetView}
-          className="nav-btn text-xs"
+          className="nav-btn text-sm"
           title="Reset to initial view"
         >
           <ResetIcon />

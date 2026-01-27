@@ -113,7 +113,7 @@ export function PolylineEditor({ points, onChange, maxDistance, plotWidth, plotH
       <rect width={plotWidth} height={plotHeight} fill="transparent" />
 
       {/* Line segments */}
-      <path d={pathD} fill="none" stroke="#2166ac" strokeWidth={2} />
+      <path d={pathD} fill="none" stroke="#562fae" strokeWidth={3} />
 
       {/* Control points */}
       {sorted.map((p, i) => {
@@ -125,9 +125,9 @@ export function PolylineEditor({ points, onChange, maxDistance, plotWidth, plotH
             cx={px}
             cy={py}
             r={dragging === i ? 7 : 5}
-            fill={i === 0 || i === sorted.length - 1 ? '#555' : '#2166ac'}
-            stroke="white"
-            strokeWidth={1.5}
+            fill="white"
+            stroke="#562fae"
+            strokeWidth={3}
             cursor="pointer"
             onMouseDown={(e) => handleMouseDown(i, e)}
             onContextMenu={(e) => handleRightClick(i, e)}

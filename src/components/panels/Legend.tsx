@@ -5,7 +5,7 @@ export function Legend() {
 
   return (
     <div className="absolute bottom-8 right-8 glass-panel floating-panel px-5 py-4">
-      <label className="text-sm font-medium text-gray-600 block mb-3">
+      <label className="text-base font-medium text-gray-600 block mb-3">
         Accessibility Score
       </label>
       <div className="flex items-center gap-3">

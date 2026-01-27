@@ -18,23 +18,14 @@ export function CurveCanvas({ maxDistance, width, height, padding, children }: C
 
   return (
     <svg width={width} height={height} className="select-none">
-      {/* Background */}
-      <rect
-        x={padding.left}
-        y={padding.top}
-        width={plotWidth}
-        height={plotHeight}
-        fill="#fafafa"
-        stroke="#e0e0e0"
-      />
 
       {/* Grid lines */}
       {xTicks.map(val => {
         const x = padding.left + (val / maxDistance) * plotWidth
         return (
           <g key={`x-${val}`}>
-            <line x1={x} y1={padding.top} x2={x} y2={padding.top + plotHeight} stroke="#eee" strokeWidth={1} />
-            <text x={x} y={height - 8} textAnchor="middle" fontSize={13} fill="#888">
+            <line x1={x} y1={padding.top} x2={x} y2={padding.top + plotHeight} stroke="white" strokeWidth={1} />
+            <text x={x} y={padding.top + plotHeight + 18} textAnchor="middle" fontSize={13} fill="#888">
               {val}
             </text>
           </g>
@@ -44,7 +35,7 @@ export function CurveCanvas({ maxDistance, width, height, padding, children }: C
         const y = padding.top + (1 - val) * plotHeight
         return (
           <g key={`y-${val}`}>
-            <line x1={padding.left} y1={y} x2={padding.left + plotWidth} y2={y} stroke="#eee" strokeWidth={1} />
+            <line x1={padding.left} y1={y} x2={padding.left + plotWidth} y2={y} stroke="white" strokeWidth={1} />
             <text x={padding.left - 8} y={y + 4} textAnchor="end" fontSize={13} fill="#888">
               {val.toFixed(2)}
             </text>
@@ -52,12 +43,9 @@ export function CurveCanvas({ maxDistance, width, height, padding, children }: C
         )
       })}
 
-      {/* Axes */}
-      <line x1={padding.left} y1={padding.top + plotHeight} x2={padding.left + plotWidth} y2={padding.top + plotHeight} stroke="#333" strokeWidth={1.5} />
-      <line x1={padding.left} y1={padding.top} x2={padding.left} y2={padding.top + plotHeight} stroke="#333" strokeWidth={1.5} />
 
       {/* Axis labels */}
-      <text x={padding.left + plotWidth / 2} y={height - 24} textAnchor="middle" fontSize={14} fill="#555">
+      <text x={padding.left + plotWidth / 2} y={height - 8} textAnchor="middle" fontSize={14} fill="#555">
         Distance (m)
       </text>
       <text

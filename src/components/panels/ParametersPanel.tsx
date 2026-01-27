@@ -22,7 +22,7 @@ export function ParametersPanel() {
         className="w-full flex items-center justify-between text-left"
         onClick={() => setIsCollapsed(!isCollapsed)}
       >
-        <h2 className="text-xl font-semibold text-gray-800">
+        <h2 className="text-2xl font-semibold text-gray-800">
           Accessibility Analysis
         </h2>
         <span className="text-gray-400 text-xl">
