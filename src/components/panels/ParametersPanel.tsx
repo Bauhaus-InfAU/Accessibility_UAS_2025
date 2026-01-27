@@ -116,9 +116,6 @@ export function ParametersPanel() {
             </div>
           )}
 
-          {/* Divider */}
-          <div className="border-t border-gray-200 my-6" />
-
           {/* Section C: Distance Function */}
           <div>
             <label className="text-base font-medium text-gray-600 block mb-4">

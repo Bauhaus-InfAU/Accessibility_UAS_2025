@@ -130,15 +130,11 @@ export function CurveEditor({
   return (
     <div>
       {/* Tabs */}
-      <div className="flex border-b border-gray-200 mb-4">
+      <div className="tab-container">
         {TABS.map((tab) => (
           <button
             key={tab.id}
-            className={`px-4 py-2 text-sm font-medium transition-colors ${
-              curveTabMode === tab.id
-                ? 'text-purple-700 border-b-2 border-purple-700 -mb-px'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
+            className={`tab-button ${curveTabMode === tab.id ? 'tab-button-active' : ''}`}
             onClick={() => onTabModeChange(tab.id)}
           >
             {tab.label}
