@@ -27,7 +27,7 @@ export function AmenityDropdown() {
 
       {/* Custom mode info bar */}
       {isCustomSelected && (
-        <div className="flex items-center gap-2 text-xs text-gray-600">
+        <div className="flex items-center gap-3 text-sm text-gray-600">
           <span className="text-yellow-600 font-medium">
             {customPins.length} {customPins.length === 1 ? 'pin' : 'pins'}
           </span>

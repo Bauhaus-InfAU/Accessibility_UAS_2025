@@ -27,12 +27,12 @@ body {
 
 /* Glassmorphism panel base */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border-radius: 16px;
   box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.5);
 }
 
 /* Ensure panels are clickable */
@@ -43,13 +43,14 @@ body {
 /* Dropdown styling */
 .param-dropdown {
   appearance: none;
-  background: white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M3 4.5L6 7.5L9 4.5'/%3E%3C/svg%3E") no-repeat right 10px center;
+  background: white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M3 4.5L6 7.5L9 4.5'/%3E%3C/svg%3E") no-repeat right 14px center;
   border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 8px 32px 8px 12px;
+  border-radius: 10px;
+  padding: 12px 40px 12px 16px;
   cursor: pointer;
-  font-size: 13px;
-  min-width: 120px;
+  font-size: 15px;
+  min-width: 160px;
+  width: 100%;
 }
 
 .param-dropdown:hover {
@@ -96,4 +97,12 @@ body {
   height: 32px;
   padding: 0;
   font-size: 18px;
+}
+
+/* Equation display */
+.equation {
+  font-family: 'Times New Roman', Georgia, serif;
+  font-size: 24px;
+  font-style: italic;
+  color: #1f2937;
 }

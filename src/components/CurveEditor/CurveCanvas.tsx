@@ -34,7 +34,7 @@ export function CurveCanvas({ maxDistance, width, height, padding, children }: C
         return (
           <g key={`x-${val}`}>
             <line x1={x} y1={padding.top} x2={x} y2={padding.top + plotHeight} stroke="#eee" strokeWidth={1} />
-            <text x={x} y={height - 4} textAnchor="middle" fontSize={9} fill="#888">
+            <text x={x} y={height - 8} textAnchor="middle" fontSize={13} fill="#888">
               {val}
             </text>
           </g>
@@ -45,7 +45,7 @@ export function CurveCanvas({ maxDistance, width, height, padding, children }: C
         return (
           <g key={`y-${val}`}>
             <line x1={padding.left} y1={y} x2={padding.left + plotWidth} y2={y} stroke="#eee" strokeWidth={1} />
-            <text x={padding.left - 4} y={y + 3} textAnchor="end" fontSize={9} fill="#888">
+            <text x={padding.left - 8} y={y + 4} textAnchor="end" fontSize={13} fill="#888">
               {val.toFixed(2)}
             </text>
           </g>
@@ -57,16 +57,16 @@ export function CurveCanvas({ maxDistance, width, height, padding, children }: C
       <line x1={padding.left} y1={padding.top} x2={padding.left} y2={padding.top + plotHeight} stroke="#333" strokeWidth={1.5} />
 
       {/* Axis labels */}
-      <text x={padding.left + plotWidth / 2} y={height - 16} textAnchor="middle" fontSize={10} fill="#555">
+      <text x={padding.left + plotWidth / 2} y={height - 24} textAnchor="middle" fontSize={14} fill="#555">
         Distance (m)
       </text>
       <text
-        x={12}
+        x={18}
         y={padding.top + plotHeight / 2}
         textAnchor="middle"
-        fontSize={10}
+        fontSize={14}
         fill="#555"
-        transform={`rotate(-90, 12, ${padding.top + plotHeight / 2})`}
+        transform={`rotate(-90, 18, ${padding.top + plotHeight / 2})`}
       >
         f(d)
       </text>
