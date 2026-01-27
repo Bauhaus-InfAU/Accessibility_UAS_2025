@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import type { ControlPoint } from '../../config/types'
 import { toPlotX, toPlotY, fromPlotX, fromPlotY } from './CurveCanvas'
 
@@ -10,65 +10,90 @@ interface PolylineEditorProps {
   plotHeight: number
 }
 
+// Must match CurveEditor PADDING
+const PADDING = { top: 20, right: 20, bottom: 45, left: 60 }
+
 export function PolylineEditor({ points, onChange, maxDistance, plotWidth, plotHeight }: PolylineEditorProps) {
   const [dragging, setDragging] = useState<number | null>(null)
   const svgRef = useRef<SVGGElement>(null)
 
-  const getMousePos = useCallback((e: React.MouseEvent): { x: number; y: number } => {
+  // Store current props in refs for use in window event handlers
+  const pointsRef = useRef(points)
+  const draggingRef = useRef(dragging)
+  pointsRef.current = points
+  draggingRef.current = dragging
+
+  const getMousePosFromEvent = useCallback((e: MouseEvent | React.MouseEvent): { x: number; y: number } => {
     const svg = svgRef.current?.closest('svg')
     if (!svg) return { x: 0, y: 0 }
     const rect = svg.getBoundingClientRect()
-    const padding = { left: 45, top: 15 } // must match CurveEditor padding
     return {
-      x: e.clientX - rect.left - padding.left,
-      y: e.clientY - rect.top - padding.top,
+      x: e.clientX - rect.left - PADDING.left,
+      y: e.clientY - rect.top - PADDING.top,
     }
   }, [])
 
   const handleMouseDown = useCallback((index: number, e: React.MouseEvent) => {
     e.preventDefault()
-    // First and last points are fixed on x-axis
     setDragging(index)
   }, [])
 
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+  // Use window-level mouse tracking for drag operations
+  useEffect(() => {
     if (dragging === null) return
-    const pos = getMousePos(e)
-    const sorted = [...points].sort((a, b) => a.x - b.x)
 
-    let newX = fromPlotX(pos.x, maxDistance, plotWidth)
-    let newY = fromPlotY(pos.y, plotHeight)
+    const handleWindowMouseMove = (e: MouseEvent) => {
+      const currentDragging = draggingRef.current
+      if (currentDragging === null) return
 
-    // Clamp y to [0, 1]
-    newY = Math.max(0, Math.min(1, newY))
+      const pos = getMousePosFromEvent(e)
+      const sorted = [...pointsRef.current].sort((a, b) => a.x - b.x)
 
-    // First point: x fixed at 0
-    if (dragging === 0) {
-      newX = 0
+      let newX = fromPlotX(pos.x, maxDistance, plotWidth)
+      let newY = fromPlotY(pos.y, plotHeight)
+
+      // Clamp y to [0, 1]
+      newY = Math.max(0, Math.min(1, newY))
+
+      // First point: x fixed at 0
+      if (currentDragging === 0) {
+        newX = 0
+      }
+      // Last point: x fixed at maxDistance
+      else if (currentDragging === sorted.length - 1) {
+        newX = maxDistance
+      }
+      // Middle points: x constrained between neighbors
+      else {
+        const prevX = sorted[currentDragging - 1].x + 1
+        const nextX = sorted[currentDragging + 1].x - 1
+        newX = Math.max(prevX, Math.min(nextX, newX))
+      }
+
+      // Also clamp x to valid range
+      newX = Math.max(0, Math.min(maxDistance, newX))
+
+      const newPoints = sorted.map((p, i) =>
+        i === currentDragging ? { x: newX, y: newY } : p
+      )
+      onChange(newPoints)
     }
-    // Last point: x fixed at maxDistance
-    else if (dragging === sorted.length - 1) {
-      newX = maxDistance
-    }
-    // Middle points: x constrained between neighbors
-    else {
-      const prevX = sorted[dragging - 1].x + 1
-      const nextX = sorted[dragging + 1].x - 1
-      newX = Math.max(prevX, Math.min(nextX, newX))
+
+    const handleWindowMouseUp = () => {
+      setDragging(null)
     }
 
-    const newPoints = sorted.map((p, i) =>
-      i === dragging ? { x: newX, y: newY } : p
-    )
-    onChange(newPoints)
-  }, [dragging, points, maxDistance, plotWidth, plotHeight, onChange, getMousePos])
+    window.addEventListener('mousemove', handleWindowMouseMove)
+    window.addEventListener('mouseup', handleWindowMouseUp)
 
-  const handleMouseUp = useCallback(() => {
-    setDragging(null)
-  }, [])
+    return () => {
+      window.removeEventListener('mousemove', handleWindowMouseMove)
+      window.removeEventListener('mouseup', handleWindowMouseUp)
+    }
+  }, [dragging, maxDistance, plotWidth, plotHeight, onChange, getMousePosFromEvent])
 
   const handleDoubleClick = useCallback((e: React.MouseEvent) => {
-    const pos = getMousePos(e)
+    const pos = getMousePosFromEvent(e)
     const newX = fromPlotX(pos.x, maxDistance, plotWidth)
     const newY = fromPlotY(pos.y, plotHeight)
 
@@ -77,7 +102,7 @@ export function PolylineEditor({ points, onChange, maxDistance, plotWidth, plotH
     const newPoint: ControlPoint = { x: newX, y: Math.max(0, Math.min(1, newY)) }
     const newPoints = [...points, newPoint].sort((a, b) => a.x - b.x)
     onChange(newPoints)
-  }, [points, maxDistance, plotWidth, plotHeight, onChange, getMousePos])
+  }, [points, maxDistance, plotWidth, plotHeight, onChange, getMousePosFromEvent])
 
   const handleRightClick = useCallback((index: number, e: React.MouseEvent) => {
     e.preventDefault()
@@ -104,12 +129,9 @@ export function PolylineEditor({ points, onChange, maxDistance, plotWidth, plotH
   return (
     <g
       ref={svgRef}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
       onDoubleClick={handleDoubleClick}
     >
-      {/* Invisible rect for mouse events */}
+      {/* Invisible rect for double-click events */}
       <rect width={plotWidth} height={plotHeight} fill="transparent" />
 
       {/* Line segments */}
