@@ -23,8 +23,6 @@ export function createMap(container: HTMLElement, buildings: Building[]): maplib
     bearing: -17,
   })
 
-  map.addControl(new maplibregl.NavigationControl(), 'top-right')
-
   map.on('load', () => {
     addStreetLayer(map)
     addBuildingLayer(map, buildings)

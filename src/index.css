@@ -73,23 +73,27 @@ body {
 .nav-btn {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   padding: 8px 12px;
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: transparent;
+  border: none;
   border-radius: 8px;
   font-size: 12px;
   cursor: pointer;
-  transition: background-color 0.15s, border-color 0.15s;
+  transition: background-color 0.15s;
+  color: #374151;
 }
 
 .nav-btn:hover {
-  background-color: #f9fafb;
-  border-color: #d1d5db;
+  background-color: #f3f4f6;
 }
 
 .nav-btn:active {
-  background-color: #f3f4f6;
+  background-color: #e5e7eb;
+}
+
+.nav-btn-active {
+  background-color: #e5e7eb;
 }
 
 .nav-btn-icon {
@@ -97,6 +101,7 @@ body {
   height: 32px;
   padding: 0;
   font-size: 18px;
+  justify-content: center;
 }
 
 /* Equation display */

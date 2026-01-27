@@ -33,7 +33,7 @@ export function MapView() {
     updateCustomPin,
     removeCustomPin,
   } = useAppContext()
-  const { setMapInstance } = useMapContext()
+  const { setMapInstance, setInitialBounds } = useMapContext()
 
   const isCustomMode = selectedLandUse === 'Custom'
 
@@ -73,6 +73,19 @@ export function MapView() {
 
     const onLoad = () => {
       mapLoadedRef.current = true
+      // Compute and store initial bounds from buildings
+      if (buildings.length > 0) {
+        let minLng = Infinity, maxLng = -Infinity
+        let minLat = Infinity, maxLat = -Infinity
+        for (const b of buildings) {
+          const [lng, lat] = b.centroid
+          if (lng < minLng) minLng = lng
+          if (lng > maxLng) maxLng = lng
+          if (lat < minLat) minLat = lat
+          if (lat > maxLat) maxLat = lat
+        }
+        setInitialBounds([[minLng, minLat], [maxLng, maxLat]])
+      }
       // Use ref to get latest updateColors
       updateColorsRef.current()
     }
@@ -100,7 +113,7 @@ export function MapView() {
       mapLoadedRef.current = false
       setMapInstance(null)
     }
-  }, [isLoading, buildings, setMapInstance])
+  }, [isLoading, buildings, setMapInstance, setInitialBounds])
 
   // Update building colors when scores or settings change
   useEffect(() => {
