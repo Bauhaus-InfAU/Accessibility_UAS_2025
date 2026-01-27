@@ -81,6 +81,8 @@ Map controls (top-right):
 ### Legend (`Legend.tsx`)
 Score color scale (bottom-right):
 - **Selected Amenity Indicator**: Yellow (#fcdb02) rounded box + amenity type name (or "Custom Pins")
+- **Other Amenities Indicator**: Grey (#a0a0a0) rounded box + "Other Amenities" label
+- **Divider**: Thin grey line separating building types from score gradient
 - **Title**: "Accessibility Score" (text-base)
 - **Gradient**: Purple (#4A3AB4) → Orange (#FD681D) → Red (#FD1D1D)
 - **Labels**: Low/High + min/max raw score values

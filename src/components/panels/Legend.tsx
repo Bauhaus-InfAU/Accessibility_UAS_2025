@@ -19,6 +19,18 @@ export function Legend() {
         </div>
       </div>
 
+      {/* Other Buildings Indicator */}
+      <div className="flex items-center gap-3 mt-2">
+        <span className="text-xs text-gray-500 invisible">Low</span>
+        <div className="flex items-center gap-2">
+          <div
+            className="w-4 h-4 rounded"
+            style={{ backgroundColor: '#a0a0a0' }}
+          />
+          <span className="text-sm text-gray-600">Other Amenities</span>
+        </div>
+      </div>
+
       {/* Divider */}
       <div className="border-t border-gray-200 my-4" />
 
