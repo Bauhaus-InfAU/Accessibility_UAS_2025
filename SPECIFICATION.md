@@ -16,9 +16,20 @@ Acc_i = Σ(j=0 to n) [Att_j * f(d_ij)]
 - **d_ij** = Shortest path distance from i to j via street network
 - **n** = All destinations of the selected amenity type
 
+## Analysis Modes
+
+The app supports two analysis modes, toggled via buttons at the top of the control panel:
+
+### Buildings Mode (default)
+Calculates accessibility for residential buildings based on nearby amenities.
+
+### Grid Mode
+Calculates accessibility on a hexagonal grid based on user-placed attractors. Useful for understanding how accessibility varies across space without building constraints.
+
 ## User Interactions
 
-1. **Define decay function**: Interactive plot (x: distance d_ij in meters, y: 0 to 1)
+1. **Switch analysis mode**: Toggle between Buildings and Grid modes
+2. **Define decay function**: Interactive plot (x: distance d_ij in meters, y: 0 to 1)
    - Three tabs for different curve definition modes:
      - **Custom**: Polyline editor with draggable control points
      - **Negative Exponential**: f(d_ij) = e^(-α·d_ij)
@@ -29,16 +40,22 @@ Acc_i = Σ(j=0 to n) [Att_j * f(d_ij)]
    - Mathematical modes:
      - Coefficient input fields below the graph
      - Real-time curve preview and accessibility recalculation
-2. **Select amenity type**: Which building type to analyze (retail, education, health, etc.)
-3. **Custom amenity pins**: Place custom amenity locations on the map
+3. **Select amenity type** (Buildings mode): Which building type to analyze (retail, education, health, etc.)
+4. **Custom amenity pins** (Buildings mode): Place custom amenity locations on the map
    - Click map to add pin (when "Custom" mode selected)
    - Drag pin to move (automatically re-snaps to street network)
    - Right-click pin to delete
    - "Clear all pins" button to remove all
    - Pins persist when switching to other amenity types
    - Attractivity mode locked to "Count" for custom pins
-4. **Choose attractivity mode**: Floor area, volume (area×height), or count (=1)
-5. **Navigate 3D model**: Orbit, pan, zoom the city
+5. **Place attractors** (Grid mode): Click map to place attractor points
+   - Click map to add attractor
+   - Drag attractor to move
+   - Right-click attractor to delete
+   - "Clear all" button to remove all attractors
+   - Each attractor has attractivity = 1
+6. **Choose attractivity mode** (Buildings mode): Floor area, volume (area×height), or count (=1)
+7. **Navigate 3D model**: Orbit, pan, zoom the city
 
 ## Visual Output
 
@@ -51,22 +68,33 @@ Acc_i = Σ(j=0 to n) [Att_j * f(d_ij)]
   - Non-residential: Light grey (#d8d8d8)
   - Selected amenity: Yellow (#fcdb02) with 3m floating effect and ground halo
 
-### Custom Pins
+### Custom Pins / Attractors
 - Yellow map markers with black center dot
 - Draggable with grab cursor
 - Scale on hover for visual feedback
+- Used for Custom amenity pins (Buildings mode) and attractors (Grid mode)
+
+### Hexagon Grid (Grid Mode)
+- ~20m diameter flat-topped hexagons covering the street network area
+- Hexagons intersecting streets are excluded (not rendered)
+- Each hexagon mapped to nearest network node for distance calculation
+- Colored by accessibility score: Purple → Orange → Red gradient
+- Thin white outline for cell boundaries
 
 ## UI Layout
 
 ### Accessibility Analysis Panel (top-left, 680px)
 Glassmorphism panel with collapsible content:
 1. **Title**: "Accessibility Analysis" (text-2xl, clickable to collapse/expand)
-2. **Introduction**: Brief explanation of accessibility concept
-3. **Master Equation**: Styled formula display
-4. **Parameters** (two dropdowns side-by-side):
-   - Amenity Type (j): Land use category selector
-   - Attractivity (Att_j): Floor area / Volume / Count
-5. **Distance Decay Function f(d_ij)** (tabbed SVG curve editor):
+2. **Mode Toggle**: Buildings | Grid buttons (purple highlight for active mode)
+3. **Introduction**: Brief explanation (context-sensitive based on mode)
+4. **Master Equation**: Styled formula display
+5. **Parameters** (mode-dependent):
+   - **Buildings mode**: Two dropdowns side-by-side
+     - Amenity Type (j): Land use category selector
+     - Attractivity (Att_j): Floor area / Volume / Count
+   - **Grid mode**: Attractor count display + "Clear all" button
+6. **Distance Decay Function f(d_ij)** (tabbed SVG curve editor, shared across modes):
    - **Tab bar**: Custom | Negative Exponential | Exponential Power
    - **Graph area** (620×360px):
      - Grid: White lines on transparent background
@@ -103,9 +131,13 @@ Glassmorphism panel with collapsible content:
 - **Zoom controls**: +/− buttons (font-size 24px)
 
 ### Legend (bottom-right)
+- **Mode-dependent indicators**:
+  - Buildings mode: Selected amenity indicator (yellow) + "Other Amenities" indicator (grey)
+  - Grid mode: Attractors indicator (yellow) + "Hexagon Grid" indicator (gradient)
+- **Divider**: Thin grey line
 - **Title**: "Accessibility Score" (text-base)
 - **Gradient bar**: Purple → Orange → Red
-- **Labels**: Low/High with min/max raw score values
+- **Labels**: Low/High with min/max raw score values (from current mode)
 
 ## Data
 
@@ -120,23 +152,33 @@ Using Weimar city center data from reference project:
 
 ## Computation
 
-1. **Startup (one-time)**:
-   - Load GeoJSON files
-   - Build street graph (nodes at intersections, edges with distance weights)
-   - Map each building to nearest graph node
-   - Run multi-source Dijkstra from all residential nodes (Web Worker)
-   - Store distance matrix
+### Startup (one-time)
+- Load GeoJSON files
+- Build street graph (~960 nodes from 1,183 street segments)
+- Map each building to nearest graph node
+- Generate hexagon grid (~7,000 cells at 20m diameter, excluding street intersections)
+- Map each hexagon to nearest network node
+- Run multi-source Dijkstra from all residential nodes (Web Worker)
+- Store distance matrix for Buildings mode
 
-2. **On user interaction** (~50ms):
-   - For each residential building: sum Att_j × f(d_ij) for all amenities
-   - Min-max normalize scores to [0, 1]
-   - Update building colors on map
+### Buildings Mode Calculation (~50ms)
+- For each residential building: sum Att_j × f(d_ij) for all amenities
+- Min-max normalize scores to [0, 1]
+- Update building colors on map
 
-3. **Custom pins calculation**:
-   - Each pin snapped to nearest street network node via `findNearestNode()`
-   - Uses same distance matrix (source-centric from residential nodes)
-   - Each pin has attractivity = 1 (count mode only)
-   - Accessibility: `Acc_i = Σ(pins) f(d_i_pin)` where d is network distance
+### Grid Mode Calculation
+- **First entry**: Compute full network matrix (all ~960 nodes to all nodes) via Web Worker
+- **On interaction**: For each unique node in hexagon grid:
+  - Calculate: `Acc = Σ(attractors) f(d_node_attractor)`
+  - Copy score to all hexagons at that node (optimization)
+- Min-max normalize scores to [0, 1]
+- Update hexagon colors on map
+
+### Custom Pins Calculation (Buildings Mode)
+- Each pin snapped to nearest street network node via `findNearestNode()`
+- Uses same distance matrix (source-centric from residential nodes)
+- Each pin has attractivity = 1 (count mode only)
+- Accessibility: `Acc_i = Σ(pins) f(d_i_pin)` where d is network distance
 
 ## Technical Constraints
 
