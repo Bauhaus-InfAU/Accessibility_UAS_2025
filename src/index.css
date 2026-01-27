@@ -111,3 +111,31 @@ body {
   font-style: italic;
   color: #1f2937;
 }
+
+/* Score popup styling */
+.score-popup.maplibregl-popup {
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.25));
+}
+
+.score-popup .maplibregl-popup-content {
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: white;
+  border: none;
+  outline: none;
+  box-shadow: none;
+  position: relative;
+}
+
+.score-popup .maplibregl-popup-tip {
+  border-top-color: white;
+  border-bottom-color: white;
+  position: relative;
+  z-index: 1;
+  margin-top: -1px;
+}
+
+.score-popup .score-value {
+  font-size: 14px;
+  font-weight: 600;
+}

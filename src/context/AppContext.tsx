@@ -33,6 +33,7 @@ interface AppState {
 
   // Results
   accessibilityScores: Map<string, number>
+  rawAccessibilityScores: Map<string, number>
   minRawScore: number
   maxRawScore: number
 }
@@ -75,6 +76,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [attractivityMode, setAttractivityMode] = useState<AttractivityMode>('floorArea')
 
   const [accessibilityScores, setAccessibilityScores] = useState<Map<string, number>>(new Map())
+  const [rawAccessibilityScores, setRawAccessibilityScores] = useState<Map<string, number>>(new Map())
   const [minRawScore, setMinRawScore] = useState(0)
   const [maxRawScore, setMaxRawScore] = useState(0)
   const [customPins, setCustomPins] = useState<CustomPin[]>([])
@@ -181,12 +183,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (rawScores.size === 0) {
         setMinRawScore(0)
         setMaxRawScore(0)
+        setRawAccessibilityScores(new Map())
         setAccessibilityScores(new Map())
         return
       }
       const values = Array.from(rawScores.values())
       setMinRawScore(Math.min(...values))
       setMaxRawScore(Math.max(...values))
+      setRawAccessibilityScores(new Map(rawScores))
       setAccessibilityScores(normalizeScores(rawScores))
     }
 
@@ -261,6 +265,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     attractivityMode,
     customPins,
     accessibilityScores,
+    rawAccessibilityScores,
     minRawScore,
     maxRawScore,
     setCurveMode,

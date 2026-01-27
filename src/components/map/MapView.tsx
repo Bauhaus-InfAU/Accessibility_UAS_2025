@@ -5,6 +5,35 @@ import { useMapContext } from '../../context/MapContext'
 import { createMap } from '../../visualization/mapLibreSetup'
 import { updateBuildingColors } from '../../visualization/buildingColorUpdater'
 
+// Calculate color from normalized score (0-1) using the accessibility gradient
+// Purple (#4A3AB4) → Orange (#FD681D) → Red (#FD1D1D)
+function getScoreColor(normalizedScore: number): string {
+  const clamp = (v: number) => Math.max(0, Math.min(1, v))
+  const t = clamp(normalizedScore)
+
+  // Colors: purple at 0, orange at 0.5, red at 1
+  const purple = { r: 0x4A, g: 0x3A, b: 0xB4 }
+  const orange = { r: 0xFD, g: 0x68, b: 0x1D }
+  const red = { r: 0xFD, g: 0x1D, b: 0x1D }
+
+  let r: number, g: number, b: number
+  if (t < 0.5) {
+    // Interpolate purple → orange
+    const t2 = t * 2
+    r = Math.round(purple.r + (orange.r - purple.r) * t2)
+    g = Math.round(purple.g + (orange.g - purple.g) * t2)
+    b = Math.round(purple.b + (orange.b - purple.b) * t2)
+  } else {
+    // Interpolate orange → red
+    const t2 = (t - 0.5) * 2
+    r = Math.round(orange.r + (red.r - orange.r) * t2)
+    g = Math.round(orange.g + (red.g - orange.g) * t2)
+    b = Math.round(orange.b + (red.b - orange.b) * t2)
+  }
+
+  return `rgb(${r}, ${g}, ${b})`
+}
+
 // SVG for custom pin marker
 function createPinElement(): HTMLDivElement {
   const el = document.createElement('div')
@@ -23,9 +52,11 @@ export function MapView() {
   const mapRef = useRef<maplibregl.Map | null>(null)
   const mapLoadedRef = useRef(false)
   const markersRef = useRef<Map<string, maplibregl.Marker>>(new Map())
+  const popupRef = useRef<maplibregl.Popup | null>(null)
   const {
     buildings,
     accessibilityScores,
+    rawAccessibilityScores,
     isLoading,
     selectedLandUse,
     customPins,
@@ -55,11 +86,15 @@ export function MapView() {
   const updateCustomPinRef = useRef(updateCustomPin)
   const removeCustomPinRef = useRef(removeCustomPin)
   const isCustomModeRef = useRef(isCustomMode)
+  const rawAccessibilityScoresRef = useRef(rawAccessibilityScores)
+  const accessibilityScoresRef = useRef(accessibilityScores)
 
   addCustomPinRef.current = addCustomPin
   updateCustomPinRef.current = updateCustomPin
   removeCustomPinRef.current = removeCustomPin
   isCustomModeRef.current = isCustomMode
+  rawAccessibilityScoresRef.current = rawAccessibilityScores
+  accessibilityScoresRef.current = accessibilityScores
 
   // Initialize map (only depends on isLoading and buildings)
   useEffect(() => {
@@ -88,6 +123,63 @@ export function MapView() {
       }
       // Use ref to get latest updateColors
       updateColorsRef.current()
+
+      // Building hover handlers for score popup
+      map.on('mousemove', 'buildings-fill', (e) => {
+        const feature = e.features?.[0]
+        if (!feature?.properties) return
+
+        const { id, isResidential } = feature.properties
+        // Skip non-residential buildings
+        if (!isResidential) {
+          if (popupRef.current) {
+            popupRef.current.remove()
+            popupRef.current = null
+          }
+          map.getCanvas().style.cursor = isCustomModeRef.current ? 'crosshair' : ''
+          return
+        }
+
+        const rawScore = rawAccessibilityScoresRef.current.get(id)
+        const normalizedScore = accessibilityScoresRef.current.get(id)
+        // Skip unscored buildings
+        if (rawScore === undefined || normalizedScore === undefined) {
+          if (popupRef.current) {
+            popupRef.current.remove()
+            popupRef.current = null
+          }
+          map.getCanvas().style.cursor = isCustomModeRef.current ? 'crosshair' : ''
+          return
+        }
+
+        // Show pointer cursor for scored buildings
+        map.getCanvas().style.cursor = 'pointer'
+
+        // Get color matching the building's color
+        const color = getScoreColor(normalizedScore)
+
+        // Create or update popup
+        if (!popupRef.current) {
+          popupRef.current = new maplibregl.Popup({
+            closeButton: false,
+            closeOnClick: false,
+            className: 'score-popup',
+          })
+        }
+
+        popupRef.current
+          .setLngLat(e.lngLat)
+          .setHTML(`<div class="score-value" style="color: ${color}">${rawScore.toFixed(1)}</div>`)
+          .addTo(map)
+      })
+
+      map.on('mouseleave', 'buildings-fill', () => {
+        if (popupRef.current) {
+          popupRef.current.remove()
+          popupRef.current = null
+        }
+        map.getCanvas().style.cursor = isCustomModeRef.current ? 'crosshair' : ''
+      })
     }
 
     // Handle map click for adding pins
@@ -108,6 +200,11 @@ export function MapView() {
         marker.remove()
       }
       markersRef.current.clear()
+      // Clean up popup
+      if (popupRef.current) {
+        popupRef.current.remove()
+        popupRef.current = null
+      }
       map.remove()
       mapRef.current = null
       mapLoadedRef.current = false
