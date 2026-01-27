@@ -14,8 +14,8 @@ interface CurveEditorProps {
   onBezierChange: (handles: [[number, number], [number, number]]) => void
 }
 
-const SVG_WIDTH = 310
-const SVG_HEIGHT = 200
+const SVG_WIDTH = 300
+const SVG_HEIGHT = 180
 const PADDING = { top: 15, right: 15, bottom: 30, left: 45 }
 
 export function CurveEditor({

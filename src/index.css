@@ -24,3 +24,76 @@ body {
 .custom-pin:active {
   cursor: grabbing;
 }
+
+/* Glassmorphism panel base */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 16px;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Ensure panels are clickable */
+.floating-panel {
+  pointer-events: auto;
+}
+
+/* Dropdown styling */
+.param-dropdown {
+  appearance: none;
+  background: white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M3 4.5L6 7.5L9 4.5'/%3E%3C/svg%3E") no-repeat right 10px center;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 8px 32px 8px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  min-width: 120px;
+}
+
+.param-dropdown:hover {
+  border-color: #d1d5db;
+}
+
+.param-dropdown:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.param-dropdown:disabled {
+  background-color: #f3f4f6;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+/* Navigation widget button styling */
+.nav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.nav-btn:hover {
+  background-color: #f9fafb;
+  border-color: #d1d5db;
+}
+
+.nav-btn:active {
+  background-color: #f3f4f6;
+}
+
+.nav-btn-icon {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  font-size: 18px;
+}

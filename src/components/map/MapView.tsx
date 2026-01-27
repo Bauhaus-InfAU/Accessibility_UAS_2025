@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react'
 import maplibregl from 'maplibre-gl'
 import { useAppContext } from '../../context/AppContext'
+import { useMapContext } from '../../context/MapContext'
 import { createMap } from '../../visualization/mapLibreSetup'
 import { updateBuildingColors } from '../../visualization/buildingColorUpdater'
 
@@ -32,6 +33,7 @@ export function MapView() {
     updateCustomPin,
     removeCustomPin,
   } = useAppContext()
+  const { setMapInstance } = useMapContext()
 
   const isCustomMode = selectedLandUse === 'Custom'
 
@@ -67,6 +69,7 @@ export function MapView() {
     const map = createMap(containerRef.current, buildings)
     mapRef.current = map
     mapLoadedRef.current = false
+    setMapInstance(map)
 
     const onLoad = () => {
       mapLoadedRef.current = true
@@ -95,8 +98,9 @@ export function MapView() {
       map.remove()
       mapRef.current = null
       mapLoadedRef.current = false
+      setMapInstance(null)
     }
-  }, [isLoading, buildings])
+  }, [isLoading, buildings, setMapInstance])
 
   // Update building colors when scores or settings change
   useEffect(() => {
@@ -184,6 +188,6 @@ export function MapView() {
   }, [customPins, isCustomMode])
 
   return (
-    <div ref={containerRef} className="flex-1 relative" />
+    <div ref={containerRef} className="absolute inset-0" />
   )
 }
