@@ -13,7 +13,7 @@ export function createMap(container: HTMLElement, buildings: Building[]): maplib
         {
           id: 'background',
           type: 'background',
-          paint: { 'background-color': '#f0f0f0' },
+          paint: { 'background-color': '#b0b0b0' },
         },
       ],
     },
@@ -122,8 +122,8 @@ function addBuildingLayer(map: maplibregl.Map, buildings: Building[]) {
         // Unscored residential
         ['==', ['get', 'isResidential'], 1],
         BUILDING_UNSCORED_COLOR,
-        // Non-residential (not selected amenity) - grey
-        '#a0a0a0',
+        // Non-residential (not selected amenity) - light grey
+        '#d8d8d8',
       ],
       'fill-extrusion-height': [
         'case',
