@@ -11,7 +11,7 @@ export function AmenityDropdown() {
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col">
       <select
         value={selectedLandUse}
         onChange={handleChange}
@@ -22,24 +22,27 @@ export function AmenityDropdown() {
             {LAND_USE_SHORT_NAMES[lu]}
           </option>
         ))}
-        <option value="Custom">Custom (click map)</option>
+        <option value="Custom">Custom</option>
       </select>
 
-      {/* Custom mode info bar */}
+      {/* Custom mode info */}
       {isCustomSelected && (
-        <div className="flex items-center gap-3 text-sm text-gray-600">
-          <span className="text-yellow-600 font-medium">
-            {customPins.length} {customPins.length === 1 ? 'pin' : 'pins'}
-          </span>
-          {customPins.length > 0 && (
-            <button
-              onClick={clearCustomPins}
-              className="text-red-500 hover:text-red-700 underline"
-            >
-              Clear all
-            </button>
-          )}
-        </div>
+        <>
+          <p className="text-xs text-gray-500 mt-1">Add amenities by clicking on map</p>
+          <div className="flex items-center gap-3 mt-1">
+            <span className="text-sm font-semibold" style={{ color: '#d4a800' }}>
+              Total amenities: {customPins.length}
+            </span>
+            {customPins.length > 0 && (
+              <button
+                onClick={clearCustomPins}
+                className="text-red-500 hover:text-red-700 text-sm underline"
+              >
+                Clear all
+              </button>
+            )}
+          </div>
+        </>
       )}
     </div>
   )

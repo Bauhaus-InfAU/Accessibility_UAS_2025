@@ -25,6 +25,7 @@ export function ParametersPanel() {
     clearGridAttractors,
     isComputingFullMatrix,
     loadingStatus,
+    totalGridAttractivity,
   } = useAppContext()
 
   if (isLoading) return null
@@ -83,20 +84,38 @@ export function ParametersPanel() {
                   <p className="text-sm text-purple-700">{loadingStatus}</p>
                 </div>
               )}
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-base font-medium text-gray-600">Custom Amenities: </span>
-                  <span className="text-lg font-semibold text-gray-800">{gridAttractors.length}</span>
-                  <p className="text-xs text-gray-500 mt-1">Click on the map to place amenities</p>
+              <div className="flex gap-6">
+                {/* Left column: Amenities */}
+                <div className="flex-1">
+                  <label className="text-base font-medium text-gray-600 block mb-2">
+                    Amenities (j)
+                  </label>
+                  <p className="text-xs text-gray-500">Add amenities by clicking on map</p>
+                  <div className="flex items-center gap-3 mt-1">
+                    <span className="text-sm font-semibold" style={{ color: '#d4a800' }}>
+                      Total amenities: {gridAttractors.length}
+                    </span>
+                    {gridAttractors.length > 0 && (
+                      <button
+                        className="text-red-500 hover:text-red-700 text-sm underline"
+                        onClick={clearGridAttractors}
+                      >
+                        Clear all
+                      </button>
+                    )}
+                  </div>
                 </div>
-                {gridAttractors.length > 0 && (
-                  <button
-                    className="px-3 py-1.5 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
-                    onClick={clearGridAttractors}
-                  >
-                    Clear all
-                  </button>
-                )}
+
+                {/* Right column: Attractivity */}
+                <div className="flex-1">
+                  <label className="text-base font-medium text-gray-600 block mb-2">
+                    Attractivity (Att<sub>j</sub>)
+                  </label>
+                  <p className="text-xs text-gray-500">Set attractivity on map</p>
+                  <span className="text-sm font-semibold mt-1 block" style={{ color: '#d4a800' }}>
+                    Total attractivity: {totalGridAttractivity}
+                  </span>
+                </div>
               </div>
             </div>
           ) : (

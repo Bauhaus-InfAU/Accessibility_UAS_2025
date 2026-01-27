@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo, type ReactNode } from 'react'
 import type { Building, ControlPoint, CurveMode, CurveTabMode, AttractivityMode, DistanceMatrix, LandUse, StreetGraph, CustomPin, AnalysisMode, GridAttractor, HexCell, StreetsGeoJSON } from '../config/types'
 import { MAX_DISTANCE_DEFAULT, DEFAULT_POLYLINE_POINTS, DEFAULT_BEZIER_HANDLES, DEFAULT_NEG_EXP_ALPHA, DEFAULT_EXP_POWER_B, DEFAULT_EXP_POWER_C } from '../config/constants'
 import { loadBuildingsGeoJSON, loadStreetsGeoJSON } from '../data/dataLoader'
@@ -42,6 +42,7 @@ interface AppState {
 
   // Custom pins (for buildings mode)
   customPins: CustomPin[]
+  totalCustomPinAttractivity: number
 
   // Grid mode state
   hexCells: HexCell[]
@@ -52,6 +53,7 @@ interface AppState {
   gridRawAccessibilityScores: Map<string, number>
   gridMinRawScore: number
   gridMaxRawScore: number
+  totalGridAttractivity: number
 
   // Results (for buildings mode)
   accessibilityScores: Map<string, number>
@@ -480,6 +482,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [isLoading, analysisMode, fullNetworkMatrix, recalculateGrid])
 
+  // Computed totals for attractivity
+  const totalGridAttractivity = useMemo(() =>
+    gridAttractors.reduce((sum, a) => sum + (a.attractivity ?? 1), 0),
+    [gridAttractors]
+  )
+
+  const totalCustomPinAttractivity = useMemo(() =>
+    customPins.reduce((sum, p) => sum + (p.attractivity ?? 1), 0),
+    [customPins]
+  )
+
   const value: AppContextValue = {
     isLoading,
     loadingStatus,
@@ -501,6 +514,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     expPowerB,
     expPowerC,
     customPins,
+    totalCustomPinAttractivity,
     hexCells,
     gridAttractors,
     fullNetworkMatrix,
@@ -509,6 +523,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     gridRawAccessibilityScores,
     gridMinRawScore,
     gridMaxRawScore,
+    totalGridAttractivity,
     accessibilityScores,
     rawAccessibilityScores,
     minRawScore,

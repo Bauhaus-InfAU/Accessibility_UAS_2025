@@ -8,7 +8,7 @@ const MODES: { value: AttractivityMode; label: string }[] = [
 ]
 
 export function AttractivityDropdown() {
-  const { attractivityMode, setAttractivityMode, selectedLandUse } = useAppContext()
+  const { attractivityMode, setAttractivityMode, selectedLandUse, totalCustomPinAttractivity } = useAppContext()
   const isCustomMode = selectedLandUse === 'Custom'
 
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -17,16 +17,24 @@ export function AttractivityDropdown() {
     }
   }
 
-  // In custom mode, always show "count" as the value
-  const displayValue = isCustomMode ? 'count' : attractivityMode
+  // In custom mode, show instruction and total instead of dropdown
+  // Add top padding to align with the dropdown height on the left column
+  if (isCustomMode) {
+    return (
+      <div className="flex flex-col" style={{ paddingTop: '49px' }}>
+        <p className="text-xs text-gray-500 mt-1">Set attractivity on map</p>
+        <span className="text-sm font-semibold mt-1" style={{ color: '#d4a800' }}>
+          Total attractivity: {totalCustomPinAttractivity}
+        </span>
+      </div>
+    )
+  }
 
   return (
     <select
-      value={displayValue}
+      value={attractivityMode}
       onChange={handleChange}
-      disabled={isCustomMode}
       className="param-dropdown"
-      title={isCustomMode ? 'Locked to Count for Custom pins' : ''}
     >
       {MODES.map(mode => (
         <option key={mode.value} value={mode.value}>
