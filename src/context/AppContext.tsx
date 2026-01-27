@@ -196,6 +196,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
           setSelectedLandUse(available[0])
         }
 
+        // Create default attractors for Grid mode (2 attractors near center)
+        const defaultAttractorCoords: [number, number][] = [
+          [0.006, 0.022],  // slightly left of center
+          [0.010, 0.018],  // slightly right and below center
+        ]
+        const defaultAttractors: GridAttractor[] = defaultAttractorCoords.map((coord, i) => ({
+          id: `attractor-default-${i}`,
+          coord,
+          nearestNodeId: findNearestNode(streetGraph, coord),
+        }))
+        setGridAttractors(defaultAttractors)
+
+        // Create default custom pins for Buildings mode (2 pins near center)
+        const defaultPinCoords: [number, number][] = [
+          [0.007, 0.021],  // near center
+          [0.009, 0.019],  // slightly offset
+        ]
+        const defaultPins: CustomPin[] = defaultPinCoords.map((coord, i) => ({
+          id: `pin-default-${i}`,
+          coord,
+          nearestNodeId: findNearestNode(streetGraph, coord),
+        }))
+        setCustomPins(defaultPins)
+
         setIsLoading(false)
       } catch (error) {
         console.error('Initialization failed:', error)

@@ -36,12 +36,13 @@ Calculates accessibility on a hexagonal grid based on user-placed attractors. Us
      - **Exponential Power**: f(d_ij) = e^{-(d_ij/b)^c}
    - Custom mode features:
      - Add/remove/drag control points
-     - Preset curves: Constant, Linear, Exponential, Steep, Step (500m)
+     - Preset curves: Exponential (default), Power, Linear, Step (500m), Constant
    - Mathematical modes:
      - Coefficient input fields below the graph
      - Real-time curve preview and accessibility recalculation
 3. **Select amenity type** (Buildings mode): Which building type to analyze (retail, education, health, etc.)
 4. **Custom amenity pins** (Buildings mode): Place custom amenity locations on the map
+   - 2 default pins placed on startup
    - Click map to add pin (when "Custom" mode selected)
    - Drag pin to move (automatically re-snaps to street network)
    - Right-click pin to delete
@@ -49,6 +50,7 @@ Calculates accessibility on a hexagonal grid based on user-placed attractors. Us
    - Pins persist when switching to other amenity types
    - Attractivity mode locked to "Count" for custom pins
 5. **Place attractors** (Grid mode): Click map to place attractor points
+   - 2 default attractors placed on startup
    - Click map to add attractor
    - Drag attractor to move
    - Right-click attractor to delete

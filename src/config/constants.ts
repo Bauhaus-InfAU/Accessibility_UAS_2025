@@ -63,14 +63,15 @@ export const DESTINATION_LAND_USES: LandUse[] = [
   'Generic Transportation Service',
 ]
 
-// Default curve: exponential-like decay
+// Default curve: Exponential preset - approximates f(d) = e^(-0.003*d)
 export const DEFAULT_POLYLINE_POINTS = [
   { x: 0, y: 1 },
-  { x: 250, y: 0.8 },
-  { x: 500, y: 0.5 },
-  { x: 1000, y: 0.2 },
-  { x: 1500, y: 0.05 },
-  { x: 2000, y: 0 },
+  { x: 250, y: 0.472 },
+  { x: 500, y: 0.223 },
+  { x: 750, y: 0.105 },
+  { x: 1000, y: 0.050 },
+  { x: 1500, y: 0.011 },
+  { x: 2000, y: 0.002 },
 ]
 
 export const DEFAULT_BEZIER_HANDLES: [[number, number], [number, number]] = [

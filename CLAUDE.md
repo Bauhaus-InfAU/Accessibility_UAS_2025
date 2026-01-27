@@ -34,8 +34,8 @@ Students define a custom distance decay function f(d) graphically, then see how 
   - Negative Exponential: f(d_ij) = e^(-α·d_ij) with α coefficient input
   - Exponential Power: f(d_ij) = e^{-(d_ij/b)^c} with b and c coefficient inputs
 - **Amenity Selection**: 14 predefined land use types from Weimar data
-- **Custom Pins**: User-placed amenity markers on the map (click to add, drag to move, right-click to delete)
-- **Grid Attractors**: User-placed attractor points for Grid mode (same interactions as custom pins)
+- **Custom Pins**: User-placed amenity markers on the map (2 default pins on startup, click to add, drag to move, right-click to delete)
+- **Grid Attractors**: User-placed attractor points for Grid mode (2 default attractors on startup, same interactions as custom pins)
 - **Attractivity Modes**: Floor area, volume, or count-based weighting
 - **3D Visualization**: Buildings colored by accessibility score (purple=low, red=high)
 - **Hexagon Grid**: ~20m diameter hexagons colored by accessibility (Grid mode)
@@ -112,8 +112,8 @@ Tabbed SVG-based curve editor (620×360px):
 
 **Custom Tab**:
 - Draggable control points: White fill, purple outline
-- **Presets**: Exponential, Power, Linear, Step, Constant (with "Presets:" label above)
-  - Exponential: approximates negative exponential f(d) = e^(-0.003·d)
+- **Presets**: Exponential (default), Power, Linear, Step, Constant (with "Presets:" label above)
+  - Exponential: approximates negative exponential f(d) = e^(-0.003·d) - **default on startup**
   - Power: approximates exponential power f(d) = e^(-(d/700)^2)
 - **Interactions**: Double-click to add point, right-click to remove, drag to move
 
