@@ -18,12 +18,17 @@ Acc_i = Σ(j=0 to n) [Att_j * f(d_ij)]
 
 ## User Interactions
 
-1. **Define decay function**: Interactive plot (x: distance in meters, y: 0 to 1)
-   - Polyline mode: series of draggable points
-   - Bezier mode: cubic bezier with control handles
-   - Switch between modes
-   - Add/remove/drag control points
-   - Preset curves: Exponential, Linear, Steep, Step (500m)
+1. **Define decay function**: Interactive plot (x: distance d_ij in meters, y: 0 to 1)
+   - Three tabs for different curve definition modes:
+     - **Custom**: Polyline editor with draggable control points
+     - **Negative Exponential**: f(d_ij) = e^(-α·d_ij)
+     - **Exponential Power**: f(d_ij) = e^{-(d_ij/b)^c}
+   - Custom mode features:
+     - Add/remove/drag control points
+     - Preset curves: Constant, Linear, Exponential, Steep, Step (500m)
+   - Mathematical modes:
+     - Coefficient input fields below the graph
+     - Real-time curve preview and accessibility recalculation
 2. **Select amenity type**: Which building type to analyze (retail, education, health, etc.)
 3. **Custom amenity pins**: Place custom amenity locations on the map
    - Click map to add pin (when "Custom" mode selected)
@@ -61,14 +66,25 @@ Glassmorphism panel with collapsible content:
 4. **Parameters** (two dropdowns side-by-side):
    - Amenity Type (j): Land use category selector
    - Attractivity (Att_j): Floor area / Volume / Count
-5. **Distance Decay Function** (interactive SVG curve editor):
-   - Grid: White lines on transparent background
-   - Curve: Purple (#562fae) polyline, strokeWidth 3
-   - Control points: White fill, purple outline, strokeWidth 3
-   - X-axis: Distance (0-2000m) with label below values
-   - Y-axis: f(d) values (0.00-1.00)
-   - Preset buttons: Constant, Linear, Exponential, Steep, Step (500m)
-   - Instructions: "Double-click to add point. Right-click to remove."
+5. **Distance Decay Function f(d_ij)** (tabbed SVG curve editor):
+   - **Tab bar**: Custom | Negative Exponential | Exponential Power
+   - **Graph area** (620×360px):
+     - Grid: White lines on transparent background
+     - Curve: Purple (#562fae), strokeWidth 3
+     - X-axis: "Distance (m) → d_ij" (0-2000m)
+     - Y-axis: "Willingness to Travel → f(d_ij)" (0.00-1.00)
+   - **Custom tab**:
+     - Control points: White fill, purple outline, strokeWidth 3
+     - Preset buttons: Constant, Linear, Exponential, Steep, Step (500m)
+     - Instructions: "Double-click to add point. Right-click to remove."
+   - **Negative Exponential tab**:
+     - Equation: f(d_ij) = e^(-α·d_ij) (Times New Roman, 24px, italic)
+     - Input: α (decay rate), default 0.003, range 0-0.1
+     - Help: "Higher α = faster decay. Typical range: 0.001 to 0.01"
+   - **Exponential Power tab**:
+     - Equation: f(d_ij) = e^{-(d_ij/b)^c} (Times New Roman, 24px, italic)
+     - Inputs: b (scale) default 500, c (shape) default 1.5
+     - Help: "b = distance where f ≈ 0.37 (when c=1). c = shape (1=standard, >1=steeper, <1=flatter)"
 
 ### Navigation Widget (top-right)
 - **View buttons** (with inline SVG icons):

@@ -7,9 +7,17 @@ import { AttractivityDropdown } from './AttractivityDropdown'
 export function ParametersPanel() {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const {
+    curveTabMode,
     polylinePoints,
     maxDistance,
+    negExpAlpha,
+    expPowerB,
+    expPowerC,
+    setCurveTabMode,
     setPolylinePoints,
+    setNegExpAlpha,
+    setExpPowerB,
+    setExpPowerC,
     isLoading,
   } = useAppContext()
 
@@ -69,9 +77,17 @@ export function ParametersPanel() {
               Distance Decay Function f(d<sub>ij</sub>)
             </label>
             <CurveEditor
+              curveTabMode={curveTabMode}
               polylinePoints={polylinePoints}
               maxDistance={maxDistance}
+              negExpAlpha={negExpAlpha}
+              expPowerB={expPowerB}
+              expPowerC={expPowerC}
+              onTabModeChange={setCurveTabMode}
               onPolylineChange={setPolylinePoints}
+              onNegExpAlphaChange={setNegExpAlpha}
+              onExpPowerBChange={setExpPowerB}
+              onExpPowerCChange={setExpPowerC}
             />
           </div>
         </div>

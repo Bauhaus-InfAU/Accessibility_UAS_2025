@@ -46,7 +46,9 @@ export function CurveCanvas({ maxDistance, width, height, padding, children }: C
 
       {/* Axis labels */}
       <text x={padding.left + plotWidth / 2} y={height - 8} textAnchor="middle" fontSize={14} fill="#555">
-        Distance (m)
+        <tspan>Distance (m) → </tspan>
+        <tspan fontStyle="italic">d</tspan>
+        <tspan fontSize={10} dy={3}>ij</tspan>
       </text>
       <text
         x={18}
@@ -56,7 +58,12 @@ export function CurveCanvas({ maxDistance, width, height, padding, children }: C
         fill="#555"
         transform={`rotate(-90, 18, ${padding.top + plotHeight / 2})`}
       >
-        f(d)
+        <tspan>Willingness to Travel → </tspan>
+        <tspan fontStyle="italic">f</tspan>
+        <tspan>(</tspan>
+        <tspan fontStyle="italic">d</tspan>
+        <tspan fontSize={10} dy={3}>ij</tspan>
+        <tspan dy={-3}>)</tspan>
       </text>
 
       {/* Plot area content */}

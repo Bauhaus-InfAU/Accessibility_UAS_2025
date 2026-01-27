@@ -1,12 +1,12 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react'
-import type { Building, ControlPoint, CurveMode, AttractivityMode, DistanceMatrix, LandUse, StreetGraph, CustomPin } from '../config/types'
-import { MAX_DISTANCE_DEFAULT, DEFAULT_POLYLINE_POINTS, DEFAULT_BEZIER_HANDLES } from '../config/constants'
+import type { Building, ControlPoint, CurveMode, CurveTabMode, AttractivityMode, DistanceMatrix, LandUse, StreetGraph, CustomPin } from '../config/types'
+import { MAX_DISTANCE_DEFAULT, DEFAULT_POLYLINE_POINTS, DEFAULT_BEZIER_HANDLES, DEFAULT_NEG_EXP_ALPHA, DEFAULT_EXP_POWER_B, DEFAULT_EXP_POWER_C } from '../config/constants'
 import { loadBuildingsGeoJSON, loadStreetsGeoJSON } from '../data/dataLoader'
 import { processBuildings, getBuildingsWithLandUse, getAvailableLandUses } from '../data/buildingStore'
 import { buildStreetGraph, mapBuildingsToNodes, serializeGraph, findNearestNode } from '../data/streetGraph'
 import { computeDistanceMatrix } from '../computation/distanceMatrix'
 import { calculateAccessibility, calculateAccessibilityFromPins, normalizeScores } from '../computation/accessibilityCalc'
-import { createCurveEvaluator } from '../computation/curveEvaluator'
+import { createCurveEvaluatorForMode } from '../computation/curveEvaluator'
 
 interface AppState {
   // Loading
@@ -21,12 +21,18 @@ interface AppState {
   availableLandUses: LandUse[]
 
   // User controls
-  curveMode: CurveMode
+  curveTabMode: CurveTabMode
+  customCurveType: CurveMode
   polylinePoints: ControlPoint[]
   bezierHandles: [[number, number], [number, number]]
   maxDistance: number
   selectedLandUse: LandUse
   attractivityMode: AttractivityMode
+
+  // Mathematical function coefficients
+  negExpAlpha: number
+  expPowerB: number
+  expPowerC: number
 
   // Custom pins
   customPins: CustomPin[]
@@ -39,11 +45,15 @@ interface AppState {
 }
 
 interface AppContextValue extends AppState {
-  setCurveMode: (mode: CurveMode) => void
+  setCurveTabMode: (mode: CurveTabMode) => void
+  setCustomCurveType: (type: CurveMode) => void
   setPolylinePoints: (points: ControlPoint[]) => void
   setBezierHandles: (handles: [[number, number], [number, number]]) => void
   setSelectedLandUse: (landUse: LandUse) => void
   setAttractivityMode: (mode: AttractivityMode) => void
+  setNegExpAlpha: (alpha: number) => void
+  setExpPowerB: (b: number) => void
+  setExpPowerC: (c: number) => void
   addCustomPin: (coord: [number, number]) => void
   updateCustomPin: (id: string, coord: [number, number]) => void
   removeCustomPin: (id: string) => void
@@ -68,12 +78,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [distanceMatrix, setDistanceMatrix] = useState<DistanceMatrix | null>(null)
   const [availableLandUses, setAvailableLandUses] = useState<LandUse[]>([])
 
-  const [curveMode, setCurveMode] = useState<CurveMode>('polyline')
+  const [curveTabMode, setCurveTabMode] = useState<CurveTabMode>('custom')
+  const [customCurveType, setCustomCurveType] = useState<CurveMode>('polyline')
   const [polylinePoints, setPolylinePoints] = useState<ControlPoint[]>([...DEFAULT_POLYLINE_POINTS])
   const [bezierHandles, setBezierHandles] = useState<[[number, number], [number, number]]>([...DEFAULT_BEZIER_HANDLES])
   const maxDistance = MAX_DISTANCE_DEFAULT
   const [selectedLandUse, setSelectedLandUse] = useState<LandUse>('Generic Retail')
   const [attractivityMode, setAttractivityMode] = useState<AttractivityMode>('floorArea')
+
+  // Mathematical function coefficients
+  const [negExpAlpha, setNegExpAlpha] = useState(DEFAULT_NEG_EXP_ALPHA)
+  const [expPowerB, setExpPowerB] = useState(DEFAULT_EXP_POWER_B)
+  const [expPowerC, setExpPowerC] = useState(DEFAULT_EXP_POWER_C)
 
   const [accessibilityScores, setAccessibilityScores] = useState<Map<string, number>>(new Map())
   const [rawAccessibilityScores, setRawAccessibilityScores] = useState<Map<string, number>>(new Map())
@@ -194,13 +210,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setAccessibilityScores(normalizeScores(rawScores))
     }
 
+    // Create evaluator based on current curve mode
+    const evaluator = createCurveEvaluatorForMode(
+      curveTabMode,
+      customCurveType,
+      polylinePoints,
+      bezierHandles,
+      maxDistance,
+      negExpAlpha,
+      expPowerB,
+      expPowerC
+    )
+
     // Handle Custom mode with pins
     if (selectedLandUse === 'Custom') {
       if (customPins.length === 0) {
         processScores(new Map())
         return
       }
-      const evaluator = createCurveEvaluator(curveMode, polylinePoints, bezierHandles, maxDistance)
       const rawScores = calculateAccessibilityFromPins(
         residentialBuildings,
         customPins,
@@ -219,7 +246,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return
     }
 
-    const evaluator = createCurveEvaluator(curveMode, polylinePoints, bezierHandles, maxDistance)
     const rawScores = calculateAccessibility(
       residentialBuildings,
       amenityBuildings,
@@ -229,7 +255,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       attractivityMode
     )
     processScores(rawScores)
-  }, [buildings, distanceMatrix, curveMode, polylinePoints, bezierHandles, maxDistance, selectedLandUse, attractivityMode, customPins])
+  }, [buildings, distanceMatrix, curveTabMode, customCurveType, polylinePoints, bezierHandles, maxDistance, selectedLandUse, attractivityMode, customPins, negExpAlpha, expPowerB, expPowerC])
 
   // Debounced recalculation
   useEffect(() => {
@@ -257,22 +283,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
     graph,
     distanceMatrix,
     availableLandUses,
-    curveMode,
+    curveTabMode,
+    customCurveType,
     polylinePoints,
     bezierHandles,
     maxDistance,
     selectedLandUse,
     attractivityMode,
+    negExpAlpha,
+    expPowerB,
+    expPowerC,
     customPins,
     accessibilityScores,
     rawAccessibilityScores,
     minRawScore,
     maxRawScore,
-    setCurveMode,
+    setCurveTabMode,
+    setCustomCurveType,
     setPolylinePoints,
     setBezierHandles,
     setSelectedLandUse,
     setAttractivityMode,
+    setNegExpAlpha,
+    setExpPowerB,
+    setExpPowerC,
     addCustomPin,
     updateCustomPin,
     removeCustomPin,

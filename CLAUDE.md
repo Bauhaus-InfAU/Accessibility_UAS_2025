@@ -26,7 +26,10 @@ Students define a custom distance decay function f(d) graphically, then see how 
 - Web Worker (Dijkstra precomputation)
 
 ## Key Features
-- **Distance Decay Curve**: Polyline or Bezier curve editor with preset options
+- **Distance Decay Curve**: Tabbed editor with three modes:
+  - Custom: Polyline editor with draggable points and presets
+  - Negative Exponential: f(d_ij) = e^(-α·d_ij) with α coefficient input
+  - Exponential Power: f(d_ij) = e^{-(d_ij/b)^c} with b and c coefficient inputs
 - **Amenity Selection**: 14 predefined land use types from Weimar data
 - **Custom Pins**: User-placed amenity markers on the map (click to add, drag to move, right-click to delete)
 - **Attractivity Modes**: Floor area, volume, or count-based weighting
@@ -36,15 +39,20 @@ Students define a custom distance decay function f(d) graphically, then see how 
 ## Project Structure
 ```
 src/
-├── config/          # Types (LandUse, CustomPin, Building) + constants
+├── config/          # Types (LandUse, CustomPin, Building, CurveTabMode) + constants
 ├── data/            # GeoJSON loading, building/street processing, graph building
 ├── computation/     # Dijkstra worker, distance matrix, accessibility calc, curve eval
 ├── components/      # React UI (App, CurveEditor, panels, map)
-│   ├── CurveEditor/ # CurveCanvas (grid/axes), PolylineEditor (interactive curve)
+│   ├── CurveEditor/ # Tabbed curve editor with multiple modes
+│   │   ├── CurveEditor.tsx      # Main component with tabs
+│   │   ├── CurveCanvas.tsx      # SVG grid/axes (shared)
+│   │   ├── PolylineEditor.tsx   # Custom mode - draggable points
+│   │   ├── MathCurveDisplay.tsx # Mathematical function curve renderer
+│   │   └── CoefficientInputs.tsx # Parameter inputs for math functions
 │   ├── panels/      # ParametersPanel, NavigationWidget, Legend, dropdowns
 │   └── map/         # MapView (includes custom pin marker management)
 ├── visualization/   # MapLibre setup + building color updates
-├── context/         # React Context (AppContext stores scores + rawAccessibilityScores, MapContext)
+├── context/         # React Context (AppContext stores scores + curve state, MapContext)
 └── lib/             # Utilities
 ```
 
@@ -61,15 +69,31 @@ Main control panel (top-left, 680px wide, collapsible):
 - **Section C - Distance Decay Function**: Interactive curve editor
 
 ### Curve Editor (`CurveEditor/`)
-SVG-based interactive plot (620×360px):
+Tabbed SVG-based curve editor (620×360px):
+
+**Tab Navigation**:
+- Custom | Negative Exponential | Exponential Power
+- Active tab: Purple text + bottom border (#7c3aed)
+
+**Graph Area** (shared across tabs):
 - **Grid**: White lines on transparent background
 - **Axes**: Labels only (no frame border)
-  - X-axis: Distance values (0-2000m), "Distance (m)" label below
-  - Y-axis: f(d) values (0-1.00)
-- **Curve**: Purple (#562fae) polyline, strokeWidth 3
-- **Control Points**: White fill, purple (#562fae) outline, strokeWidth 3
+  - X-axis: "Distance (m) → d_ij" (0-2000m)
+  - Y-axis: "Willingness to Travel → f(d_ij)" (0-1.00)
+- **Curve**: Purple (#562fae), strokeWidth 3
+
+**Custom Tab**:
+- Draggable control points: White fill, purple outline
 - **Presets**: Constant, Linear, Exponential, Steep, Step (500m)
 - **Interactions**: Double-click to add point, right-click to remove, drag to move
+
+**Negative Exponential Tab**:
+- Equation: f(d_ij) = e^(-α·d_ij) (Times New Roman, 24px, italic)
+- Input field: α (decay rate), default 0.003
+
+**Exponential Power Tab**:
+- Equation: f(d_ij) = e^{-(d_ij/b)^c} (Times New Roman, 24px, italic)
+- Input fields: b (scale) default 500, c (shape) default 1.5
 
 ### Navigation Widget (`NavigationWidget.tsx`)
 Map controls (top-right):

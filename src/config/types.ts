@@ -63,7 +63,14 @@ export interface ControlPoint {
   y: number // 0 to 1
 }
 
-export type CurveMode = 'polyline' | 'bezier'
+// Tab-level curve mode for the curve editor
+export type CurveTabMode = 'custom' | 'negativeExponential' | 'exponentialPower'
+
+// Sub-mode within the Custom tab
+export type CustomCurveType = 'polyline' | 'bezier'
+
+// Legacy alias for backwards compatibility
+export type CurveMode = CustomCurveType
 
 export type AttractivityMode = 'floorArea' | 'volume' | 'count'
 

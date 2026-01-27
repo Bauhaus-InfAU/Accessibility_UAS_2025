@@ -1,4 +1,4 @@
-import type { ControlPoint, CurveMode } from '../config/types'
+import type { ControlPoint, CurveMode, CurveTabMode } from '../config/types'
 
 /**
  * Evaluate a polyline curve at a given distance.
@@ -65,7 +65,22 @@ function cubicBezier(t: number, p0: number, p1: number, p2: number, p3: number):
 }
 
 /**
- * Create a curve evaluator function from the current curve state.
+ * Evaluate negative exponential: f(d) = e^(-α * d)
+ */
+function evaluateNegativeExponential(alpha: number, distance: number): number {
+  return Math.exp(-alpha * distance)
+}
+
+/**
+ * Evaluate exponential power function: f(d) = e^{-(d/b)^c}
+ */
+function evaluateExponentialPower(b: number, c: number, distance: number): number {
+  if (b <= 0) return 0
+  return Math.exp(-Math.pow(distance / b, c))
+}
+
+/**
+ * Create a curve evaluator function from the current curve state (custom polyline/bezier).
  */
 export function createCurveEvaluator(
   mode: CurveMode,
@@ -78,5 +93,43 @@ export function createCurveEvaluator(
     return (distance: number) => evaluatePolyline(sorted, distance)
   } else {
     return (distance: number) => evaluateBezier(bezierHandles, maxDistance, distance)
+  }
+}
+
+/**
+ * Create a curve evaluator for negative exponential function.
+ */
+export function createNegativeExponentialEvaluator(alpha: number): (distance: number) => number {
+  return (distance: number) => evaluateNegativeExponential(alpha, distance)
+}
+
+/**
+ * Create a curve evaluator for exponential power function.
+ */
+export function createExponentialPowerEvaluator(b: number, c: number): (distance: number) => number {
+  return (distance: number) => evaluateExponentialPower(b, c, distance)
+}
+
+/**
+ * Create a curve evaluator based on the tab mode and relevant parameters.
+ */
+export function createCurveEvaluatorForMode(
+  tabMode: CurveTabMode,
+  customCurveType: CurveMode,
+  polylinePoints: ControlPoint[],
+  bezierHandles: [[number, number], [number, number]],
+  maxDistance: number,
+  negExpAlpha: number,
+  expPowerB: number,
+  expPowerC: number
+): (distance: number) => number {
+  switch (tabMode) {
+    case 'negativeExponential':
+      return createNegativeExponentialEvaluator(negExpAlpha)
+    case 'exponentialPower':
+      return createExponentialPowerEvaluator(expPowerB, expPowerC)
+    case 'custom':
+    default:
+      return createCurveEvaluator(customCurveType, polylinePoints, bezierHandles, maxDistance)
   }
 }

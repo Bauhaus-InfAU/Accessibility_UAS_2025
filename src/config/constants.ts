@@ -79,3 +79,10 @@ export const DEFAULT_BEZIER_HANDLES: [[number, number], [number, number]] = [
 ]
 
 export const BUILDING_UNSCORED_COLOR = '#cccccc'
+
+// Negative Exponential: f(d) = e^(-α * d)
+export const DEFAULT_NEG_EXP_ALPHA = 0.003  // decay rate
+
+// Exponential Power: f(d) = e^{-(d/b)^c}
+export const DEFAULT_EXP_POWER_B = 500      // scale parameter
+export const DEFAULT_EXP_POWER_C = 1.5      // shape parameter
