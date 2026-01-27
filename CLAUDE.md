@@ -45,7 +45,8 @@ src/
 ├── components/      # React UI (App, CurveEditor, panels, map)
 │   ├── CurveEditor/ # Tabbed curve editor with multiple modes
 │   │   ├── CurveEditor.tsx      # Main component with tabs
-│   │   ├── CurveCanvas.tsx      # SVG grid/axes (shared)
+│   │   ├── CurveCanvas.tsx      # SVG grid/axes (shared), mouse tracking
+│   │   ├── CurveExplorer.tsx    # Crosshair overlay with value labels
 │   │   ├── PolylineEditor.tsx   # Custom mode - draggable points
 │   │   ├── MathCurveDisplay.tsx # Mathematical function curve renderer
 │   │   └── CoefficientInputs.tsx # Parameter inputs for math functions
@@ -81,10 +82,15 @@ Tabbed SVG-based curve editor (620×360px):
   - X-axis: "Distance (m) → d_ij" (0-2000m)
   - Y-axis: "Willingness to Travel → f(d_ij)" (0-1.00)
 - **Curve**: Purple (#562fae), strokeWidth 3
+- **Curve Explorer** (on hover): Crosshairs with value labels
+  - Dashed vertical/horizontal lines to curve intersection
+  - Purple circle at intersection, purple rounded labels showing d_ij and f(d_ij)
 
 **Custom Tab**:
 - Draggable control points: White fill, purple outline
-- **Presets**: Constant, Linear, Exponential, Steep, Step (500m)
+- **Presets**: Exponential, Power, Linear, Step, Constant (with "Presets:" label above)
+  - Exponential: approximates negative exponential f(d) = e^(-0.003·d)
+  - Power: approximates exponential power f(d) = e^(-(d/700)^2)
 - **Interactions**: Double-click to add point, right-click to remove, drag to move
 
 **Negative Exponential Tab**:
@@ -93,7 +99,7 @@ Tabbed SVG-based curve editor (620×360px):
 
 **Exponential Power Tab**:
 - Equation: f(d_ij) = e^{-(d_ij/b)^c} (Times New Roman, 24px, italic)
-- Input fields: b (scale) default 500, c (shape) default 1.5
+- Input fields: b (scale) default 700, c (shape) default 2
 
 ### Navigation Widget (`NavigationWidget.tsx`)
 Map controls (top-right):

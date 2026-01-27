@@ -1,4 +1,9 @@
-import { type ReactNode } from 'react'
+import { type ReactNode, useCallback, useRef } from 'react'
+
+export interface PlotHoverPosition {
+  plotX: number  // x in plot coordinates (0 to plotWidth)
+  plotY: number  // y in plot coordinates (0 to plotHeight)
+}
 
 interface CurveCanvasProps {
   maxDistance: number
@@ -6,18 +11,45 @@ interface CurveCanvasProps {
   height: number
   padding: { top: number; right: number; bottom: number; left: number }
   children: ReactNode
+  onPlotHover?: (position: PlotHoverPosition | null) => void
 }
 
-export function CurveCanvas({ maxDistance, width, height, padding, children }: CurveCanvasProps) {
+export function CurveCanvas({ maxDistance, width, height, padding, children, onPlotHover }: CurveCanvasProps) {
   const plotWidth = width - padding.left - padding.right
   const plotHeight = height - padding.top - padding.bottom
+  const svgRef = useRef<SVGSVGElement>(null)
 
   // Grid lines
   const xTicks = [0, 250, 500, 750, 1000, 1250, 1500, 1750, 2000].filter(v => v <= maxDistance)
   const yTicks = [0, 0.25, 0.5, 0.75, 1.0]
 
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!onPlotHover || !svgRef.current) return
+    const rect = svgRef.current.getBoundingClientRect()
+    const plotX = e.clientX - rect.left - padding.left
+    const plotY = e.clientY - rect.top - padding.top
+
+    // Only report if within plot bounds
+    if (plotX >= 0 && plotX <= plotWidth && plotY >= 0 && plotY <= plotHeight) {
+      onPlotHover({ plotX, plotY })
+    } else {
+      onPlotHover(null)
+    }
+  }, [onPlotHover, padding.left, padding.top, plotWidth, plotHeight])
+
+  const handleMouseLeave = useCallback(() => {
+    onPlotHover?.(null)
+  }, [onPlotHover])
+
   return (
-    <svg width={width} height={height} className="select-none">
+    <svg
+      ref={svgRef}
+      width={width}
+      height={height}
+      className="select-none"
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+    >
 
       {/* Grid lines */}
       {xTicks.map(val => {

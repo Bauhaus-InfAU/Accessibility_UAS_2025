@@ -4,7 +4,7 @@ import type { ControlPoint, CurveMode, CurveTabMode } from '../config/types'
  * Evaluate a polyline curve at a given distance.
  * Points must be sorted by x. Linearly interpolates between points.
  */
-function evaluatePolyline(points: ControlPoint[], distance: number): number {
+export function evaluatePolyline(points: ControlPoint[], distance: number): number {
   if (points.length === 0) return 0
   if (distance <= points[0].x) return points[0].y
   if (distance >= points[points.length - 1].x) return points[points.length - 1].y
@@ -18,6 +18,14 @@ function evaluatePolyline(points: ControlPoint[], distance: number): number {
   }
 
   return 0
+}
+
+/**
+ * Create a polyline evaluator from control points.
+ */
+export function createPolylineEvaluator(points: ControlPoint[]): (distance: number) => number {
+  const sorted = [...points].sort((a, b) => a.x - b.x)
+  return (distance: number) => evaluatePolyline(sorted, distance)
 }
 
 /**

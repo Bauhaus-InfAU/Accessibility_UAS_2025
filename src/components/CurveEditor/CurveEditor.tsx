@@ -1,11 +1,11 @@
-import { useMemo } from 'react'
+import { useMemo, useState, useCallback } from 'react'
 import type { ControlPoint, CurveTabMode } from '../../config/types'
-import { DEFAULT_POLYLINE_POINTS } from '../../config/constants'
-import { CurveCanvas } from './CurveCanvas'
+import { CurveCanvas, type PlotHoverPosition } from './CurveCanvas'
 import { PolylineEditor } from './PolylineEditor'
 import { MathCurveDisplay } from './MathCurveDisplay'
 import { CoefficientInputs } from './CoefficientInputs'
-import { createNegativeExponentialEvaluator, createExponentialPowerEvaluator } from '../../computation/curveEvaluator'
+import { CurveExplorer } from './CurveExplorer'
+import { createNegativeExponentialEvaluator, createExponentialPowerEvaluator, createPolylineEvaluator } from '../../computation/curveEvaluator'
 
 interface CurveEditorProps {
   curveTabMode: CurveTabMode
@@ -47,6 +47,13 @@ export function CurveEditor({
   const plotWidth = SVG_WIDTH - PADDING.left - PADDING.right
   const plotHeight = SVG_HEIGHT - PADDING.top - PADDING.bottom
 
+  // Hover state for curve explorer
+  const [hoverPlotX, setHoverPlotX] = useState<number | null>(null)
+
+  const handlePlotHover = useCallback((position: PlotHoverPosition | null) => {
+    setHoverPlotX(position?.plotX ?? null)
+  }, [])
+
   // Create evaluators for mathematical functions
   const negExpEvaluator = useMemo(
     () => createNegativeExponentialEvaluator(negExpAlpha),
@@ -57,15 +64,43 @@ export function CurveEditor({
     [expPowerB, expPowerC]
   )
 
-  // Preset functions for custom mode
-  const setExponential = () => {
-    onPolylineChange([...DEFAULT_POLYLINE_POINTS])
-  }
+  // Unified evaluator for the current mode (used by CurveExplorer)
+  const currentEvaluator = useMemo(() => {
+    switch (curveTabMode) {
+      case 'negativeExponential':
+        return negExpEvaluator
+      case 'exponentialPower':
+        return expPowerEvaluator
+      case 'custom':
+      default:
+        return createPolylineEvaluator(polylinePoints)
+    }
+  }, [curveTabMode, negExpEvaluator, expPowerEvaluator, polylinePoints])
 
-  const setConstant = () => {
+  // Preset functions for custom mode
+  // Approximates negative exponential f(d) = e^(-0.003*d)
+  const setExponential = () => {
     onPolylineChange([
       { x: 0, y: 1 },
-      { x: maxDistance, y: 1 },
+      { x: 250, y: 0.472 },
+      { x: 500, y: 0.223 },
+      { x: 750, y: 0.105 },
+      { x: 1000, y: 0.050 },
+      { x: 1500, y: 0.011 },
+      { x: maxDistance, y: 0.002 },
+    ])
+  }
+
+  // Approximates exponential power f(d) = e^(-(d/700)^2)
+  const setPower = () => {
+    onPolylineChange([
+      { x: 0, y: 1 },
+      { x: 250, y: 0.880 },
+      { x: 500, y: 0.600 },
+      { x: 750, y: 0.317 },
+      { x: 1000, y: 0.130 },
+      { x: 1500, y: 0.010 },
+      { x: maxDistance, y: 0 },
     ])
   }
 
@@ -76,21 +111,19 @@ export function CurveEditor({
     ])
   }
 
-  const setSteep = () => {
-    onPolylineChange([
-      { x: 0, y: 1 },
-      { x: 200, y: 0.5 },
-      { x: 500, y: 0.1 },
-      { x: maxDistance, y: 0 },
-    ])
-  }
-
   const setStep = () => {
     onPolylineChange([
       { x: 0, y: 1 },
       { x: 499, y: 1 },
       { x: 500, y: 0 },
       { x: maxDistance, y: 0 },
+    ])
+  }
+
+  const setConstant = () => {
+    onPolylineChange([
+      { x: 0, y: 1 },
+      { x: maxDistance, y: 1 },
     ])
   }
 
@@ -119,6 +152,7 @@ export function CurveEditor({
         width={SVG_WIDTH}
         height={SVG_HEIGHT}
         padding={PADDING}
+        onPlotHover={handlePlotHover}
       >
         {curveTabMode === 'custom' && (
           <PolylineEditor
@@ -145,27 +179,37 @@ export function CurveEditor({
             plotHeight={plotHeight}
           />
         )}
+
+        {/* Interactive curve explorer overlay */}
+        <CurveExplorer
+          evaluator={currentEvaluator}
+          maxDistance={maxDistance}
+          plotWidth={plotWidth}
+          plotHeight={plotHeight}
+          hoverPlotX={hoverPlotX}
+        />
       </CurveCanvas>
 
       {/* Tab-specific controls */}
       {curveTabMode === 'custom' && (
         <>
           {/* Presets */}
-          <div className="flex gap-2 mt-4">
-            <button className="px-3 py-1.5 text-sm bg-gray-100 rounded-lg hover:bg-gray-200" onClick={setConstant}>
-              Constant
+          <p className="text-sm text-gray-500 mt-4 mb-2">Presets:</p>
+          <div className="flex gap-2">
+            <button className="px-3 py-1.5 text-sm bg-gray-100 rounded-lg hover:bg-gray-200" onClick={setExponential}>
+              Exponential
+            </button>
+            <button className="px-3 py-1.5 text-sm bg-gray-100 rounded-lg hover:bg-gray-200" onClick={setPower}>
+              Power
             </button>
             <button className="px-3 py-1.5 text-sm bg-gray-100 rounded-lg hover:bg-gray-200" onClick={setLinear}>
               Linear
             </button>
-            <button className="px-3 py-1.5 text-sm bg-gray-100 rounded-lg hover:bg-gray-200" onClick={setExponential}>
-              Exponential
-            </button>
-            <button className="px-3 py-1.5 text-sm bg-gray-100 rounded-lg hover:bg-gray-200" onClick={setSteep}>
-              Steep
-            </button>
             <button className="px-3 py-1.5 text-sm bg-gray-100 rounded-lg hover:bg-gray-200" onClick={setStep}>
-              Step (500m)
+              Step
+            </button>
+            <button className="px-3 py-1.5 text-sm bg-gray-100 rounded-lg hover:bg-gray-200" onClick={setConstant}>
+              Constant
             </button>
           </div>
 

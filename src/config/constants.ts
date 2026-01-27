@@ -84,5 +84,5 @@ export const BUILDING_UNSCORED_COLOR = '#cccccc'
 export const DEFAULT_NEG_EXP_ALPHA = 0.003  // decay rate
 
 // Exponential Power: f(d) = e^{-(d/b)^c}
-export const DEFAULT_EXP_POWER_B = 500      // scale parameter
-export const DEFAULT_EXP_POWER_C = 1.5      // shape parameter
+export const DEFAULT_EXP_POWER_B = 700      // scale parameter
+export const DEFAULT_EXP_POWER_C = 2        // shape parameter

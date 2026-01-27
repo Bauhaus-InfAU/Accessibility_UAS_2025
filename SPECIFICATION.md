@@ -73,9 +73,17 @@ Glassmorphism panel with collapsible content:
      - Curve: Purple (#562fae), strokeWidth 3
      - X-axis: "Distance (m) → d_ij" (0-2000m)
      - Y-axis: "Willingness to Travel → f(d_ij)" (0.00-1.00)
+     - **Curve Explorer** (on hover):
+       - Dashed vertical line from mouse X to curve intersection
+       - Dashed horizontal line from curve intersection to Y-axis
+       - Small purple circle at curve intersection point
+       - Purple rounded label on X-axis showing distance (integer meters)
+       - Purple rounded label on Y-axis showing f(d_ij) value (2 decimals)
    - **Custom tab**:
      - Control points: White fill, purple outline, strokeWidth 3
-     - Preset buttons: Constant, Linear, Exponential, Steep, Step (500m)
+     - Preset buttons: Exponential, Power, Linear, Step, Constant (with "Presets:" label)
+       - Exponential: approximates negative exponential f(d) = e^(-0.003·d)
+       - Power: approximates exponential power f(d) = e^(-(d/700)^2)
      - Instructions: "Double-click to add point. Right-click to remove."
    - **Negative Exponential tab**:
      - Equation: f(d_ij) = e^(-α·d_ij) (Times New Roman, 24px, italic)
@@ -83,7 +91,7 @@ Glassmorphism panel with collapsible content:
      - Help: "Higher α = faster decay. Typical range: 0.001 to 0.01"
    - **Exponential Power tab**:
      - Equation: f(d_ij) = e^{-(d_ij/b)^c} (Times New Roman, 24px, italic)
-     - Inputs: b (scale) default 500, c (shape) default 1.5
+     - Inputs: b (scale) default 700, c (shape) default 2
      - Help: "b = distance where f ≈ 0.37 (when c=1). c = shape (1=standard, >1=steeper, <1=flatter)"
 
 ### Navigation Widget (top-right)
