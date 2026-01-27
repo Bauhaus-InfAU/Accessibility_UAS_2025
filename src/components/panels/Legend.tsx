@@ -21,7 +21,7 @@ export function Legend() {
     <div className="absolute bottom-8 right-8 glass-panel floating-panel px-5 py-4">
       {isGridMode ? (
         <>
-          {/* Grid Mode: Attractor Indicator */}
+          {/* Grid Mode: Custom Amenities Indicator */}
           <div className="flex items-center gap-3">
             <span className="text-xs text-gray-500 invisible">Low</span>
             <div className="flex items-center gap-2">
@@ -30,7 +30,7 @@ export function Legend() {
                 style={{ backgroundColor: '#fcdb02' }}
               />
               <span className="text-sm text-gray-600">
-                Attractors ({gridAttractors.length})
+                Custom Amenities ({gridAttractors.length})
               </span>
             </div>
           </div>

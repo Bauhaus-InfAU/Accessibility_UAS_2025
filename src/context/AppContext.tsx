@@ -72,12 +72,14 @@ interface AppContextValue extends AppState {
   setExpPowerC: (c: number) => void
   addCustomPin: (coord: [number, number]) => void
   updateCustomPin: (id: string, coord: [number, number]) => void
+  updateCustomPinAttractivity: (id: string, attractivity: number) => void
   removeCustomPin: (id: string) => void
   clearCustomPins: () => void
   // Grid mode actions
   setAnalysisMode: (mode: AnalysisMode) => void
   addGridAttractor: (coord: [number, number]) => void
   updateGridAttractor: (id: string, coord: [number, number]) => void
+  updateGridAttractorAttractivity: (id: string, attractivity: number) => void
   removeGridAttractor: (id: string) => void
   clearGridAttractors: () => void
 }
@@ -196,15 +198,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
           setSelectedLandUse(available[0])
         }
 
-        // Create default attractors for Grid mode (2 attractors near center)
+        // Create default amenities for Grid mode (2 amenities near center)
         const defaultAttractorCoords: [number, number][] = [
           [0.006, 0.022],  // slightly left of center
           [0.010, 0.018],  // slightly right and below center
         ]
         const defaultAttractors: GridAttractor[] = defaultAttractorCoords.map((coord, i) => ({
-          id: `attractor-default-${i}`,
+          id: `amenity-default-${i}`,
           coord,
           nearestNodeId: findNearestNode(streetGraph, coord),
+          attractivity: 1,
         }))
         setGridAttractors(defaultAttractors)
 
@@ -217,6 +220,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           id: `pin-default-${i}`,
           coord,
           nearestNodeId: findNearestNode(streetGraph, coord),
+          attractivity: 1,
         }))
         setCustomPins(defaultPins)
 
@@ -238,6 +242,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       id: `pin-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
       coord,
       nearestNodeId,
+      attractivity: 1,
     }
     setCustomPins(prev => [...prev, newPin])
   }, [graph])
@@ -250,6 +255,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     ))
   }, [graph])
 
+  const updateCustomPinAttractivity = useCallback((id: string, attractivity: number) => {
+    setCustomPins(prev => prev.map(pin =>
+      pin.id === id ? { ...pin, attractivity: Math.max(0, attractivity) } : pin
+    ))
+  }, [])
+
   const removeCustomPin = useCallback((id: string) => {
     setCustomPins(prev => prev.filter(pin => pin.id !== id))
   }, [])
@@ -258,14 +269,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setCustomPins([])
   }, [])
 
-  // Grid attractor actions
+  // Grid attractor (amenity) actions
   const addGridAttractor = useCallback((coord: [number, number]) => {
     if (!graph) return
     const nearestNodeId = findNearestNode(graph, coord)
     const newAttractor: GridAttractor = {
-      id: `attractor-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+      id: `amenity-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
       coord,
       nearestNodeId,
+      attractivity: 1,
     }
     setGridAttractors(prev => [...prev, newAttractor])
   }, [graph])
@@ -277,6 +289,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       attractor.id === id ? { ...attractor, coord, nearestNodeId } : attractor
     ))
   }, [graph])
+
+  const updateGridAttractorAttractivity = useCallback((id: string, attractivity: number) => {
+    setGridAttractors(prev => prev.map(attractor =>
+      attractor.id === id ? { ...attractor, attractivity: Math.max(0, attractivity) } : attractor
+    ))
+  }, [])
 
   const removeGridAttractor = useCallback((id: string) => {
     setGridAttractors(prev => prev.filter(attractor => attractor.id !== id))
@@ -506,11 +524,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setExpPowerC,
     addCustomPin,
     updateCustomPin,
+    updateCustomPinAttractivity,
     removeCustomPin,
     clearCustomPins,
     setAnalysisMode,
     addGridAttractor,
     updateGridAttractor,
+    updateGridAttractorAttractivity,
     removeGridAttractor,
     clearGridAttractors,
   }

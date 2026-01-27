@@ -23,6 +23,7 @@ export interface CustomPin {
   id: string
   coord: [number, number]
   nearestNodeId: string
+  attractivity: number  // Default 1, editable by user
 }
 
 export interface Building {
@@ -77,11 +78,12 @@ export type AttractivityMode = 'floorArea' | 'volume' | 'count'
 // Analysis mode: Buildings (original) or Grid (hexagon-based)
 export type AnalysisMode = 'buildings' | 'grid'
 
-// Attractor for grid mode (user-placed points that serve as destinations)
+// Amenity for grid mode (user-placed points that serve as destinations)
 export interface GridAttractor {
   id: string
   coord: [number, number]
   nearestNodeId: string
+  attractivity: number  // Default 1, editable by user
 }
 
 // Hexagon cell for grid analysis

@@ -69,8 +69,11 @@ export function calculateAccessibilityFromPins(
       const decay = curveEvaluator(dist)
       if (decay <= 0) continue
 
-      // Each pin has attractivity = 1 (count mode)
-      acc += decay
+      // Use pin's attractivity value
+      const attractivity = pin.attractivity ?? 1
+      if (attractivity <= 0) continue
+
+      acc += attractivity * decay
     }
 
     rawScores.set(resBuilding.id, acc)

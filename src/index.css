@@ -15,6 +15,9 @@ body {
 .custom-pin {
   cursor: grab;
   transition: transform 0.1s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .custom-pin:hover {
@@ -23,6 +26,41 @@ body {
 
 .custom-pin:active {
   cursor: grabbing;
+}
+
+/* Attractivity box below pin */
+.attractivity-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fcdb02;
+  border: 1.5px solid #000;
+  border-radius: 10px;
+  padding: 4px 12px;
+  font-size: 14px;
+  margin-top: 2px;
+  cursor: pointer;
+  min-width: 20px;
+}
+
+.attractivity-box:hover {
+  transform: scale(1.1);
+}
+
+.attractivity-box .att-value {
+  font-weight: 700;
+  color: #000;
+}
+
+.attractivity-box .att-input {
+  width: 40px;
+  border: none;
+  outline: none;
+  font-size: 14px;
+  text-align: center;
+  background: transparent;
+  font-weight: 700;
+  color: #000;
 }
 
 /* Glassmorphism panel base */

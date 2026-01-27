@@ -28,15 +28,19 @@ Students define a custom distance decay function f(d) graphically, then see how 
 ## Key Features
 - **Analysis Modes**: Toggle between Buildings and Grid modes
   - Buildings mode: Accessibility for residential buildings based on amenities
-  - Grid mode: Accessibility on hexagonal grid based on user-placed attractors
+  - Grid mode: Accessibility on hexagonal grid based on user-placed custom amenities
 - **Distance Decay Curve**: Tabbed editor with three modes:
   - Custom: Polyline editor with draggable points and presets
   - Negative Exponential: f(d_ij) = e^(-α·d_ij) with α coefficient input
   - Exponential Power: f(d_ij) = e^{-(d_ij/b)^c} with b and c coefficient inputs
 - **Amenity Selection**: 14 predefined land use types from Weimar data
 - **Custom Pins**: User-placed amenity markers on the map (2 default pins on startup, click to add, drag to move, right-click to delete)
-- **Grid Attractors**: User-placed attractor points for Grid mode (2 default attractors on startup, same interactions as custom pins)
-- **Attractivity Modes**: Floor area, volume, or count-based weighting
+  - Each pin has editable attractivity value (default 1, click box to edit)
+  - Pin size scales proportionally with attractivity (sqrt scale: 1→1.0x, 5→1.5x, 10→1.86x, max 2.0x)
+- **Custom Amenities (Grid mode)**: User-placed amenity points (2 default on startup, same interactions as custom pins)
+  - Each amenity has editable attractivity value with visual attractivity box
+  - Amenity size scales proportionally with attractivity (same as custom pins)
+- **Attractivity Modes**: Floor area, volume, or count-based weighting (Buildings mode with predefined amenities)
 - **3D Visualization**: Buildings colored by accessibility score (purple=low, red=high)
 - **Hexagon Grid**: ~15m diameter hexagons colored by accessibility (Grid mode), organic boundary within 100m of network
 - **Hover Popups**: Show raw accessibility score on hover (buildings or hexagons)
@@ -44,7 +48,7 @@ Students define a custom distance decay function f(d) graphically, then see how 
 ## Project Structure
 ```
 src/
-├── config/          # Types (LandUse, CustomPin, Building, CurveTabMode, AnalysisMode, HexCell, GridAttractor) + constants
+├── config/          # Types (LandUse, CustomPin, Building, CurveTabMode, AnalysisMode, HexCell, GridAttractor with attractivity) + constants
 ├── data/            # GeoJSON loading, building/street processing, graph building, hexagon grid
 │   ├── dataLoader.ts      # GeoJSON file loading
 │   ├── buildingStore.ts   # Building processing and land use queries
@@ -88,7 +92,7 @@ Main control panel (top-left, 680px wide, collapsible):
   - **Buildings mode**: Two dropdowns side-by-side
     - Amenity Type (j): Land use category selector
     - Attractivity (Att_j): Floor area / Volume / Count
-  - **Grid mode**: Attractor count + "Clear all" button
+  - **Grid mode**: Custom Amenities count + "Clear all" button
     - Shows loading indicator when computing full network matrix
 - **Divider**: Horizontal line separator
 - **Section C - Distance Decay Function**: Interactive curve editor (shared across modes)
@@ -138,7 +142,7 @@ Score color scale (bottom-right), mode-dependent:
   - Selected Amenity Indicator: Yellow (#fcdb02) rounded box + amenity type name (or "Custom Pins")
   - Other Amenities Indicator: Grey (#a0a0a0) rounded box + "Other Amenities" label
 - **Grid mode**:
-  - Attractors Indicator: Yellow (#fcdb02) rounded box + attractor count
+  - Custom Amenities Indicator: Yellow (#fcdb02) rounded box + amenity count
   - Hexagon Grid Indicator: Gradient box + "Hexagon Grid" label
 - **Divider**: Thin grey line separating indicators from score gradient
 - **Title**: "Accessibility Score" (text-base)
@@ -160,7 +164,11 @@ Score color scale (bottom-right), mode-dependent:
   - Scored: Purple→Orange→Red gradient (same as buildings)
   - Unscored: Light grey (#cccccc)
   - Thin white outline (0.5px, 50% opacity) for cell boundaries
-- **Custom Pins / Attractors**: Yellow markers with black center dot (same for both modes)
+- **Custom Pins / Amenities**: Yellow markers with black center dot and attractivity box below
+  - Attractivity box: Yellow (#fcdb02) fill, black outline (1.5px), rounded corners (10px)
+  - Click box to edit attractivity value (input field appears)
+  - Pin size scales with attractivity: sqrt formula (1→1.0x, 5→1.5x, 10→1.86x, max 2.0x, min 0.8x)
+  - CSS classes: `.custom-pin`, `.attractivity-box`, `.att-value`, `.att-input` (in `index.css`)
 - **Hover Popup** (`MapView.tsx`):
   - Shows raw accessibility score on hover over scored buildings (Buildings mode) or hexagons (Grid mode)
   - White rounded box with drop shadow, no visible seam with arrow

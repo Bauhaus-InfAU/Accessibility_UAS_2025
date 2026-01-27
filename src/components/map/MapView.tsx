@@ -35,17 +35,103 @@ function getScoreColor(normalizedScore: number): string {
   return `rgb(${r}, ${g}, ${b})`
 }
 
-// SVG for custom pin marker
-function createPinElement(): HTMLDivElement {
+// Calculate pin scale based on attractivity (min 0.8, max 2.0)
+function getPinScale(attractivity: number): number {
+  const minScale = 0.8
+  const maxScale = 2.0
+  // Use square root for visible differences at low values
+  // attractivity 1 -> scale 1.0, attractivity 5 -> scale 1.5, attractivity 10 -> scale 1.86
+  if (attractivity <= 0) return minScale
+  const sqrtScale = 0.6 + 0.4 * Math.sqrt(attractivity)
+  return Math.min(maxScale, Math.max(minScale, sqrtScale))
+}
+
+// SVG for custom pin marker with attractivity box
+function createPinElement(
+  attractivity: number,
+  onAttractivityChange: (newValue: number) => void
+): HTMLDivElement {
+  const scale = getPinScale(attractivity)
+  const width = Math.round(24 * scale)
+  const height = Math.round(32 * scale)
+
   const el = document.createElement('div')
   el.className = 'custom-pin'
+  el.setAttribute('data-scale', scale.toString())
   el.innerHTML = `
-    <svg width="24" height="32" viewBox="0 0 24 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg width="${width}" height="${height}" viewBox="0 0 24 32" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M12 0C5.373 0 0 5.373 0 12c0 9 12 20 12 20s12-11 12-20c0-6.627-5.373-12-12-12z" fill="#fcdb02" stroke="#000" stroke-width="1.5"/>
       <circle cx="12" cy="12" r="4" fill="#000"/>
     </svg>
+    <div class="attractivity-box">
+      <span class="att-value">${attractivity}</span>
+    </div>
   `
+
+  const attBox = el.querySelector('.attractivity-box') as HTMLDivElement
+  const attValue = attBox.querySelector('.att-value') as HTMLSpanElement
+
+  // Handle click on attractivity box to edit
+  attBox.addEventListener('click', (e) => {
+    e.stopPropagation()
+
+    // Already editing, don't create another input
+    if (attBox.querySelector('input')) return
+
+    const currentValue = parseFloat(attValue.textContent || '1')
+    attValue.style.display = 'none'
+
+    const input = document.createElement('input')
+    input.type = 'number'
+    input.className = 'att-input'
+    input.value = currentValue.toString()
+    input.min = '0'
+    input.step = '0.1'
+    attBox.appendChild(input)
+    input.focus()
+    input.select()
+
+    const finishEditing = () => {
+      const newValue = parseFloat(input.value)
+      if (!isNaN(newValue) && newValue >= 0) {
+        attValue.textContent = newValue.toString()
+        onAttractivityChange(newValue)
+      }
+      input.remove()
+      attValue.style.display = ''
+    }
+
+    input.addEventListener('blur', finishEditing)
+    input.addEventListener('keydown', (ke) => {
+      if (ke.key === 'Enter') {
+        finishEditing()
+      } else if (ke.key === 'Escape') {
+        input.remove()
+        attValue.style.display = ''
+      }
+    })
+  })
+
   return el
+}
+
+// Update attractivity value and pin size on existing marker element
+function updatePinAttractivity(el: HTMLElement, attractivity: number): void {
+  const attValue = el.querySelector('.att-value') as HTMLSpanElement
+  if (attValue) {
+    attValue.textContent = attractivity.toString()
+  }
+
+  // Update pin size
+  const svg = el.querySelector('svg')
+  if (svg) {
+    const scale = getPinScale(attractivity)
+    const width = Math.round(24 * scale)
+    const height = Math.round(32 * scale)
+    svg.setAttribute('width', width.toString())
+    svg.setAttribute('height', height.toString())
+    el.setAttribute('data-scale', scale.toString())
+  }
 }
 
 export function MapView() {
@@ -64,6 +150,7 @@ export function MapView() {
     customPins,
     addCustomPin,
     updateCustomPin,
+    updateCustomPinAttractivity,
     removeCustomPin,
     // Grid mode state
     analysisMode,
@@ -73,6 +160,7 @@ export function MapView() {
     gridRawAccessibilityScores,
     addGridAttractor,
     updateGridAttractor,
+    updateGridAttractorAttractivity,
     removeGridAttractor,
   } = useAppContext()
   const { setMapInstance, setInitialBounds } = useMapContext()
@@ -117,10 +205,13 @@ export function MapView() {
   const gridAccessibilityScoresRef = useRef(gridAccessibilityScores)
   const addGridAttractorRef = useRef(addGridAttractor)
   const updateGridAttractorRef = useRef(updateGridAttractor)
+  const updateGridAttractorAttractivityRef = useRef(updateGridAttractorAttractivity)
   const removeGridAttractorRef = useRef(removeGridAttractor)
+  const updateCustomPinAttractivityRef = useRef(updateCustomPinAttractivity)
 
   addCustomPinRef.current = addCustomPin
   updateCustomPinRef.current = updateCustomPin
+  updateCustomPinAttractivityRef.current = updateCustomPinAttractivity
   removeCustomPinRef.current = removeCustomPin
   isCustomModeRef.current = isCustomMode
   isGridModeRef.current = isGridMode
@@ -130,6 +221,7 @@ export function MapView() {
   gridAccessibilityScoresRef.current = gridAccessibilityScores
   addGridAttractorRef.current = addGridAttractor
   updateGridAttractorRef.current = updateGridAttractor
+  updateGridAttractorAttractivityRef.current = updateGridAttractorAttractivity
   removeGridAttractorRef.current = removeGridAttractor
 
   // Initialize map (only depends on isLoading and buildings)
@@ -358,13 +450,13 @@ export function MapView() {
     }
   }, [isCustomMode, isGridMode])
 
-  // Sync markers with customPins (only show when in Custom mode)
+  // Sync markers with customPins (only show when in Custom mode AND not in Grid mode)
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapLoadedRef.current) return
 
-    // If not in Custom mode, remove all markers
-    if (!isCustomMode) {
+    // Hide markers if not in Custom mode OR if in Grid mode
+    if (!isCustomMode || isGridMode) {
       for (const marker of markersRef.current.values()) {
         marker.remove()
       }
@@ -389,8 +481,10 @@ export function MapView() {
       let marker = markersRef.current.get(pin.id)
 
       if (!marker) {
-        // Create new marker
-        const el = createPinElement()
+        // Create new marker with attractivity
+        const el = createPinElement(pin.attractivity, (newValue) => {
+          updateCustomPinAttractivityRef.current(pin.id, newValue)
+        })
         marker = new maplibregl.Marker({
           element: el,
           draggable: true,
@@ -412,18 +506,15 @@ export function MapView() {
           removeCustomPinRef.current(pin.id)
         })
 
-        // Prevent click from propagating to map (prevents adding new pin when clicking existing)
-        el.addEventListener('click', (e) => {
-          e.stopPropagation()
-        })
-
         markersRef.current.set(pin.id, marker)
       } else {
-        // Update existing marker position
+        // Update existing marker position and attractivity
         marker.setLngLat(pin.coord)
+        const el = marker.getElement()
+        updatePinAttractivity(el, pin.attractivity)
       }
     }
-  }, [customPins, isCustomMode])
+  }, [customPins, isCustomMode, isGridMode])
 
   // Sync attractor markers with gridAttractors (only show when in Grid mode)
   useEffect(() => {
@@ -451,43 +542,42 @@ export function MapView() {
       }
     }
 
-    // Add or update markers for current attractors
-    for (const attractor of gridAttractors) {
-      let marker = attractorMarkersRef.current.get(attractor.id)
+    // Add or update markers for current amenities
+    for (const amenity of gridAttractors) {
+      let marker = attractorMarkersRef.current.get(amenity.id)
 
       if (!marker) {
-        // Create new marker
-        const el = createPinElement()
+        // Create new marker with attractivity
+        const el = createPinElement(amenity.attractivity, (newValue) => {
+          updateGridAttractorAttractivityRef.current(amenity.id, newValue)
+        })
         marker = new maplibregl.Marker({
           element: el,
           draggable: true,
           anchor: 'bottom',
         })
-          .setLngLat(attractor.coord)
+          .setLngLat(amenity.coord)
           .addTo(map)
 
         // Handle drag end
         marker.on('dragend', () => {
           const lngLat = marker!.getLngLat()
-          updateGridAttractorRef.current(attractor.id, [lngLat.lng, lngLat.lat])
+          updateGridAttractorRef.current(amenity.id, [lngLat.lng, lngLat.lat])
         })
 
         // Handle right-click to delete
         el.addEventListener('contextmenu', (e) => {
           e.preventDefault()
           e.stopPropagation()
-          removeGridAttractorRef.current(attractor.id)
+          removeGridAttractorRef.current(amenity.id)
         })
 
-        // Prevent click from propagating to map (prevents adding new attractor when clicking existing)
-        el.addEventListener('click', (e) => {
-          e.stopPropagation()
-        })
-
-        attractorMarkersRef.current.set(attractor.id, marker)
+        attractorMarkersRef.current.set(amenity.id, marker)
       } else {
-        // Update existing marker position
-        marker.setLngLat(attractor.coord)
+        // Update existing marker position and attractivity
+        marker.setLngLat(amenity.coord)
+        const el = marker.getElement()
+        updatePinAttractivity(el, amenity.attractivity)
       }
     }
   }, [gridAttractors, isGridMode])

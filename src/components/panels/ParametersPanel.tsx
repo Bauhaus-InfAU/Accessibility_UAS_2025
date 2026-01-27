@@ -57,7 +57,10 @@ export function ParametersPanel() {
             {isGridMode ? (
               <>
                 Grid mode calculates accessibility on a hexagonal grid.
-                Click on the map to place attractors, and see how accessibility varies across the network.
+                For each grid cell <i>i</i>, we sum the attractivity <strong>Att<sub>j</sub></strong> of every
+                amenity <i>j</i>, weighted by how much the distance <strong>d<sub>ij</sub></strong> reduces
+                its influence via the decay function <strong>f(d<sub>ij</sub>)</strong>.
+                Click on the map to place amenities.
               </>
             ) : (
               <>
@@ -69,10 +72,10 @@ export function ParametersPanel() {
             )}
           </p>
           <div className="equation text-center mb-6">
-            Acc<sub>i</sub> = Σ {isGridMode ? '' : 'Att_j × '}f(d<sub>ij</sub>)
+            Acc<sub>i</sub> = Σ Att<sub>j</sub> × f(d<sub>ij</sub>)
           </div>
 
-          {/* Section B: Parameters (Buildings mode) or Attractor Info (Grid mode) */}
+          {/* Section B: Parameters (Buildings mode) or Amenity Info (Grid mode) */}
           {isGridMode ? (
             <div className="mb-6">
               {isComputingFullMatrix && (
@@ -82,9 +85,9 @@ export function ParametersPanel() {
               )}
               <div className="flex items-center justify-between">
                 <div>
-                  <span className="text-base font-medium text-gray-600">Attractors: </span>
+                  <span className="text-base font-medium text-gray-600">Custom Amenities: </span>
                   <span className="text-lg font-semibold text-gray-800">{gridAttractors.length}</span>
-                  <p className="text-xs text-gray-500 mt-1">Click on the map to place attractors</p>
+                  <p className="text-xs text-gray-500 mt-1">Click on the map to place amenities</p>
                 </div>
                 {gridAttractors.length > 0 && (
                   <button
