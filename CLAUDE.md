@@ -39,12 +39,58 @@ src/
 ├── data/            # GeoJSON loading, building/street processing, graph building
 ├── computation/     # Dijkstra worker, distance matrix, accessibility calc, curve eval
 ├── components/      # React UI (App, CurveEditor, panels, map)
-│   ├── panels/      # AmenitySelector, AttractivityMode, CurveModeSelector
+│   ├── CurveEditor/ # CurveCanvas (grid/axes), PolylineEditor (interactive curve)
+│   ├── panels/      # ParametersPanel, NavigationWidget, Legend, dropdowns
 │   └── map/         # MapView (includes custom pin marker management)
 ├── visualization/   # MapLibre setup + building color updates
-├── context/         # React Context for global state (AppContext)
+├── context/         # React Context (AppContext, MapContext)
 └── lib/             # Utilities
 ```
+
+## UI Components
+
+### Accessibility Analysis Panel (`ParametersPanel.tsx`)
+Main control panel (top-left, 680px wide, collapsible):
+- **Title**: "Accessibility Analysis" (text-2xl, clickable to collapse)
+- **Section A - Introduction**: Brief explanation + master equation display
+- **Section B - Parameters**: Two dropdowns side-by-side
+  - Amenity Type (j): Land use category selector
+  - Attractivity (Att_j): Floor area / Volume / Count
+- **Divider**: Horizontal line separator
+- **Section C - Distance Decay Function**: Interactive curve editor
+
+### Curve Editor (`CurveEditor/`)
+SVG-based interactive plot (620×360px):
+- **Grid**: White lines on transparent background
+- **Axes**: Labels only (no frame border)
+  - X-axis: Distance values (0-2000m), "Distance (m)" label below
+  - Y-axis: f(d) values (0-1.00)
+- **Curve**: Purple (#562fae) polyline, strokeWidth 3
+- **Control Points**: White fill, purple (#562fae) outline, strokeWidth 3
+- **Presets**: Constant, Linear, Exponential, Steep, Step (500m)
+- **Interactions**: Double-click to add point, right-click to remove, drag to move
+
+### Navigation Widget (`NavigationWidget.tsx`)
+Map controls (top-right):
+- **View Buttons**: Top View, Perspective, Reset (with inline SVG icons)
+- **Active State**: Grey background (#e5e7eb) indicates current view
+- **Zoom Controls**: +/- buttons (font-size 24px)
+- Uses MapContext for view state tracking
+
+### Legend (`Legend.tsx`)
+Score color scale (bottom-right):
+- **Title**: "Accessibility Score" (text-base)
+- **Gradient**: Purple (#4A3AB4) → Orange (#FD681D) → Red (#FD1D1D)
+- **Labels**: Low/High + min/max raw score values
+
+### Map Styling
+- **Background**: Medium grey (#b0b0b0)
+- **Streets**: White lines with grey shadow
+- **Buildings**:
+  - Residential (scored): Purple→Orange→Red gradient
+  - Residential (unscored): Light grey (#d0d0d0 - BUILDING_UNSCORED_COLOR)
+  - Non-residential: Light grey (#d8d8d8)
+  - Selected amenity: Yellow (#fcdb02) with floating effect
 
 ## Commands
 - `npm run dev` — Dev server

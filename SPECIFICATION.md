@@ -37,16 +37,51 @@ Acc_i = Σ(j=0 to n) [Att_j * f(d_ij)]
 
 ## Visual Output
 
-Buildings colored by accessibility score:
-- Blue = low accessibility
-- Red = high accessibility
-- Gray = non-residential (not scored)
-- Yellow buildings = selected amenity type (highlighted)
+### Map Styling
+- **Background**: Medium grey (#b0b0b0)
+- **Streets**: White lines with grey shadow for depth
+- **Buildings**:
+  - Scored residential: Purple (#4A3AB4) → Orange (#FD681D) → Red (#FD1D1D) gradient
+  - Unscored residential: Light grey (#d0d0d0)
+  - Non-residential: Light grey (#d8d8d8)
+  - Selected amenity: Yellow (#fcdb02) with 3m floating effect and ground halo
 
-Custom pins:
+### Custom Pins
 - Yellow map markers with black center dot
 - Draggable with grab cursor
 - Scale on hover for visual feedback
+
+## UI Layout
+
+### Accessibility Analysis Panel (top-left, 680px)
+Glassmorphism panel with collapsible content:
+1. **Title**: "Accessibility Analysis" (text-2xl, clickable to collapse/expand)
+2. **Introduction**: Brief explanation of accessibility concept
+3. **Master Equation**: Styled formula display
+4. **Parameters** (two dropdowns side-by-side):
+   - Amenity Type (j): Land use category selector
+   - Attractivity (Att_j): Floor area / Volume / Count
+5. **Distance Decay Function** (interactive SVG curve editor):
+   - Grid: White lines on transparent background
+   - Curve: Purple (#562fae) polyline, strokeWidth 3
+   - Control points: White fill, purple outline, strokeWidth 3
+   - X-axis: Distance (0-2000m) with label below values
+   - Y-axis: f(d) values (0.00-1.00)
+   - Preset buttons: Constant, Linear, Exponential, Steep, Step (500m)
+   - Instructions: "Double-click to add point. Right-click to remove."
+
+### Navigation Widget (top-right)
+- **View buttons** (with inline SVG icons):
+  - Top View: 2D grid icon, sets pitch=0
+  - Perspective: 3D cube icon, sets pitch=55
+  - Reset: Refresh icon, resets to initial bounds/orientation
+- **Active state**: Grey background (#e5e7eb) on current view
+- **Zoom controls**: +/− buttons (font-size 24px)
+
+### Legend (bottom-right)
+- **Title**: "Accessibility Score" (text-base)
+- **Gradient bar**: Purple → Orange → Red
+- **Labels**: Low/High with min/max raw score values
 
 ## Data
 
