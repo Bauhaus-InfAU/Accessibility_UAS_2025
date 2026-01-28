@@ -16,6 +16,9 @@ interface AppState {
   loadingStatus: string
   loadingProgress: number
 
+  // UI State
+  isPanelCollapsed: boolean
+
   // Data
   buildings: Building[]
   graph: StreetGraph | null
@@ -63,6 +66,7 @@ interface AppState {
 }
 
 interface AppContextValue extends AppState {
+  setIsPanelCollapsed: (collapsed: boolean) => void
   setCurveTabMode: (mode: CurveTabMode) => void
   setCustomCurveType: (type: CurveMode) => void
   setPolylinePoints: (points: ControlPoint[]) => void
@@ -98,6 +102,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
   const [loadingStatus, setLoadingStatus] = useState('Initializing...')
   const [loadingProgress, setLoadingProgress] = useState(0)
+
+  // UI State
+  const [isPanelCollapsed, setIsPanelCollapsed] = useState(false)
 
   const [buildings, setBuildings] = useState<Building[]>([])
   const [graph, setGraph] = useState<StreetGraph | null>(null)
@@ -497,6 +504,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     isLoading,
     loadingStatus,
     loadingProgress,
+    isPanelCollapsed,
     buildings,
     graph,
     distanceMatrix,
@@ -528,6 +536,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     rawAccessibilityScores,
     minRawScore,
     maxRawScore,
+    setIsPanelCollapsed,
     setCurveTabMode,
     setCustomCurveType,
     setPolylinePoints,

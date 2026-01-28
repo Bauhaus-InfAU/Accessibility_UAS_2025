@@ -9,6 +9,7 @@ export function Legend() {
     gridMinRawScore,
     gridMaxRawScore,
     gridAttractors,
+    isPanelCollapsed,
   } = useAppContext()
 
   const isGridMode = analysisMode === 'grid'
@@ -17,8 +18,12 @@ export function Legend() {
   const displayMinScore = isGridMode ? gridMinRawScore : minRawScore
   const displayMaxScore = isGridMode ? gridMaxRawScore : maxRawScore
 
+  // On mobile: hidden when panel is open, bottom-left when panel is collapsed
+  // On desktop: always bottom-left
+  const mobileVisibility = isPanelCollapsed ? '' : 'hidden sm:block'
+
   return (
-    <div className="absolute bottom-8 left-5 py-4 pointer-events-auto">
+    <div className={`absolute bottom-4 left-4 sm:bottom-8 sm:left-auto sm:right-5 py-4 pointer-events-auto ${mobileVisibility}`}>
       {isGridMode ? (
         <>
           {/* Grid Mode: Custom Amenities Indicator */}
@@ -89,7 +94,7 @@ export function Legend() {
       <div className="flex items-center gap-3">
         <span className="text-xs text-white">Low</span>
         <div
-          className="w-56 h-4 rounded"
+          className="w-40 sm:w-56 h-4 rounded"
           style={{
             background: 'linear-gradient(to right, #4A3AB4, #FD681D, #FD1D1D)',
           }}

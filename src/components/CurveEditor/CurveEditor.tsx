@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from 'react'
+import { useMemo, useState, useCallback, useEffect } from 'react'
 import type { ControlPoint, CurveTabMode } from '../../config/types'
 import { CurveCanvas, type PlotHoverPosition } from './CurveCanvas'
 import { PolylineEditor } from './PolylineEditor'
@@ -21,9 +21,32 @@ interface CurveEditorProps {
   onExpPowerCChange: (c: number) => void
 }
 
-const SVG_WIDTH = 491
-const SVG_HEIGHT = 288
+const DEFAULT_SVG_WIDTH = 491
+const DEFAULT_SVG_HEIGHT = 288
+const MOBILE_SVG_HEIGHT = 240
 const PADDING = { top: 15, right: 15, bottom: 48, left: 55 }
+
+// Hook for responsive SVG dimensions
+function useResponsiveDimensions() {
+  const [dimensions, setDimensions] = useState({ width: DEFAULT_SVG_WIDTH, height: DEFAULT_SVG_HEIGHT })
+
+  useEffect(() => {
+    const updateDimensions = () => {
+      if (window.innerWidth < 640) {
+        // Mobile: fit within container with padding
+        const containerWidth = Math.min(window.innerWidth - 32, 400)
+        setDimensions({ width: containerWidth, height: MOBILE_SVG_HEIGHT })
+      } else {
+        setDimensions({ width: DEFAULT_SVG_WIDTH, height: DEFAULT_SVG_HEIGHT })
+      }
+    }
+    updateDimensions()
+    window.addEventListener('resize', updateDimensions)
+    return () => window.removeEventListener('resize', updateDimensions)
+  }, [])
+
+  return dimensions
+}
 
 const TABS: { id: CurveTabMode; label: string }[] = [
   { id: 'custom', label: 'Custom' },
@@ -44,8 +67,9 @@ export function CurveEditor({
   onExpPowerBChange,
   onExpPowerCChange,
 }: CurveEditorProps) {
-  const plotWidth = SVG_WIDTH - PADDING.left - PADDING.right
-  const plotHeight = SVG_HEIGHT - PADDING.top - PADDING.bottom
+  const { width: svgWidth, height: svgHeight } = useResponsiveDimensions()
+  const plotWidth = svgWidth - PADDING.left - PADDING.right
+  const plotHeight = svgHeight - PADDING.top - PADDING.bottom
 
   // Hover state for curve explorer
   const [hoverPlotX, setHoverPlotX] = useState<number | null>(null)
@@ -145,8 +169,8 @@ export function CurveEditor({
       {/* SVG Canvas */}
       <CurveCanvas
         maxDistance={maxDistance}
-        width={SVG_WIDTH}
-        height={SVG_HEIGHT}
+        width={svgWidth}
+        height={svgHeight}
         padding={PADDING}
         onPlotHover={handlePlotHover}
       >
@@ -191,7 +215,7 @@ export function CurveEditor({
         <>
           {/* Presets */}
           <p className="text-sm text-gray-500 mt-4 mb-2">Presets:</p>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button className="px-3 py-1.5 text-sm bg-gray-100 rounded-lg hover:bg-gray-200" onClick={setExponential}>
               Exponential
             </button>

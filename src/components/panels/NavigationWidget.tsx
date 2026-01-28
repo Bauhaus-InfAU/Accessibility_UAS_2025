@@ -1,4 +1,5 @@
 import { useMapContext } from '../../context/MapContext'
+import { useAppContext } from '../../context/AppContext'
 
 // SVG Icons as inline components
 const TopViewIcon = () => (
@@ -26,9 +27,14 @@ const ResetIcon = () => (
 
 export function NavigationWidget() {
   const { zoomIn, zoomOut, setTopView, setPerspective, resetView, activeView } = useMapContext()
+  const { isPanelCollapsed } = useAppContext()
+
+  // On mobile: hidden when panel is open, bottom-right when panel is collapsed
+  // On desktop: always top-right
+  const mobileVisibility = isPanelCollapsed ? '' : 'hidden sm:flex'
 
   return (
-    <div className="absolute top-5 right-5 p-2 flex gap-2 pointer-events-auto">
+    <div className={`absolute bottom-4 right-4 sm:top-5 sm:bottom-auto sm:right-5 p-2 flex gap-2 pointer-events-auto z-10 ${mobileVisibility}`}>
       {/* View buttons */}
       <div className="flex flex-col gap-1">
         <button

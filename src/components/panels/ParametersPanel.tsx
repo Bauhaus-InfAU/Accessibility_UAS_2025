@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useAppContext } from '../../context/AppContext'
 import { CurveEditor } from '../CurveEditor/CurveEditor'
 import { AmenityDropdown } from './AmenityDropdown'
@@ -6,8 +5,9 @@ import { AttractivityDropdown } from './AttractivityDropdown'
 import { AnalysisModeToggle } from './AnalysisModeToggle'
 
 export function ParametersPanel() {
-  const [isCollapsed, setIsCollapsed] = useState(false)
   const {
+    isPanelCollapsed,
+    setIsPanelCollapsed,
     analysisMode,
     curveTabMode,
     polylinePoints,
@@ -33,17 +33,17 @@ export function ParametersPanel() {
   const isGridMode = analysisMode === 'grid'
 
   return (
-    <div className="absolute top-5 left-5 glass-panel floating-panel p-5 w-[540px]">
+    <div className="absolute top-0 left-0 right-0 sm:top-5 sm:left-5 sm:right-auto glass-panel floating-panel p-4 sm:p-5 w-full sm:w-[540px] rounded-none sm:rounded-2xl">
       {/* Title - clickable to collapse/expand */}
       <button
         className="w-full flex items-center justify-between text-left"
-        onClick={() => setIsCollapsed(!isCollapsed)}
+        onClick={() => setIsPanelCollapsed(!isPanelCollapsed)}
       >
         <h2 className="text-2xl font-semibold" style={{ color: '#5633ac' }}>
           Accessibility Analysis
         </h2>
         <span className="text-gray-400 text-xl">
-          {isCollapsed ? '▼' : '▲'}
+          {isPanelCollapsed ? '▼' : '▲'}
         </span>
       </button>
 
@@ -59,7 +59,7 @@ export function ParametersPanel() {
       </div>
 
       {/* Collapsible content */}
-      {!isCollapsed && (
+      {!isPanelCollapsed && (
         <div className="mt-2">
           {/* Mode Toggle */}
           <AnalysisModeToggle />
@@ -72,7 +72,7 @@ export function ParametersPanel() {
                   <p className="text-sm text-purple-700">{loadingStatus}</p>
                 </div>
               )}
-              <div className="flex gap-6">
+              <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
                 {/* Left column: Amenities */}
                 <div className="flex-1">
                   <label className="text-base font-medium text-gray-600 block mb-2">
@@ -107,7 +107,7 @@ export function ParametersPanel() {
               </div>
             </div>
           ) : (
-            <div className="flex gap-6 mb-6">
+            <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 mb-6">
               <div className="flex-1">
                 <label className="text-base font-medium text-gray-600 block mb-2">
                   Amenity Type (j)

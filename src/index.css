@@ -221,3 +221,24 @@ body {
   font-size: 14px;
   font-weight: 600;
 }
+
+/* Mobile responsive styles */
+@media (max-width: 639px) {
+  .glass-panel {
+    border-radius: 0;
+  }
+
+  .param-dropdown {
+    font-size: 13px;
+    padding: 5px 25px 5px 10px;
+  }
+
+  .equation {
+    font-size: 20px;
+  }
+
+  .tab-button {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+}
