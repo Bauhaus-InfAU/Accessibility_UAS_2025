@@ -8,6 +8,24 @@ This educational tool helps students understand how accessibility scores are cal
 
 **Live Demo**: [GitHub Pages](https://bauhaus-infau.github.io/Accessibility_UAS_2025/)
 
+## Screenshots
+
+### Grid Mode with Custom Amenities
+![Grid Mode](Image_1-0.png)
+*Hexagonal grid visualization with user-placed amenities and custom decay curve*
+
+### Buildings Mode with Predefined Amenities
+![Buildings Mode](Image_2-0.png)
+*Residential buildings colored by accessibility to retail amenities*
+
+### Amenity Type Selection
+![Amenity Selection](Image_3-0.png)
+*14 predefined land use types available for analysis*
+
+### Custom Pins Mode
+![Custom Pins](Image_4-0.png)
+*User-placed custom amenity markers with editable attractivity values*
+
 ## Core Concept
 
 Accessibility measures how well a location is served by nearby amenities. For each location *i*, the accessibility score is calculated as:
