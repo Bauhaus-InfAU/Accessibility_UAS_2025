@@ -33,7 +33,7 @@ export function ParametersPanel() {
   const isGridMode = analysisMode === 'grid'
 
   return (
-    <div className="absolute top-0 left-0 right-0 sm:top-3 sm:left-3 sm:right-auto glass-panel floating-panel p-3 sm:p-4 w-full sm:w-[540px] rounded-none sm:rounded-2xl max-h-[calc(100vh-16px)] sm:max-h-[calc(100vh-24px)] flex flex-col overflow-x-hidden">
+    <div className="absolute top-0 left-0 right-0 sm:top-3 sm:left-3 sm:right-auto glass-panel floating-panel p-3 sm:p-4 w-full sm:w-[540px] rounded-none sm:rounded-2xl max-h-[calc(100vh-72px)] sm:max-h-[calc(100vh-56px)] flex flex-col overflow-x-hidden">
       {/* Title - clickable to collapse/expand */}
       <button
         className="w-full flex items-center justify-between text-left flex-shrink-0"
@@ -42,8 +42,8 @@ export function ParametersPanel() {
         <h2 className="text-xl sm:text-2xl font-semibold" style={{ color: '#5633ac' }}>
           Accessibility Analysis
         </h2>
-        <span className="text-gray-400 text-lg">
-          {isPanelCollapsed ? '▼' : '▲'}
+        <span className="w-6 h-6 flex items-center justify-center rounded-full bg-white text-gray-600 text-sm mr-4">
+          {isPanelCollapsed ? '∨' : '∧'}
         </span>
       </button>
 

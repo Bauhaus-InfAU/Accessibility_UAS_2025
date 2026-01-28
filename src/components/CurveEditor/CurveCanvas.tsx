@@ -56,7 +56,7 @@ export function CurveCanvas({ maxDistance, width, height, padding, children, onP
         const x = padding.left + (val / maxDistance) * plotWidth
         return (
           <g key={`x-${val}`}>
-            <line x1={x} y1={padding.top} x2={x} y2={padding.top + plotHeight} stroke="white" strokeWidth={1} />
+            <line x1={x} y1={padding.top} x2={x} y2={padding.top + plotHeight} stroke="#999" strokeWidth={1} />
             <text x={x} y={padding.top + plotHeight + 18} textAnchor="middle" fontSize={13} fill="#888">
               {val}
             </text>
@@ -67,7 +67,7 @@ export function CurveCanvas({ maxDistance, width, height, padding, children, onP
         const y = padding.top + (1 - val) * plotHeight
         return (
           <g key={`y-${val}`}>
-            <line x1={padding.left} y1={y} x2={padding.left + plotWidth} y2={y} stroke="white" strokeWidth={1} />
+            <line x1={padding.left} y1={y} x2={padding.left + plotWidth} y2={y} stroke="#999" strokeWidth={1} />
             <text x={padding.left - 8} y={y + 4} textAnchor="end" fontSize={13} fill="#888">
               {val.toFixed(2)}
             </text>

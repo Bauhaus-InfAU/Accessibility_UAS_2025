@@ -65,11 +65,12 @@ body {
 
 /* Glassmorphism panel base */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.6);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-radius: 16px;
   box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.5);
 }
 
 /* Ensure panels are clickable */
@@ -158,15 +159,14 @@ body {
   position: relative;
 }
 
-.tab-container::after {
-  content: '';
+.tab-divider {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
   height: 1px;
-  background: #5631ad;
   z-index: 0;
+  transition: all 0.2s ease;
 }
 
 .tab-button {

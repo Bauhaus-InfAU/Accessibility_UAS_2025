@@ -5,6 +5,7 @@ import { PolylineEditor } from './PolylineEditor'
 import { MathCurveDisplay } from './MathCurveDisplay'
 import { CoefficientInputs } from './CoefficientInputs'
 import { CurveExplorer } from './CurveExplorer'
+import { TabContainer } from '../panels/TabContainer'
 import { createNegativeExponentialEvaluator, createExponentialPowerEvaluator, createPolylineEvaluator } from '../../computation/curveEvaluator'
 
 interface CurveEditorProps {
@@ -156,17 +157,12 @@ export function CurveEditor({
   return (
     <div className="w-full">
       {/* Tabs */}
-      <div className="tab-container curve-tabs">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            className={`tab-button ${curveTabMode === tab.id ? 'tab-button-active' : ''}`}
-            onClick={() => onTabModeChange(tab.id)}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <TabContainer
+        tabs={TABS}
+        activeTab={curveTabMode}
+        onTabChange={(id) => onTabModeChange(id as CurveTabMode)}
+        className="curve-tabs"
+      />
 
       {/* SVG Canvas */}
       <CurveCanvas
