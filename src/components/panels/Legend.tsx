@@ -31,7 +31,7 @@ export function Legend() {
             <span className="text-xs text-white invisible">Low</span>
             <div className="flex items-center gap-2">
               <div
-                className="w-4 h-4 rounded"
+                className="w-4 h-4 rounded-full"
                 style={{ backgroundColor: '#fcdb02' }}
               />
               <span className="text-sm text-white">
@@ -45,7 +45,7 @@ export function Legend() {
             <span className="text-xs text-white invisible">Low</span>
             <div className="flex items-center gap-2">
               <div
-                className="w-4 h-4 rounded"
+                className="w-4 h-4 rounded-full"
                 style={{
                   background: 'linear-gradient(135deg, #4A3AB4 0%, #FD681D 50%, #FD1D1D 100%)',
                 }}
@@ -61,7 +61,7 @@ export function Legend() {
             <span className="text-xs text-white invisible">Low</span>
             <div className="flex items-center gap-2">
               <div
-                className="w-4 h-4 rounded"
+                className="w-4 h-4 rounded-full"
                 style={{ backgroundColor: '#fcdb02' }}
               />
               <span className="text-sm text-white">
@@ -75,7 +75,7 @@ export function Legend() {
             <span className="text-xs text-white invisible">Low</span>
             <div className="flex items-center gap-2">
               <div
-                className="w-4 h-4 rounded"
+                className="w-4 h-4 rounded-full"
                 style={{ backgroundColor: '#a0a0a0' }}
               />
               <span className="text-sm text-white">Other Amenities</span>
@@ -94,7 +94,7 @@ export function Legend() {
       <div className="flex items-center gap-3">
         <span className="text-xs text-white">Low</span>
         <div
-          className="w-40 sm:w-56 h-4 rounded"
+          className="w-40 sm:w-56 h-4 rounded-full"
           style={{
             background: 'linear-gradient(to right, #4A3AB4, #FD681D, #FD1D1D)',
           }}
