@@ -26,7 +26,14 @@ export function AppInfo() {
         <span>|</span>
         <span>{LICENSE}</span>
         <span>|</span>
-        <span>{AUTHOR}</span>
+        <a
+          href={REPO_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hover:text-white transition-colors"
+        >
+          {AUTHOR}
+        </a>
         <span className="mx-1">•</span>
         <button
           onClick={() => setExpanded(!expanded)}
