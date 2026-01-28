@@ -14,7 +14,7 @@ export function createMap(container: HTMLElement, buildings: Building[], hexCell
         {
           id: 'background',
           type: 'background',
-          paint: { 'background-color': '#b0b0b0' },
+          paint: { 'background-color': '#909090' },
         },
       ],
     },

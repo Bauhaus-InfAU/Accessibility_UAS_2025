@@ -28,37 +28,34 @@ export function NavigationWidget() {
   const { zoomIn, zoomOut, setTopView, setPerspective, resetView, activeView } = useMapContext()
 
   return (
-    <div className="absolute top-5 right-5 glass-panel floating-panel p-2 flex gap-2">
+    <div className="absolute top-5 right-5 p-2 flex gap-2 pointer-events-auto">
       {/* View buttons */}
       <div className="flex flex-col gap-1">
         <button
           onClick={setTopView}
-          className={`nav-btn text-sm ${activeView === 'top' ? 'nav-btn-active' : ''}`}
+          className={`nav-btn nav-btn-icon ${activeView === 'top' ? 'nav-btn-active' : ''}`}
           title="Top view (2D)"
         >
           <TopViewIcon />
-          <span className="ml-2">Top View</span>
         </button>
         <button
           onClick={setPerspective}
-          className={`nav-btn text-sm ${activeView === 'perspective' ? 'nav-btn-active' : ''}`}
+          className={`nav-btn nav-btn-icon ${activeView === 'perspective' ? 'nav-btn-active' : ''}`}
           title="Perspective view (3D)"
         >
           <PerspectiveIcon />
-          <span className="ml-2">Perspective</span>
         </button>
         <button
           onClick={resetView}
-          className="nav-btn text-sm"
+          className="nav-btn nav-btn-icon"
           title="Reset to initial view"
         >
           <ResetIcon />
-          <span className="ml-2">Reset</span>
         </button>
       </div>
 
       {/* Zoom controls */}
-      <div className="flex flex-col gap-1 border-l border-gray-200 pl-2">
+      <div className="flex flex-col gap-1 border-l border-white/30 pl-2">
         <button
           onClick={zoomIn}
           className="nav-btn nav-btn-icon"

@@ -18,18 +18,18 @@ export function Legend() {
   const displayMaxScore = isGridMode ? gridMaxRawScore : maxRawScore
 
   return (
-    <div className="absolute bottom-8 right-8 glass-panel floating-panel px-5 py-4">
+    <div className="absolute bottom-8 left-5 py-4 pointer-events-auto">
       {isGridMode ? (
         <>
           {/* Grid Mode: Custom Amenities Indicator */}
           <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-500 invisible">Low</span>
+            <span className="text-xs text-white invisible">Low</span>
             <div className="flex items-center gap-2">
               <div
                 className="w-4 h-4 rounded"
                 style={{ backgroundColor: '#fcdb02' }}
               />
-              <span className="text-sm text-gray-600">
+              <span className="text-sm text-white">
                 Custom Amenities ({gridAttractors.length})
               </span>
             </div>
@@ -37,7 +37,7 @@ export function Legend() {
 
           {/* Hexagon Indicator */}
           <div className="flex items-center gap-3 mt-2">
-            <span className="text-xs text-gray-500 invisible">Low</span>
+            <span className="text-xs text-white invisible">Low</span>
             <div className="flex items-center gap-2">
               <div
                 className="w-4 h-4 rounded"
@@ -45,7 +45,7 @@ export function Legend() {
                   background: 'linear-gradient(135deg, #4A3AB4 0%, #FD681D 50%, #FD1D1D 100%)',
                 }}
               />
-              <span className="text-sm text-gray-600">Hexagon Grid</span>
+              <span className="text-sm text-white">Hexagon Grid</span>
             </div>
           </div>
         </>
@@ -53,13 +53,13 @@ export function Legend() {
         <>
           {/* Buildings Mode: Selected Amenity Indicator */}
           <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-500 invisible">Low</span>
+            <span className="text-xs text-white invisible">Low</span>
             <div className="flex items-center gap-2">
               <div
                 className="w-4 h-4 rounded"
                 style={{ backgroundColor: '#fcdb02' }}
               />
-              <span className="text-sm text-gray-600">
+              <span className="text-sm text-white">
                 {selectedLandUse === 'Custom' ? 'Custom Pins' : selectedLandUse}
               </span>
             </div>
@@ -67,36 +67,36 @@ export function Legend() {
 
           {/* Other Buildings Indicator */}
           <div className="flex items-center gap-3 mt-2">
-            <span className="text-xs text-gray-500 invisible">Low</span>
+            <span className="text-xs text-white invisible">Low</span>
             <div className="flex items-center gap-2">
               <div
                 className="w-4 h-4 rounded"
                 style={{ backgroundColor: '#a0a0a0' }}
               />
-              <span className="text-sm text-gray-600">Other Amenities</span>
+              <span className="text-sm text-white">Other Amenities</span>
             </div>
           </div>
         </>
       )}
 
       {/* Divider */}
-      <div className="border-t border-gray-200 my-4" />
+      <div className="border-t border-white/30 my-4" />
 
       {/* Accessibility Score */}
-      <label className="text-base font-medium text-gray-600 block mb-3">
+      <label className="text-base font-medium text-white block mb-3">
         Accessibility Score
       </label>
       <div className="flex items-center gap-3">
-        <span className="text-xs text-gray-500">Low</span>
+        <span className="text-xs text-white">Low</span>
         <div
           className="w-56 h-4 rounded"
           style={{
             background: 'linear-gradient(to right, #4A3AB4, #FD681D, #FD1D1D)',
           }}
         />
-        <span className="text-xs text-gray-500">High</span>
+        <span className="text-xs text-white">High</span>
       </div>
-      <div className="flex justify-between mt-2 text-xs text-gray-500 px-8">
+      <div className="flex justify-between mt-2 text-xs text-white px-8">
         <span>{displayMinScore.toFixed(1)}</span>
         <span>{displayMaxScore.toFixed(1)}</span>
       </div>

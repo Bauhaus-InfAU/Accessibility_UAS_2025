@@ -39,7 +39,7 @@ export function ParametersPanel() {
         className="w-full flex items-center justify-between text-left"
         onClick={() => setIsCollapsed(!isCollapsed)}
       >
-        <h2 className="text-2xl font-semibold text-gray-800">
+        <h2 className="text-2xl font-semibold" style={{ color: '#5633ac' }}>
           Accessibility Analysis
         </h2>
         <span className="text-gray-400 text-xl">
@@ -47,34 +47,22 @@ export function ParametersPanel() {
         </span>
       </button>
 
+      {/* Introduction and Master Equation - always visible */}
+      <p className="text-sm text-gray-600 mt-4 mb-3">
+        Accessibility measures how well a location is served by nearby amenities.
+        For each location <i>i</i>, we sum the attractivity <strong>Att<sub>j</sub></strong> of every
+        amenity <i>j</i>, weighted by how much the distance <strong>d<sub>ij</sub></strong> reduces
+        its influence via the decay function <strong>f(d<sub>ij</sub>)</strong>.
+      </p>
+      <div className="equation text-center mb-4">
+        Acc<sub>i</sub> = Σ Att<sub>j</sub> × f(d<sub>ij</sub>)
+      </div>
+
       {/* Collapsible content */}
       {!isCollapsed && (
-        <div className="mt-4">
+        <div className="mt-2">
           {/* Mode Toggle */}
           <AnalysisModeToggle />
-
-          {/* Section A: Introduction and Master Equation */}
-          <p className="text-sm text-gray-600 mb-3">
-            {isGridMode ? (
-              <>
-                Grid mode calculates accessibility on a hexagonal grid.
-                For each grid cell <i>i</i>, we sum the attractivity <strong>Att<sub>j</sub></strong> of every
-                amenity <i>j</i>, weighted by how much the distance <strong>d<sub>ij</sub></strong> reduces
-                its influence via the decay function <strong>f(d<sub>ij</sub>)</strong>.
-                Click on the map to place amenities.
-              </>
-            ) : (
-              <>
-                Accessibility measures how well a location is served by nearby amenities.
-                For each location <i>i</i>, we sum the attractivity <strong>Att<sub>j</sub></strong> of every
-                amenity <i>j</i>, weighted by how much the distance <strong>d<sub>ij</sub></strong> reduces
-                its influence via the decay function <strong>f(d<sub>ij</sub>)</strong>.
-              </>
-            )}
-          </p>
-          <div className="equation text-center mb-6">
-            Acc<sub>i</sub> = Σ Att<sub>j</sub> × f(d<sub>ij</sub>)
-          </div>
 
           {/* Section B: Parameters (Buildings mode) or Amenity Info (Grid mode) */}
           {isGridMode ? (
