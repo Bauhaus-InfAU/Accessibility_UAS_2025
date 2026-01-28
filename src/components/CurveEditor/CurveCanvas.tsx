@@ -77,18 +77,18 @@ export function CurveCanvas({ maxDistance, width, height, padding, children, onP
 
 
       {/* Axis labels */}
-      <text x={padding.left + plotWidth / 2} y={height - 8} textAnchor="middle" fontSize={14} fill="#555">
+      <text x={padding.left + plotWidth / 2} y={height - 4} textAnchor="middle" fontSize={14} fill="#555">
         <tspan>Distance (m) → </tspan>
         <tspan fontStyle="italic">d</tspan>
         <tspan fontSize={10} dy={3}>ij</tspan>
       </text>
       <text
-        x={18}
+        x={12}
         y={padding.top + plotHeight / 2}
         textAnchor="middle"
         fontSize={14}
         fill="#555"
-        transform={`rotate(-90, 18, ${padding.top + plotHeight / 2})`}
+        transform={`rotate(-90, 12, ${padding.top + plotHeight / 2})`}
       >
         <tspan>Willingness to Travel → </tspan>
         <tspan fontStyle="italic">f</tspan>

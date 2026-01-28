@@ -21,7 +21,7 @@ export function AttractivityDropdown() {
   // Add top padding to align with the dropdown height on the left column
   if (isCustomMode) {
     return (
-      <div className="flex flex-col" style={{ paddingTop: '49px' }}>
+      <div className="flex flex-col" style={{ paddingTop: '33px' }}>
         <p className="text-xs text-gray-500 mt-1">Set attractivity on map</p>
         <span className="text-sm font-semibold mt-1" style={{ color: '#d4a800' }}>
           Total attractivity: {totalCustomPinAttractivity}

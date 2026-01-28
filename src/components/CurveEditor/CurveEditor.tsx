@@ -21,9 +21,9 @@ interface CurveEditorProps {
   onExpPowerCChange: (c: number) => void
 }
 
-const SVG_WIDTH = 620
-const SVG_HEIGHT = 360
-const PADDING = { top: 20, right: 20, bottom: 45, left: 60 }
+const SVG_WIDTH = 491
+const SVG_HEIGHT = 288
+const PADDING = { top: 15, right: 15, bottom: 48, left: 55 }
 
 const TABS: { id: CurveTabMode; label: string }[] = [
   { id: 'custom', label: 'Custom' },
