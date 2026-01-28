@@ -4,6 +4,7 @@ import { MapView } from './map/MapView'
 import { ParametersPanel } from './panels/ParametersPanel'
 import { NavigationWidget } from './panels/NavigationWidget'
 import { Legend } from './panels/Legend'
+import { AppInfo } from './panels/AppInfo'
 import { LoadingOverlay } from './LoadingOverlay'
 
 function AppContent() {
@@ -19,6 +20,7 @@ function AppContent() {
         <ParametersPanel />
         <NavigationWidget />
         <Legend />
+        <AppInfo />
       </div>
 
       {isLoading && <LoadingOverlay />}

@@ -69,7 +69,7 @@ src/
 │   │   ├── PolylineEditor.tsx   # Custom mode - draggable points
 │   │   ├── MathCurveDisplay.tsx # Mathematical function curve renderer
 │   │   └── CoefficientInputs.tsx # Parameter inputs for math functions
-│   ├── panels/      # ParametersPanel, NavigationWidget, Legend, dropdowns, AnalysisModeToggle
+│   ├── panels/      # ParametersPanel, NavigationWidget, Legend, AppInfo, dropdowns, AnalysisModeToggle
 │   └── map/         # MapView (includes custom pin/attractor marker management)
 ├── visualization/   # MapLibre setup + color updates
 │   ├── mapLibreSetup.ts         # Map initialization, layers (buildings, hexagons, streets)
@@ -222,6 +222,20 @@ Score color scale (bottom-right on desktop, bottom-left on mobile when panel col
 - **Labels**:
   - Row 1: Low/High labels with min/max raw score values aligned below
   - Row 2: Average score with "avg" suffix, positioned below the marker (only shown when range > 0)
+
+### App Info (`AppInfo.tsx`)
+Version and credits display (bottom-left corner, always visible):
+- **Format**: `v2026.1 | CC BY-NC 4.0 | Martin Bielik • Collaborators ▾`
+- **Version**: Links to GitHub repository
+- **License**: CC BY-NC 4.0 (Creative Commons Attribution-NonCommercial)
+- **Collaborators**: Click to expand/collapse list
+- **Styling**: Small text (10px mobile, 12px desktop), white/70 opacity
+
+### Loading Overlay (`LoadingOverlay.tsx`)
+Shown during initial data loading:
+- **Title**: "Accessibility Analysis Builder"
+- **Progress Bar**: Blue bar showing loading percentage
+- **Status Text**: Dynamic text describing current loading step
 
 ### Map Styling
 - **Background**: Medium grey (#b0b0b0)
