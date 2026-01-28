@@ -75,7 +75,7 @@ src/
 │   ├── mapLibreSetup.ts         # Map initialization, layers (buildings, hexagons, streets)
 │   ├── buildingColorUpdater.ts  # Building color updates based on scores
 │   └── hexagonColorUpdater.ts   # Hexagon color updates and layer visibility
-├── context/         # React Context (AppContext stores scores + curve state + grid state, MapContext)
+├── context/         # React Context (AppContext stores scores + avg/min/max + curve state + grid state, MapContext)
 └── lib/             # Utilities
 ```
 
@@ -218,7 +218,10 @@ Score color scale (bottom-right on desktop, bottom-left on mobile when panel col
 - **Divider**: Thin grey line separating indicators from score gradient
 - **Title**: "Accessibility Score" (text-base)
 - **Gradient Bar**: Fully rounded (pill-shaped), Purple (#4A3AB4) → Orange (#FD681D) → Red (#FD1D1D)
-- **Labels**: Low/High + min/max raw score values (from current mode)
+  - White vertical marker line indicates average score position
+- **Labels**:
+  - Row 1: Low/High labels with min/max raw score values aligned below
+  - Row 2: Average score with "avg" suffix, positioned below the marker (only shown when range > 0)
 
 ### Map Styling
 - **Background**: Medium grey (#b0b0b0)

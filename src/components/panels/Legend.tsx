@@ -4,10 +4,12 @@ export function Legend() {
   const {
     minRawScore,
     maxRawScore,
+    avgRawScore,
     selectedLandUse,
     analysisMode,
     gridMinRawScore,
     gridMaxRawScore,
+    gridAvgRawScore,
     gridAttractors,
     isPanelCollapsed,
   } = useAppContext()
@@ -17,6 +19,11 @@ export function Legend() {
   // Use appropriate scores based on mode
   const displayMinScore = isGridMode ? gridMinRawScore : minRawScore
   const displayMaxScore = isGridMode ? gridMaxRawScore : maxRawScore
+  const displayAvgScore = isGridMode ? gridAvgRawScore : avgRawScore
+
+  // Calculate average position as percentage
+  const range = displayMaxScore - displayMinScore
+  const avgPercent = range > 0 ? ((displayAvgScore - displayMinScore) / range) * 100 : 50
 
   // On mobile: hidden when panel is open, bottom-left when panel is collapsed
   // On desktop: always bottom-left
@@ -95,19 +102,44 @@ export function Legend() {
           <span className="text-sm text-white">Accessibility Score</span>
         </div>
       </div>
+
+      {/* Gradient bar with average marker */}
       <div className="flex items-center gap-3">
-        <span className="text-xs text-white">Low</span>
-        <div
-          className="w-40 sm:w-56 h-4 rounded-full"
-          style={{
-            background: 'linear-gradient(to right, #4A3AB4, #FD681D, #FD1D1D)',
-          }}
-        />
-        <span className="text-xs text-white">High</span>
+        <span className="text-xs text-white w-8 text-right">Low</span>
+        <div className="relative w-40 sm:w-56">
+          {/* Gradient bar */}
+          <div
+            className="w-full h-4 rounded-full"
+            style={{
+              background: 'linear-gradient(to right, #4A3AB4, #FD681D, #FD1D1D)',
+            }}
+          />
+          {/* Average marker line */}
+          {range > 0 && (
+            <div
+              className="absolute top-0 h-4 w-0.5 bg-white rounded-full"
+              style={{ left: `${avgPercent}%`, transform: 'translateX(-50%)' }}
+            />
+          )}
+        </div>
+        <span className="text-xs text-white w-8">High</span>
       </div>
-      <div className="flex justify-between mt-2 text-xs text-white px-8">
-        <span>{displayMinScore.toFixed(1)}</span>
-        <span>{displayMaxScore.toFixed(1)}</span>
+
+      {/* Score labels with average */}
+      <div className="flex items-center gap-3 mt-2 text-xs text-white">
+        <span className="w-8 text-right">{displayMinScore.toFixed(1)}</span>
+        <div className="relative w-40 sm:w-56">
+          {/* Average label positioned at marker */}
+          {range > 0 && (
+            <div
+              className="absolute"
+              style={{ left: `${avgPercent}%`, transform: 'translateX(-50%)' }}
+            >
+              {displayAvgScore.toFixed(1)} avg
+            </div>
+          )}
+        </div>
+        <span className="w-8">{displayMaxScore.toFixed(1)}</span>
       </div>
     </div>
   )

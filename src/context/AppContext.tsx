@@ -56,6 +56,7 @@ interface AppState {
   gridRawAccessibilityScores: Map<string, number>
   gridMinRawScore: number
   gridMaxRawScore: number
+  gridAvgRawScore: number
   totalGridAttractivity: number
 
   // Results (for buildings mode)
@@ -63,6 +64,7 @@ interface AppState {
   rawAccessibilityScores: Map<string, number>
   minRawScore: number
   maxRawScore: number
+  avgRawScore: number
 }
 
 interface AppContextValue extends AppState {
@@ -132,6 +134,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [rawAccessibilityScores, setRawAccessibilityScores] = useState<Map<string, number>>(new Map())
   const [minRawScore, setMinRawScore] = useState(0)
   const [maxRawScore, setMaxRawScore] = useState(0)
+  const [avgRawScore, setAvgRawScore] = useState(0)
   const [customPins, setCustomPins] = useState<CustomPin[]>([])
 
   // Grid mode state
@@ -143,6 +146,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [gridRawAccessibilityScores, setGridRawAccessibilityScores] = useState<Map<string, number>>(new Map())
   const [gridMinRawScore, setGridMinRawScore] = useState(0)
   const [gridMaxRawScore, setGridMaxRawScore] = useState(0)
+  const [gridAvgRawScore, setGridAvgRawScore] = useState(0)
 
   // Recalculation refs to debounce
   const recalcTimeoutRef = useRef<number | null>(null)
@@ -319,18 +323,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const residentialBuildings = buildings.filter(b => b.isResidential)
 
-    // Helper to compute min/max and update state
+    // Helper to compute min/max/avg and update state
     const processScores = (rawScores: Map<string, number>) => {
       if (rawScores.size === 0) {
         setMinRawScore(0)
         setMaxRawScore(0)
+        setAvgRawScore(0)
         setRawAccessibilityScores(new Map())
         setAccessibilityScores(new Map())
         return
       }
       const values = Array.from(rawScores.values())
+      const avg = values.reduce((sum, v) => sum + v, 0) / values.length
       setMinRawScore(Math.min(...values))
       setMaxRawScore(Math.max(...values))
+      setAvgRawScore(avg)
       setRawAccessibilityScores(new Map(rawScores))
       setAccessibilityScores(normalizeScores(rawScores))
     }
@@ -429,18 +436,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const recalculateGrid = useCallback(() => {
     if (!fullNetworkMatrix || hexCells.length === 0) return
 
-    // Helper to compute min/max and update state
+    // Helper to compute min/max/avg and update state
     const processGridScores = (rawScores: Map<string, number>) => {
       if (rawScores.size === 0) {
         setGridMinRawScore(0)
         setGridMaxRawScore(0)
+        setGridAvgRawScore(0)
         setGridRawAccessibilityScores(new Map())
         setGridAccessibilityScores(new Map())
         return
       }
+      const values = Array.from(rawScores.values())
+      const avg = values.reduce((sum, v) => sum + v, 0) / values.length
       const { min, max } = getGridScoreRange(rawScores)
       setGridMinRawScore(min)
       setGridMaxRawScore(max)
+      setGridAvgRawScore(avg)
       setGridRawAccessibilityScores(new Map(rawScores))
       setGridAccessibilityScores(normalizeGridScores(rawScores))
     }
@@ -531,11 +542,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     gridRawAccessibilityScores,
     gridMinRawScore,
     gridMaxRawScore,
+    gridAvgRawScore,
     totalGridAttractivity,
     accessibilityScores,
     rawAccessibilityScores,
     minRawScore,
     maxRawScore,
+    avgRawScore,
     setIsPanelCollapsed,
     setCurveTabMode,
     setCustomCurveType,
