@@ -86,20 +86,57 @@ Calculates accessibility on a hexagonal grid based on user-placed attractors. Us
 
 ## UI Layout
 
-### Accessibility Analysis Panel (top-left, 680px)
+### Responsive Design
+
+The app adapts to different screen sizes:
+
+| Breakpoint | Width | Behavior |
+|------------|-------|----------|
+| Mobile | < 640px | Full-width panels, stacked layouts, conditional visibility |
+| Desktop | ≥ 640px | Floating panels, side-by-side layouts |
+
+**Desktop Layout (≥ 640px):**
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ [Parameters Panel]                        [Navigation Widget]   │
+│  (540px, rounded, top-left)               (top-right)           │
+│                                                                 │
+│                         [MAP]                                   │
+│                                                                 │
+│                                              [Legend]           │
+│                                              (bottom-right)     │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Mobile Layout (< 640px) - Panel Expanded:**
+- Parameters Panel: Full-width, square edges, at top
+- Navigation Widget: Hidden
+- Legend: Hidden
+
+**Mobile Layout (< 640px) - Panel Collapsed:**
+- Parameters Panel: Header only visible at top
+- Navigation Widget: Visible at bottom-right
+- Legend: Visible at bottom-left
+
+### Accessibility Analysis Panel (top-left on desktop, full-width on mobile)
 Glassmorphism panel with collapsible content:
-1. **Title**: "Accessibility Analysis" (text-2xl, clickable to collapse/expand)
+- **Container**: Max-height with internal scrolling, custom purple scrollbar
+- **Responsive sizing**: 540px on desktop, 100% width on mobile
+- **Corners**: Rounded (16px) on desktop, square on mobile
+
+Content:
+1. **Title**: "Accessibility Analysis" (text-xl mobile, text-2xl desktop, clickable to collapse/expand)
 2. **Mode Toggle**: Buildings | Grid buttons (purple highlight for active mode)
 3. **Introduction**: Brief explanation (context-sensitive based on mode)
-4. **Master Equation**: Styled formula display
+4. **Master Equation**: Styled formula display (18px mobile, 24px desktop)
 5. **Parameters** (mode-dependent):
-   - **Buildings mode**: Two dropdowns side-by-side
+   - **Buildings mode**: Two dropdowns (stacked on mobile, side-by-side on desktop)
      - Amenity Type (j): Land use category selector
      - Attractivity (Att_j): Floor area / Volume / Count
    - **Grid mode**: Attractor count display + "Clear all" button
 6. **Distance Decay Function f(d_ij)** (tabbed SVG curve editor, shared across modes):
-   - **Tab bar**: Custom | Negative Exponential | Exponential Power
-   - **Graph area** (620×360px):
+   - **Tab bar**: Custom | Negative Exponential | Exponential Power (compact on mobile)
+   - **Graph area** (490×260px desktop, responsive on mobile):
      - Grid: White lines on transparent background
      - Curve: Purple (#562fae), strokeWidth 3
      - X-axis: "Distance (m) → d_ij" (0-2000m)
@@ -112,20 +149,22 @@ Glassmorphism panel with collapsible content:
        - Purple rounded label on Y-axis showing f(d_ij) value (2 decimals)
    - **Custom tab**:
      - Control points: White fill, purple outline, strokeWidth 3
-     - Preset buttons: Exponential, Power, Linear, Step, Constant (with "Presets:" label)
+     - Preset buttons: Exponential, Power, Linear, Step, Constant (wrap on mobile)
        - Exponential: approximates negative exponential f(d) = e^(-0.003·d)
        - Power: approximates exponential power f(d) = e^(-(d/700)^2)
      - Instructions: "Double-click to add point. Right-click to remove."
    - **Negative Exponential tab**:
-     - Equation: f(d_ij) = e^(-α·d_ij) (Times New Roman, 24px, italic)
+     - Equation: f(d_ij) = e^(-α·d_ij) (Times New Roman, 24px desktop/20px mobile, italic)
      - Input: α (decay rate), default 0.003, range 0-0.1
      - Help: "Higher α = faster decay. Typical range: 0.001 to 0.01"
    - **Exponential Power tab**:
-     - Equation: f(d_ij) = e^{-(d_ij/b)^c} (Times New Roman, 24px, italic)
+     - Equation: f(d_ij) = e^{-(d_ij/b)^c} (Times New Roman, 24px desktop/20px mobile, italic)
      - Inputs: b (scale) default 700, c (shape) default 2
      - Help: "b = distance where f ≈ 0.37 (when c=1). c = shape (1=standard, >1=steeper, <1=flatter)"
 
-### Navigation Widget (top-right)
+### Navigation Widget
+- **Position**: Top-right on desktop, bottom-right on mobile (when panel collapsed)
+- **Visibility**: Always visible on desktop, hidden on mobile when panel expanded
 - **View buttons** (with inline SVG icons):
   - Top View: 2D grid icon, sets pitch=0
   - Perspective: 3D cube icon, sets pitch=55
@@ -133,13 +172,16 @@ Glassmorphism panel with collapsible content:
 - **Active state**: Grey background (#e5e7eb) on current view
 - **Zoom controls**: +/− buttons (font-size 24px)
 
-### Legend (bottom-right)
-- **Mode-dependent indicators**:
-  - Buildings mode: Selected amenity indicator (yellow) + "Other Amenities" indicator (grey)
-  - Grid mode: Attractors indicator (yellow) + "Hexagon Grid" indicator (gradient)
+### Legend
+- **Position**: Bottom-right on desktop, bottom-left on mobile (when panel collapsed)
+- **Visibility**: Always visible on desktop, hidden on mobile when panel expanded
+- **Mode-dependent indicators** (circular icons):
+  - Buildings mode: Selected amenity indicator (yellow circle) + "Other Amenities" indicator (grey circle)
+  - Grid mode: Attractors indicator (yellow circle) + "Hexagon Grid" indicator (gradient circle)
 - **Divider**: Thin grey line
 - **Title**: "Accessibility Score" (text-base)
-- **Gradient bar**: Purple → Orange → Red
+- **Gradient bar**: Fully rounded (pill-shaped), Purple → Orange → Red
+- **Size**: 224px wide on desktop, 160px on mobile
 - **Labels**: Low/High with min/max raw score values (from current mode)
 
 ## Data

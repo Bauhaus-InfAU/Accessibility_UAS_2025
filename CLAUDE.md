@@ -79,26 +79,95 @@ src/
 └── lib/             # Utilities
 ```
 
+## Responsive Design
+
+The app adapts to different screen sizes using Tailwind CSS breakpoints.
+
+### Breakpoints
+| Breakpoint | Width | Description |
+|------------|-------|-------------|
+| Mobile | < 640px | Full-width panels, stacked layouts |
+| Desktop | ≥ 640px (sm:) | Floating panels, side-by-side layouts |
+
+### Desktop Layout (≥ 640px)
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ [Parameters Panel]                        [Navigation Widget]   │
+│  (540px, rounded, top-left)               (top-right)           │
+│                                                                 │
+│                         [MAP]                                   │
+│                                                                 │
+│                                              [Legend]           │
+│                                              (bottom-right)     │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Mobile Layout (< 640px)
+**When Panel is Expanded:**
+```
+┌─────────────────────────────────────────┐
+│ [Parameters Panel - full width]         │
+│  (square edges, scrollable)             │
+├─────────────────────────────────────────┤
+│                                         │
+│                [MAP]                    │
+│  (Navigation & Legend HIDDEN)           │
+│                                         │
+└─────────────────────────────────────────┘
+```
+
+**When Panel is Collapsed:**
+```
+┌─────────────────────────────────────────┐
+│ [Panel Header Only]                     │
+├─────────────────────────────────────────┤
+│                                         │
+│                [MAP]                    │
+│                                         │
+│ [Legend]                   [Navigation] │
+│ (bottom-left)              (bottom-right)│
+└─────────────────────────────────────────┘
+```
+
+### Component-Specific Responsive Behavior
+
+| Component | Mobile (< 640px) | Desktop (≥ 640px) |
+|-----------|------------------|-------------------|
+| **ParametersPanel** | Full-width, square edges, top edge-to-edge | 540px wide, rounded corners, floating |
+| **NavigationWidget** | Hidden when panel open; bottom-right when collapsed | Always visible, top-right |
+| **Legend** | Hidden when panel open; bottom-left when collapsed | Always visible, bottom-right |
+| **CurveEditor** | Scales to fit container width, 220px height | 490×260px fixed |
+| **Dropdowns** | Stacked vertically | Side-by-side |
+
+### Panel Scrolling
+- Panel has `max-height: calc(100vh - 24px)` to fit viewport
+- Internal content scrolls when exceeding max height
+- Custom purple-themed scrollbar (6px wide)
+
+### State Management
+- `isPanelCollapsed` state in AppContext controls panel expand/collapse
+- NavigationWidget and Legend read this state to show/hide on mobile
+
 ## UI Components
 
 ### Accessibility Analysis Panel (`ParametersPanel.tsx`)
-Main control panel (top-left, 680px wide, collapsible):
-- **Title**: "Accessibility Analysis" (text-2xl, clickable to collapse)
+Main control panel (top-left on desktop, top full-width on mobile, collapsible):
+- **Container**: Glass panel with backdrop blur, max-height with internal scroll
+- **Title**: "Accessibility Analysis" (text-xl on mobile, text-2xl on desktop, clickable to collapse)
 - **Mode Toggle** (`AnalysisModeToggle.tsx`): Buildings | Grid buttons
   - Active mode: Purple background (#7c3aed), white text
   - Inactive mode: Grey background, grey text
 - **Section A - Introduction**: Brief explanation + master equation display (context-sensitive)
 - **Section B - Parameters** (mode-dependent):
-  - **Buildings mode**: Two dropdowns side-by-side
+  - **Buildings mode**: Two dropdowns (stacked on mobile, side-by-side on desktop)
     - Amenity Type (j): Land use category selector
     - Attractivity (Att_j): Floor area / Volume / Count
   - **Grid mode**: Custom Amenities count + "Clear all" button
     - Shows loading indicator when computing full network matrix
-- **Divider**: Horizontal line separator
 - **Section C - Distance Decay Function**: Interactive curve editor (shared across modes)
 
 ### Curve Editor (`CurveEditor/`)
-Tabbed SVG-based curve editor (620×360px):
+Tabbed SVG-based curve editor (responsive: 490×260px desktop, scales on mobile):
 
 **Tab Navigation**:
 - Custom | Negative Exponential | Exponential Power
@@ -130,23 +199,25 @@ Tabbed SVG-based curve editor (620×360px):
 - Input fields: b (scale) default 700, c (shape) default 2
 
 ### Navigation Widget (`NavigationWidget.tsx`)
-Map controls (top-right):
+Map controls (top-right on desktop, bottom-right on mobile when panel collapsed):
+- **Responsive**: Hidden on mobile when panel is expanded
 - **View Buttons**: Top View, Perspective, Reset (with inline SVG icons)
 - **Active State**: Grey background (#e5e7eb) indicates current view
 - **Zoom Controls**: +/- buttons (font-size 24px)
 - Uses MapContext for view state tracking
 
 ### Legend (`Legend.tsx`)
-Score color scale (bottom-right), mode-dependent:
+Score color scale (bottom-right on desktop, bottom-left on mobile when panel collapsed):
+- **Responsive**: Hidden on mobile when panel is expanded
 - **Buildings mode**:
-  - Selected Amenity Indicator: Yellow (#fcdb02) rounded box + amenity type name (or "Custom Pins")
-  - Other Amenities Indicator: Grey (#a0a0a0) rounded box + "Other Amenities" label
+  - Selected Amenity Indicator: Yellow (#fcdb02) circle + amenity type name (or "Custom Pins")
+  - Other Amenities Indicator: Grey (#a0a0a0) circle + "Other Amenities" label
 - **Grid mode**:
-  - Custom Amenities Indicator: Yellow (#fcdb02) rounded box + amenity count
-  - Hexagon Grid Indicator: Gradient box + "Hexagon Grid" label
+  - Custom Amenities Indicator: Yellow (#fcdb02) circle + amenity count
+  - Hexagon Grid Indicator: Gradient circle + "Hexagon Grid" label
 - **Divider**: Thin grey line separating indicators from score gradient
 - **Title**: "Accessibility Score" (text-base)
-- **Gradient**: Purple (#4A3AB4) → Orange (#FD681D) → Red (#FD1D1D)
+- **Gradient Bar**: Fully rounded (pill-shaped), Purple (#4A3AB4) → Orange (#FD681D) → Red (#FD1D1D)
 - **Labels**: Low/High + min/max raw score values (from current mode)
 
 ### Map Styling
@@ -176,6 +247,15 @@ Score color scale (bottom-right), mode-dependent:
   - Cursor: crosshair in Grid mode, pointer on scored elements
   - CSS class: `score-popup` (styled in `index.css`)
 - **Layer Visibility**: Buildings hidden in Grid mode, hexagons hidden in Buildings mode
+
+### CSS (`index.css`)
+Key responsive styles:
+- **Glass Panel**: `backdrop-filter: blur(16px)`, custom scrollbar styling
+- **Mobile Media Query** (`max-width: 639px`):
+  - `.glass-panel`: Square corners (`border-radius: 0`)
+  - `.param-dropdown`: Smaller font (13px) and padding
+  - `.equation`: Reduced font size (18px)
+  - `.tab-button`: Compact padding (6px 10px), smaller font (12px)
 
 ## Commands
 - `npm run dev` — Dev server

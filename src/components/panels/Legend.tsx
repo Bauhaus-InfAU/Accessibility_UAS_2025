@@ -88,9 +88,13 @@ export function Legend() {
       <div className="border-t border-white/30 my-4" />
 
       {/* Accessibility Score */}
-      <label className="text-base font-medium text-white block mb-3">
-        Accessibility Score
-      </label>
+      <div className="flex items-center gap-3 mb-3">
+        <span className="text-xs text-white invisible">Low</span>
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4" /> {/* spacer to align with circles above */}
+          <span className="text-sm text-white">Accessibility Score</span>
+        </div>
+      </div>
       <div className="flex items-center gap-3">
         <span className="text-xs text-white">Low</span>
         <div

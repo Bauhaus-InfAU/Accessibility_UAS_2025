@@ -21,8 +21,10 @@ interface CurveEditorProps {
   onExpPowerCChange: (c: number) => void
 }
 
-const DEFAULT_SVG_WIDTH = 490
-const DEFAULT_SVG_HEIGHT = 260
+// Grid cells are square: 8 x-intervals (250m each) and 4 y-intervals (0.25 each)
+// plotWidth/8 = plotHeight/4 → plotWidth = 2 * plotHeight
+const DEFAULT_SVG_WIDTH = 477  // plotWidth = 412, interval = 51.5px
+const DEFAULT_SVG_HEIGHT = 260 // plotHeight = 206, interval = 51.5px
 const MOBILE_SVG_HEIGHT = 220
 const PADDING = { top: 12, right: 15, bottom: 42, left: 50 }
 
