@@ -222,6 +222,29 @@ body {
   font-weight: 600;
 }
 
+/* Custom scrollbar for panels */
+.glass-panel::-webkit-scrollbar,
+.glass-panel *::-webkit-scrollbar {
+  width: 6px;
+}
+
+.glass-panel::-webkit-scrollbar-track,
+.glass-panel *::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 3px;
+}
+
+.glass-panel::-webkit-scrollbar-thumb,
+.glass-panel *::-webkit-scrollbar-thumb {
+  background: rgba(86, 49, 173, 0.3);
+  border-radius: 3px;
+}
+
+.glass-panel::-webkit-scrollbar-thumb:hover,
+.glass-panel *::-webkit-scrollbar-thumb:hover {
+  background: rgba(86, 49, 173, 0.5);
+}
+
 /* Mobile responsive styles */
 @media (max-width: 639px) {
   .glass-panel {
@@ -234,7 +257,7 @@ body {
   }
 
   .equation {
-    font-size: 20px;
+    font-size: 18px;
   }
 
   .tab-button {

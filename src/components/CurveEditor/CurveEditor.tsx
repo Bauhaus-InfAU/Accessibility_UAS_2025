@@ -21,10 +21,10 @@ interface CurveEditorProps {
   onExpPowerCChange: (c: number) => void
 }
 
-const DEFAULT_SVG_WIDTH = 491
-const DEFAULT_SVG_HEIGHT = 288
-const MOBILE_SVG_HEIGHT = 240
-const PADDING = { top: 15, right: 15, bottom: 48, left: 55 }
+const DEFAULT_SVG_WIDTH = 490
+const DEFAULT_SVG_HEIGHT = 260
+const MOBILE_SVG_HEIGHT = 220
+const PADDING = { top: 12, right: 15, bottom: 42, left: 50 }
 
 // Hook for responsive SVG dimensions
 function useResponsiveDimensions() {
