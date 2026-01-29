@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 32 32">
+  <g id="a" data-name="Layer 2">
+    <rect width="32" height="32" rx="2" ry="2" style="fill: #5536ab;"/>
+  </g>
+  <g id="b" data-name="Layer 1">
+    <g id="d" data-name="Layer 3">
+      <path d="M2,1c14.5,0,8.5,30,28,30" style="fill: none; stroke: #fff; stroke-miterlimit: 10; stroke-width: 2px;"/>
+      <image width="30" height="31" transform="translate(0 1)" xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAAfCAYAAADwbH0HAAAACXBIWXMAAAsSAAALEgHS3X78AAAA2ElEQVRIidXXrQ7CMBiF4e8kJcMjuQKuAInDcbVzOCQOxxVM4vkRL4KBGEu6jX4lPUlVlzxpd9qksjZAY2ZzM6vaESTJnBKAUwvdupMAXnjoA3PgwcyusY888OiKvTIYBh6SZtnh1PhftzpaLi941IqBi6RFdjhVJsFAI2mZHU6Rcsr1DnCWtMoO/5oy/zFwlLSeCpe51cBB0iY7PDVJYGAvaTsWLusC6QaoJe2yw2Px5OUairu0egjuVq4Y7nqOgdrMqr6jluUCAfb2ep99HoVB0h3wtr/yBDeNcEvZ7f7cAAAAAElFTkSuQmCC"/>
+      <path d="M2,0h0v2H0C0,.9.9,0,2,0Z" style="fill: #fff;"/>
+      <path d="M32,30h0v2h-2c0-1.1.9-2,2-2Z" transform="translate(62 62) rotate(180)" style="fill: #fff;"/>
+    </g>
+  </g>
+</svg>
