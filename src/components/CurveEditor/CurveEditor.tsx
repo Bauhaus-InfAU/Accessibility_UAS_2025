@@ -171,6 +171,7 @@ export function CurveEditor({
         height={svgHeight}
         padding={PADDING}
         onPlotHover={handlePlotHover}
+        shortenRightGridLines={curveTabMode !== 'custom'}
       >
         {curveTabMode === 'custom' && (
           <PolylineEditor

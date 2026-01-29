@@ -12,9 +12,10 @@ interface CurveCanvasProps {
   padding: { top: number; right: number; bottom: number; left: number }
   children: ReactNode
   onPlotHover?: (position: PlotHoverPosition | null) => void
+  shortenRightGridLines?: boolean
 }
 
-export function CurveCanvas({ maxDistance, width, height, padding, children, onPlotHover }: CurveCanvasProps) {
+export function CurveCanvas({ maxDistance, width, height, padding, children, onPlotHover, shortenRightGridLines = false }: CurveCanvasProps) {
   const plotWidth = width - padding.left - padding.right
   const plotHeight = height - padding.top - padding.bottom
   const svgRef = useRef<SVGSVGElement>(null)
@@ -54,9 +55,11 @@ export function CurveCanvas({ maxDistance, width, height, padding, children, onP
       {/* Grid lines */}
       {xTicks.map(val => {
         const x = padding.left + (val / maxDistance) * plotWidth
+        // Shorten vertical lines at 1250-1750m to avoid overlapping with equation display (only for math modes)
+        const lineStartY = (shortenRightGridLines && val >= 1250 && val < 2000) ? padding.top + (1 - 0.75) * plotHeight : padding.top
         return (
           <g key={`x-${val}`}>
-            <line x1={x} y1={padding.top} x2={x} y2={padding.top + plotHeight} stroke="#999" strokeWidth={1} />
+            <line x1={x} y1={lineStartY} x2={x} y2={padding.top + plotHeight} stroke="#999" strokeWidth={1} />
             <text x={x} y={padding.top + plotHeight + 18} textAnchor="middle" fontSize={13} fill="#888">
               {val}
             </text>
