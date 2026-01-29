@@ -187,6 +187,8 @@ export function CurveEditor({
             maxDistance={maxDistance}
             plotWidth={plotWidth}
             plotHeight={plotHeight}
+            mode={curveTabMode}
+            negExpAlpha={negExpAlpha}
           />
         )}
         {curveTabMode === 'exponentialPower' && (
@@ -195,6 +197,9 @@ export function CurveEditor({
             maxDistance={maxDistance}
             plotWidth={plotWidth}
             plotHeight={plotHeight}
+            mode={curveTabMode}
+            expPowerB={expPowerB}
+            expPowerC={expPowerC}
           />
         )}
 

@@ -25,11 +25,6 @@ export function CoefficientInputs({
   if (mode === 'negativeExponential') {
     return (
       <div className="mt-4 space-y-3">
-        {/* Equation display */}
-        <div className="equation text-center">
-          f(d<sub>ij</sub>) = e<sup>-α·d<sub>ij</sub></sup>
-        </div>
-
         {/* Alpha input */}
         <div className="flex items-center gap-3">
           <label className="text-sm text-gray-600 min-w-24">
@@ -58,11 +53,6 @@ export function CoefficientInputs({
   if (mode === 'exponentialPower') {
     return (
       <div className="mt-4 space-y-3">
-        {/* Equation display */}
-        <div className="equation text-center">
-          f(d<sub>ij</sub>) = e<sup>-(d<sub>ij</sub>/b)<sup>c</sup></sup>
-        </div>
-
         {/* b (scale) input */}
         <div className="flex items-center gap-3">
           <label className="text-sm text-gray-600 min-w-24">
