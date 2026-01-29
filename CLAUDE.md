@@ -295,6 +295,9 @@ Shown during initial data loading:
 ### CSS (`index.css`)
 Key responsive styles:
 - **Glass Panel**: `backdrop-filter: blur(16px)`, custom scrollbar styling
+- **Math Styling**:
+  - `.equation`: Times New Roman, 24px, italic, purple (#5633ac) - for main equation display
+  - `.math-var`: Times New Roman, italic, purple (#5633ac) - for inline math variable references (i, j, d_ij, f(d_ij), Att_j, etc.)
 - **Mobile Media Query** (`max-width: 639px`):
   - `.glass-panel`: Square corners (`border-radius: 0`)
   - `.param-dropdown`: Smaller font (13px) and padding
@@ -316,3 +319,4 @@ Key responsive styles:
 - Never kill all node.exe processes (kills the AI agent process)
 - Never mark failed tests as passing
 - Always read files before proposing changes
+- When referencing mathematical variables in UI text (i, j, d_ij, f(d_ij), Att_j, etc.), wrap them in `<span className="math-var">` to match the equation styling (Times New Roman, italic, purple)

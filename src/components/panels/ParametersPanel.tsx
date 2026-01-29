@@ -52,9 +52,9 @@ export function ParametersPanel() {
         {/* Introduction and Master Equation */}
         <p className="text-xs sm:text-sm text-gray-600 mt-2 sm:mt-3 mb-2">
           Accessibility measures how well a location is served by nearby amenities.
-          For each location <i>i</i>, we sum the attractivity <strong>Att<sub>j</sub></strong> of every
-          amenity <i>j</i>, weighted by how much the distance <strong>d<sub>ij</sub></strong> reduces
-          its influence via the decay function <strong>f(d<sub>ij</sub>)</strong>.
+          For each location <span className="math-var">i</span>, we sum the attractivity <span className="math-var">Att<sub>j</sub></span> of every
+          amenity <span className="math-var">j</span>, weighted by how much the distance <span className="math-var">d<sub>ij</sub></span> reduces
+          its influence via the decay function <span className="math-var">f(d<sub>ij</sub>)</span>.
         </p>
         <div className="equation text-center mb-3 flex items-center justify-center gap-1">
           <span>Acc<sub>i</sub> =</span>
@@ -84,7 +84,7 @@ export function ParametersPanel() {
                   {/* Left column: Amenities */}
                   <div className="flex-1">
                     <label className="text-sm font-medium text-gray-600 block mb-1">
-                      Amenities (j)
+                      Amenities (<span className="math-var">j</span>)
                     </label>
                     <p className="text-xs text-gray-500">Add amenities by clicking on map</p>
                     <div className="flex items-center gap-2 mt-1">
@@ -105,7 +105,7 @@ export function ParametersPanel() {
                   {/* Right column: Attractivity */}
                   <div className="flex-1">
                     <label className="text-sm font-medium text-gray-600 block mb-1">
-                      Attractivity (Att<sub>j</sub>)
+                      Attractivity (<span className="math-var">Att<sub>j</sub></span>)
                     </label>
                     <p className="text-xs text-gray-500">Set attractivity on map</p>
                     <span className="text-sm font-semibold mt-1 block" style={{ color: '#d4a800' }}>
@@ -118,13 +118,13 @@ export function ParametersPanel() {
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-4">
                 <div className="flex-1">
                   <label className="text-sm font-medium text-gray-600 block mb-1">
-                    Amenity Type (j)
+                    Amenity Type (<span className="math-var">j</span>)
                   </label>
                   <AmenityDropdown />
                 </div>
                 <div className="flex-1">
                   <label className="text-sm font-medium text-gray-600 block mb-1">
-                    Attractivity (Att<sub>j</sub>)
+                    Attractivity (<span className="math-var">Att<sub>j</sub></span>)
                   </label>
                   <AttractivityDropdown />
                 </div>
@@ -134,7 +134,7 @@ export function ParametersPanel() {
             {/* Section C: Distance Function */}
             <div>
               <label className="text-sm font-medium text-gray-600 block mb-2">
-                Distance Decay Function f(d<sub>ij</sub>)
+                Distance Decay Function <span className="math-var">f(d<sub>ij</sub>)</span>
               </label>
               <CurveEditor
               curveTabMode={curveTabMode}
