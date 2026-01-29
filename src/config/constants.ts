@@ -1,5 +1,9 @@
 import type { LandUse } from './types'
 
+// Global accent colors used throughout the app
+export const ACCENT_COLOR = '#5631ad'
+export const ACCENT_COLOR_2 = '#fcdb02'
+
 export const DEGREES_TO_METERS = 111000
 
 export const COORD_PRECISION = 6

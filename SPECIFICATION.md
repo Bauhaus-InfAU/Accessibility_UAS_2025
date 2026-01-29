@@ -58,6 +58,17 @@ Calculates accessibility on a hexagonal grid based on user-placed attractors. Us
    - Each attractor has attractivity = 1
 6. **Choose attractivity mode** (Buildings mode): Floor area, volume (area×height), or count (=1)
 7. **Navigate 3D model**: Orbit, pan, zoom the city
+8. **Measure distances**: Interactive measurement tool to compare network vs euclidean distances
+   - Click ruler button (below navigation widget) to activate
+   - Click map to place point A, click again to place point B
+   - Displays both paths simultaneously:
+     - Network path: Solid line following street network (accent color #5631ad)
+     - Euclidean path: Dashed straight line (accent2 color #fcdb02)
+   - Distance labels at path midpoints (network on top by default)
+   - Drag markers to update measurements in real-time
+   - Click third time to start new measurement
+   - Press Escape or click ruler button to deactivate
+   - Buildings/grid fade to 30% opacity during measurement
 
 ## Visual Output
 
@@ -83,6 +94,16 @@ Calculates accessibility on a hexagonal grid based on user-placed attractors. Us
 - Each hexagon mapped to nearest network node for distance calculation
 - Colored by accessibility score: Purple → Orange → Red gradient
 - Thin white outline for cell boundaries
+
+### Measurement Tool
+- **Point markers**: Purple circles (#5631ad) with yellow border (#fcdb02), labeled "A" and "B"
+- **Network path**: Solid 5px line in accent color (#5631ad), follows street network
+- **Euclidean path**: Dashed 5px line in accent2 color (#fcdb02), rounded caps, straight between points
+- **Distance labels**: Rounded boxes at path midpoints
+  - Network label: Accent background (#5631ad), white text
+  - Euclidean label: Accent2 background (#fcdb02), black text
+  - Hover brings label to foreground with slight scale effect
+- **Visual feedback**: Buildings/grid opacity reduced to 30% when measurement active
 
 ## UI Layout
 
@@ -171,6 +192,12 @@ Content:
   - Reset: Refresh icon, resets to initial bounds/orientation
 - **Active state**: Grey background (#e5e7eb) on current view
 - **Zoom controls**: +/− buttons (font-size 24px)
+
+### Measurement Widget
+- **Position**: Below navigation widget (desktop: top-right, mobile: bottom-right when panel collapsed)
+- **Visibility**: Same as Navigation Widget
+- **Toggle button**: Ruler icon, highlights when active
+- **Keyboard shortcut**: Escape key to deactivate
 
 ### Legend
 - **Position**: Bottom-right on desktop, bottom-left on mobile (when panel collapsed)

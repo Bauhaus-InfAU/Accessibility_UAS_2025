@@ -3,6 +3,7 @@ import { MapProvider } from '../context/MapContext'
 import { MapView } from './map/MapView'
 import { ParametersPanel } from './panels/ParametersPanel'
 import { NavigationWidget } from './panels/NavigationWidget'
+import { MeasurementWidget } from './panels/MeasurementWidget'
 import { Legend } from './panels/Legend'
 import { AppInfo } from './panels/AppInfo'
 import { LoadingOverlay } from './LoadingOverlay'
@@ -19,6 +20,7 @@ function AppContent() {
       <div className="absolute inset-0 pointer-events-none z-10">
         <ParametersPanel />
         <NavigationWidget />
+        <MeasurementWidget />
         <Legend />
         <AppInfo />
       </div>

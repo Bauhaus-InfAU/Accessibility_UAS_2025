@@ -85,3 +85,58 @@ export function dijkstra(
 
   return dist
 }
+
+/**
+ * Run Dijkstra from source to target node, returning both distance and path.
+ * Early exits when target is found for optimization.
+ * Returns null if target is not reachable.
+ */
+export function dijkstraWithPath(
+  sourceId: string,
+  targetId: string,
+  adjacency: Map<string, SimpleEdge[]>
+): { distance: number; path: string[] } | null {
+  const dist = new Map<string, number>()
+  const parent = new Map<string, string>()
+  const visited = new Set<string>()
+  const heap = new MinHeap()
+
+  dist.set(sourceId, 0)
+  heap.push(sourceId, 0)
+
+  while (heap.size > 0) {
+    const current = heap.pop()!
+    if (visited.has(current.id)) continue
+    visited.add(current.id)
+
+    // Early exit when target is found
+    if (current.id === targetId) {
+      // Reconstruct path from target to source
+      const path: string[] = []
+      let node: string | undefined = targetId
+      while (node !== undefined) {
+        path.push(node)
+        node = parent.get(node)
+      }
+      path.reverse()
+      return { distance: current.dist, path }
+    }
+
+    const edges = adjacency.get(current.id)
+    if (!edges) continue
+
+    for (const edge of edges) {
+      if (visited.has(edge.to)) continue
+      const newDist = current.dist + edge.weight
+      const oldDist = dist.get(edge.to)
+      if (oldDist === undefined || newDist < oldDist) {
+        dist.set(edge.to, newDist)
+        parent.set(edge.to, current.id)
+        heap.push(edge.to, newDist)
+      }
+    }
+  }
+
+  // Target not reachable
+  return null
+}

@@ -44,6 +44,11 @@ Students define a custom distance decay function f(d) graphically, then see how 
 - **3D Visualization**: Buildings colored by accessibility score (purple=low, red=high)
 - **Hexagon Grid**: ~15m diameter hexagons colored by accessibility (Grid mode), organic boundary within 100m of network
 - **Hover Popups**: Show raw accessibility score on hover (buildings or hexagons)
+- **Distance Measurement Tool**: Compare network vs euclidean distances between two points
+  - Ruler toggle button below navigation widget
+  - Shows network path (solid) and euclidean path (dashed) simultaneously
+  - Distance labels at path midpoints, hover to bring to front
+  - Escape key to exit measurement mode
 
 ## Project Structure
 ```
@@ -56,7 +61,8 @@ src/
 │   └── hexagonGrid.ts     # Hexagon grid generation and street intersection detection
 ├── computation/     # Dijkstra worker, distance matrix, accessibility calc, curve eval
 │   ├── dijkstra.worker.ts      # Web Worker for shortest path computation
-│   ├── dijkstraAlgorithm.ts    # Dijkstra implementation
+│   ├── dijkstraAlgorithm.ts    # Dijkstra implementation (includes dijkstraWithPath for measurement)
+│   ├── measurementCalc.ts      # Measurement utilities (findShortestPath, path midpoint calculations)
 │   ├── distanceMatrix.ts       # Distance matrix computation (buildings + full network)
 │   ├── accessibilityCalc.ts    # Buildings mode accessibility calculation
 │   ├── gridAccessibilityCalc.ts # Grid mode accessibility calculation
@@ -69,7 +75,7 @@ src/
 │   │   ├── PolylineEditor.tsx   # Custom mode - draggable points
 │   │   ├── MathCurveDisplay.tsx # Mathematical function curve renderer
 │   │   └── CoefficientInputs.tsx # Parameter inputs for math functions
-│   ├── panels/      # ParametersPanel, NavigationWidget, Legend, AppInfo, dropdowns, AnalysisModeToggle
+│   ├── panels/      # ParametersPanel, NavigationWidget, Legend, AppInfo, MeasurementWidget, dropdowns, AnalysisModeToggle
 │   └── map/         # MapView (includes custom pin/attractor marker management)
 ├── visualization/   # MapLibre setup + color updates
 │   ├── mapLibreSetup.ts         # Map initialization, layers (buildings, hexagons, streets)
@@ -206,6 +212,19 @@ Map controls (top-right on desktop, bottom-right on mobile when panel collapsed)
 - **Zoom Controls**: +/- buttons (font-size 24px)
 - Uses MapContext for view state tracking
 
+### Measurement Widget (`MeasurementWidget.tsx`)
+Distance measurement tool (positioned below navigation widget):
+- **Responsive**: Same visibility rules as NavigationWidget
+- **Toggle Button**: Ruler icon, active state highlighted
+- **Behavior**:
+  - Click to activate measurement mode (cursor becomes crosshair)
+  - Click map to place point A, click again for point B
+  - Both network and euclidean paths displayed simultaneously
+  - Drag markers to update measurements live
+  - Third click starts new measurement
+  - Escape key or toggle button to deactivate
+- **Colors**: Uses ACCENT_COLOR (#5631ad) and ACCENT_COLOR_2 (#fcdb02) from constants
+
 ### Legend (`Legend.tsx`)
 Score color scale (bottom-right on desktop, bottom-left on mobile when panel collapsed):
 - **Responsive**: Hidden on mobile when panel is expanded
@@ -264,6 +283,14 @@ Shown during initial data loading:
   - Cursor: crosshair in Grid mode, pointer on scored elements
   - CSS class: `score-popup` (styled in `index.css`)
 - **Layer Visibility**: Buildings hidden in Grid mode, hexagons hidden in Buildings mode
+- **Measurement Visualization**:
+  - Point markers: Purple (#5631ad) fill, yellow (#fcdb02) border, "A"/"B" labels
+  - Network path: Solid 5px line, accent color (#5631ad)
+  - Euclidean path: Dashed 5px line, accent2 color (#fcdb02), rounded caps
+  - Distance labels: At path midpoints, network (purple bg) on top, euclidean (yellow bg) below
+  - Hover on labels brings to foreground
+  - Buildings/grid fade to 30% opacity when measurement active
+  - CSS classes: `.measurement-marker`, `.measurement-marker-circle`, `.measurement-distance-label`
 
 ### CSS (`index.css`)
 Key responsive styles:

@@ -5,6 +5,8 @@ import { useMapContext } from '../../context/MapContext'
 import { createMap } from '../../visualization/mapLibreSetup'
 import { updateBuildingColors } from '../../visualization/buildingColorUpdater'
 import { updateHexagonColors, setHexagonLayersVisibility, setBuildingLayersVisibility } from '../../visualization/hexagonColorUpdater'
+import { calculateEuclideanDistance, formatDistance, getPathMidpoint, getLineMidpoint } from '../../computation/measurementCalc'
+import { ACCENT_COLOR, ACCENT_COLOR_2 } from '../../config/constants'
 
 // Calculate color from normalized score (0-1) using the accessibility gradient
 // Purple (#4A3AB4) → Orange (#FD681D) → Red (#FD1D1D)
@@ -134,12 +136,40 @@ function updatePinAttractivity(el: HTMLElement, attractivity: number): void {
   }
 }
 
+// Create measurement marker element (purple circle with A/B label)
+function createMeasurementMarkerElement(label: 'A' | 'B'): HTMLDivElement {
+  const el = document.createElement('div')
+  el.className = 'measurement-marker'
+  el.innerHTML = `
+    <div class="measurement-marker-circle">${label}</div>
+  `
+  return el
+}
+
+// Create distance label element for map
+function createDistanceLabelElement(distance: string, bgColor: string, textColor: string = 'white', zIndex: number = 1): HTMLDivElement {
+  const el = document.createElement('div')
+  el.className = 'measurement-distance-label'
+  el.style.backgroundColor = bgColor
+  el.style.color = textColor
+  el.style.zIndex = zIndex.toString()
+  el.textContent = distance
+  return el
+}
+
+// Update distance label content
+function updateDistanceLabelElement(el: HTMLElement, distance: string): void {
+  el.textContent = distance
+}
+
 export function MapView() {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const mapLoadedRef = useRef(false)
   const markersRef = useRef<Map<string, maplibregl.Marker>>(new Map())
   const attractorMarkersRef = useRef<Map<string, maplibregl.Marker>>(new Map())
+  const measurementMarkersRef = useRef<Map<'A' | 'B', maplibregl.Marker>>(new Map())
+  const distanceLabelMarkersRef = useRef<Map<'network' | 'euclidean', maplibregl.Marker>>(new Map())
   const popupRef = useRef<maplibregl.Popup | null>(null)
   const {
     buildings,
@@ -162,6 +192,15 @@ export function MapView() {
     updateGridAttractor,
     updateGridAttractorAttractivity,
     removeGridAttractor,
+    // Measurement tool state
+    isMeasurementActive,
+    measurementPointA,
+    measurementPointB,
+    networkPath,
+    networkDistance,
+    addMeasurementPoint,
+    updateMeasurementPoint,
+    setMeasurementActive,
   } = useAppContext()
   const { setMapInstance, setInitialBounds } = useMapContext()
 
@@ -208,6 +247,9 @@ export function MapView() {
   const updateGridAttractorAttractivityRef = useRef(updateGridAttractorAttractivity)
   const removeGridAttractorRef = useRef(removeGridAttractor)
   const updateCustomPinAttractivityRef = useRef(updateCustomPinAttractivity)
+  const isMeasurementActiveRef = useRef(isMeasurementActive)
+  const addMeasurementPointRef = useRef(addMeasurementPoint)
+  const updateMeasurementPointRef = useRef(updateMeasurementPoint)
 
   addCustomPinRef.current = addCustomPin
   updateCustomPinRef.current = updateCustomPin
@@ -223,6 +265,9 @@ export function MapView() {
   updateGridAttractorRef.current = updateGridAttractor
   updateGridAttractorAttractivityRef.current = updateGridAttractorAttractivity
   removeGridAttractorRef.current = removeGridAttractor
+  isMeasurementActiveRef.current = isMeasurementActive
+  addMeasurementPointRef.current = addMeasurementPoint
+  updateMeasurementPointRef.current = updateMeasurementPoint
 
   // Initialize map (only depends on isLoading and buildings)
   useEffect(() => {
@@ -368,9 +413,15 @@ export function MapView() {
       })
     }
 
-    // Handle map click for adding pins or attractors
+    // Handle map click for adding pins, attractors, or measurement points
     const onClick = (e: maplibregl.MapMouseEvent) => {
       const { lng, lat } = e.lngLat
+
+      // Measurement mode takes priority over other click handlers
+      if (isMeasurementActiveRef.current) {
+        addMeasurementPointRef.current([lng, lat])
+        return
+      }
 
       // Grid mode: add attractor
       if (isGridModeRef.current) {
@@ -399,6 +450,16 @@ export function MapView() {
         marker.remove()
       }
       attractorMarkersRef.current.clear()
+      // Clean up measurement markers
+      for (const marker of measurementMarkersRef.current.values()) {
+        marker.remove()
+      }
+      measurementMarkersRef.current.clear()
+      // Clean up distance label markers
+      for (const marker of distanceLabelMarkersRef.current.values()) {
+        marker.remove()
+      }
+      distanceLabelMarkersRef.current.clear()
       // Clean up popup
       if (popupRef.current) {
         popupRef.current.remove()
@@ -434,21 +495,6 @@ export function MapView() {
       setBuildingLayersVisibility(map, true)
     }
   }, [isGridMode])
-
-  // Update cursor when mode changes
-  useEffect(() => {
-    const map = mapRef.current
-    if (!map || !mapLoadedRef.current) return
-
-    const canvas = map.getCanvas()
-    if (isGridMode) {
-      canvas.style.cursor = 'crosshair'
-    } else if (isCustomMode) {
-      canvas.style.cursor = 'crosshair'
-    } else {
-      canvas.style.cursor = ''
-    }
-  }, [isCustomMode, isGridMode])
 
   // Sync markers with customPins (only show when in Custom mode AND not in Grid mode)
   useEffect(() => {
@@ -581,6 +627,318 @@ export function MapView() {
       }
     }
   }, [gridAttractors, isGridMode])
+
+  // Sync measurement markers with measurement points
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapLoadedRef.current) return
+
+    // Helper to clean up all measurement visuals
+    const cleanupMeasurementVisuals = () => {
+      // Remove point markers
+      for (const marker of measurementMarkersRef.current.values()) {
+        marker.remove()
+      }
+      measurementMarkersRef.current.clear()
+
+      // Remove distance label markers
+      for (const marker of distanceLabelMarkersRef.current.values()) {
+        marker.remove()
+      }
+      distanceLabelMarkersRef.current.clear()
+
+      // Remove network path layer
+      if (map.getLayer('measurement-network-path-layer')) {
+        map.removeLayer('measurement-network-path-layer')
+      }
+      if (map.getSource('measurement-network-path')) {
+        map.removeSource('measurement-network-path')
+      }
+
+      // Remove euclidean line layer
+      if (map.getLayer('measurement-euclidean-line-layer')) {
+        map.removeLayer('measurement-euclidean-line-layer')
+      }
+      if (map.getSource('measurement-euclidean-line')) {
+        map.removeSource('measurement-euclidean-line')
+      }
+    }
+
+    // If measurement is not active, remove all measurement markers and lines
+    if (!isMeasurementActive) {
+      cleanupMeasurementVisuals()
+      return
+    }
+
+    // Handle point A marker
+    if (measurementPointA) {
+      let markerA = measurementMarkersRef.current.get('A')
+      if (!markerA) {
+        const el = createMeasurementMarkerElement('A')
+        markerA = new maplibregl.Marker({
+          element: el,
+          draggable: true,
+          anchor: 'center',
+        })
+          .setLngLat(measurementPointA.coord)
+          .addTo(map)
+
+        markerA.on('dragend', () => {
+          const lngLat = markerA!.getLngLat()
+          updateMeasurementPointRef.current('A', [lngLat.lng, lngLat.lat])
+        })
+
+        measurementMarkersRef.current.set('A', markerA)
+      } else {
+        markerA.setLngLat(measurementPointA.coord)
+      }
+    } else {
+      // Remove marker A if point A is null
+      const markerA = measurementMarkersRef.current.get('A')
+      if (markerA) {
+        markerA.remove()
+        measurementMarkersRef.current.delete('A')
+      }
+    }
+
+    // Handle point B marker
+    if (measurementPointB) {
+      let markerB = measurementMarkersRef.current.get('B')
+      if (!markerB) {
+        const el = createMeasurementMarkerElement('B')
+        markerB = new maplibregl.Marker({
+          element: el,
+          draggable: true,
+          anchor: 'center',
+        })
+          .setLngLat(measurementPointB.coord)
+          .addTo(map)
+
+        markerB.on('dragend', () => {
+          const lngLat = markerB!.getLngLat()
+          updateMeasurementPointRef.current('B', [lngLat.lng, lngLat.lat])
+        })
+
+        measurementMarkersRef.current.set('B', markerB)
+      } else {
+        markerB.setLngLat(measurementPointB.coord)
+      }
+    } else {
+      // Remove marker B if point B is null
+      const markerB = measurementMarkersRef.current.get('B')
+      if (markerB) {
+        markerB.remove()
+        measurementMarkersRef.current.delete('B')
+      }
+    }
+
+    // Update path layers and distance labels when both points are placed
+    if (measurementPointA && measurementPointB) {
+      // Calculate euclidean distance
+      const euclideanDist = calculateEuclideanDistance(measurementPointA.coord, measurementPointB.coord)
+
+      // --- Network path layer (solid purple line) ---
+      if (networkPath && networkPath.length >= 2) {
+        const networkPathData: GeoJSON.FeatureCollection = {
+          type: 'FeatureCollection',
+          features: [{
+            type: 'Feature',
+            properties: {},
+            geometry: {
+              type: 'LineString',
+              coordinates: networkPath
+            }
+          }]
+        }
+
+        if (map.getSource('measurement-network-path')) {
+          (map.getSource('measurement-network-path') as maplibregl.GeoJSONSource).setData(networkPathData)
+        } else {
+          map.addSource('measurement-network-path', {
+            type: 'geojson',
+            data: networkPathData
+          })
+          map.addLayer({
+            id: 'measurement-network-path-layer',
+            type: 'line',
+            source: 'measurement-network-path',
+            paint: {
+              'line-color': ACCENT_COLOR,
+              'line-width': 5,
+              'line-opacity': 1
+            }
+          })
+        }
+
+        // Network distance label at path midpoint
+        const networkMidpoint = getPathMidpoint(networkPath)
+        const networkDistStr = formatDistance(networkDistance)
+        let networkLabel = distanceLabelMarkersRef.current.get('network')
+        if (!networkLabel) {
+          const el = createDistanceLabelElement(networkDistStr, ACCENT_COLOR, 'white', 10)
+          networkLabel = new maplibregl.Marker({
+            element: el,
+            anchor: 'center',
+          })
+            .setLngLat(networkMidpoint)
+            .addTo(map)
+          distanceLabelMarkersRef.current.set('network', networkLabel)
+        } else {
+          networkLabel.setLngLat(networkMidpoint)
+          updateDistanceLabelElement(networkLabel.getElement(), networkDistStr)
+        }
+      } else {
+        // No network path available - remove it
+        if (map.getLayer('measurement-network-path-layer')) {
+          map.removeLayer('measurement-network-path-layer')
+        }
+        if (map.getSource('measurement-network-path')) {
+          map.removeSource('measurement-network-path')
+        }
+        // Update network label to show N/A
+        let networkLabel = distanceLabelMarkersRef.current.get('network')
+        const eucMidpoint = getLineMidpoint(measurementPointA.coord, measurementPointB.coord)
+        // Position slightly above the euclidean midpoint
+        const networkLabelPos: [number, number] = [eucMidpoint[0], eucMidpoint[1] + 0.0003]
+        if (!networkLabel) {
+          const el = createDistanceLabelElement('N/A', ACCENT_COLOR, 'white', 10)
+          networkLabel = new maplibregl.Marker({
+            element: el,
+            anchor: 'center',
+          })
+            .setLngLat(networkLabelPos)
+            .addTo(map)
+          distanceLabelMarkersRef.current.set('network', networkLabel)
+        } else {
+          networkLabel.setLngLat(networkLabelPos)
+          updateDistanceLabelElement(networkLabel.getElement(), 'N/A')
+        }
+      }
+
+      // --- Euclidean line layer (dashed purple line) ---
+      const euclideanLineData: GeoJSON.FeatureCollection = {
+        type: 'FeatureCollection',
+        features: [{
+          type: 'Feature',
+          properties: {},
+          geometry: {
+            type: 'LineString',
+            coordinates: [measurementPointA.coord, measurementPointB.coord]
+          }
+        }]
+      }
+
+      if (map.getSource('measurement-euclidean-line')) {
+        (map.getSource('measurement-euclidean-line') as maplibregl.GeoJSONSource).setData(euclideanLineData)
+      } else {
+        map.addSource('measurement-euclidean-line', {
+          type: 'geojson',
+          data: euclideanLineData
+        })
+        map.addLayer({
+          id: 'measurement-euclidean-line-layer',
+          type: 'line',
+          source: 'measurement-euclidean-line',
+          layout: {
+            'line-cap': 'round',
+            'line-join': 'round'
+          },
+          paint: {
+            'line-color': ACCENT_COLOR_2,
+            'line-width': 5,
+            'line-opacity': 0.7,
+            'line-dasharray': [1, 2.5]
+          }
+        })
+      }
+
+      // Euclidean distance label at line midpoint
+      const euclideanMidpoint = getLineMidpoint(measurementPointA.coord, measurementPointB.coord)
+      const euclideanDistStr = formatDistance(euclideanDist)
+      let euclideanLabel = distanceLabelMarkersRef.current.get('euclidean')
+      if (!euclideanLabel) {
+        const el = createDistanceLabelElement(euclideanDistStr, ACCENT_COLOR_2, 'black', 5)
+        euclideanLabel = new maplibregl.Marker({
+          element: el,
+          anchor: 'center',
+        })
+          .setLngLat(euclideanMidpoint)
+          .addTo(map)
+        distanceLabelMarkersRef.current.set('euclidean', euclideanLabel)
+      } else {
+        euclideanLabel.setLngLat(euclideanMidpoint)
+        updateDistanceLabelElement(euclideanLabel.getElement(), euclideanDistStr)
+      }
+    } else {
+      // Remove lines and labels if both points are not placed
+      if (map.getLayer('measurement-network-path-layer')) {
+        map.removeLayer('measurement-network-path-layer')
+      }
+      if (map.getSource('measurement-network-path')) {
+        map.removeSource('measurement-network-path')
+      }
+      if (map.getLayer('measurement-euclidean-line-layer')) {
+        map.removeLayer('measurement-euclidean-line-layer')
+      }
+      if (map.getSource('measurement-euclidean-line')) {
+        map.removeSource('measurement-euclidean-line')
+      }
+      // Remove distance labels
+      for (const marker of distanceLabelMarkersRef.current.values()) {
+        marker.remove()
+      }
+      distanceLabelMarkersRef.current.clear()
+    }
+  }, [isMeasurementActive, measurementPointA, measurementPointB, networkPath, networkDistance])
+
+  // Update cursor when measurement mode changes
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapLoadedRef.current) return
+
+    const canvas = map.getCanvas()
+    if (isMeasurementActive) {
+      canvas.style.cursor = 'crosshair'
+    } else if (isGridMode) {
+      canvas.style.cursor = 'crosshair'
+    } else if (isCustomMode) {
+      canvas.style.cursor = 'crosshair'
+    } else {
+      canvas.style.cursor = ''
+    }
+  }, [isMeasurementActive, isCustomMode, isGridMode])
+
+  // Reduce building/grid opacity when measurement is active
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapLoadedRef.current) return
+
+    const opacity = isMeasurementActive ? 0.3 : 1
+
+    // Update building layers opacity
+    if (map.getLayer('buildings-fill')) {
+      map.setPaintProperty('buildings-fill', 'fill-extrusion-opacity', opacity)
+    }
+
+    // Update hexagon layers opacity
+    if (map.getLayer('hexagons-fill')) {
+      map.setPaintProperty('hexagons-fill', 'fill-opacity', opacity)
+    }
+  }, [isMeasurementActive])
+
+  // Exit measurement mode on Escape key
+  useEffect(() => {
+    if (!isMeasurementActive) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setMeasurementActive(false)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isMeasurementActive, setMeasurementActive])
 
   return (
     <div ref={containerRef} className="absolute inset-0" />

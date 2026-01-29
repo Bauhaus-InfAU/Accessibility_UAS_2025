@@ -26,6 +26,10 @@ This educational tool helps students understand how accessibility scores are cal
 ![Custom Pins](Image_4-0.png)
 *User-placed custom amenity markers with editable attractivity values*
 
+### Distance Measurement Tool
+![Distance Measurement](Image_5-0.png)
+*Comparing network path (1.30 km via streets) vs euclidean distance (990 m straight line)*
+
 ## Core Concept
 
 Accessibility measures how well a location is served by nearby amenities. For each location *i*, the accessibility score is calculated as:
@@ -62,6 +66,12 @@ Where:
   - Drag to reposition
   - Editable attractivity values
   - Right-click to remove
+
+- **Distance Measurement Tool**:
+  - Compare network path vs straight-line (Euclidean) distances
+  - Visual display of both paths simultaneously
+  - Real-time updates when dragging measurement points
+  - Escape key to exit measurement mode
 
 ## Tech Stack
 

@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo, type ReactNode } from 'react'
-import type { Building, ControlPoint, CurveMode, CurveTabMode, AttractivityMode, DistanceMatrix, LandUse, StreetGraph, CustomPin, AnalysisMode, GridAttractor, HexCell, StreetsGeoJSON } from '../config/types'
+import type { Building, ControlPoint, CurveMode, CurveTabMode, AttractivityMode, DistanceMatrix, LandUse, StreetGraph, CustomPin, AnalysisMode, GridAttractor, HexCell, StreetsGeoJSON, MeasurementPoint } from '../config/types'
 import { MAX_DISTANCE_DEFAULT, DEFAULT_POLYLINE_POINTS, DEFAULT_BEZIER_HANDLES, DEFAULT_NEG_EXP_ALPHA, DEFAULT_EXP_POWER_B, DEFAULT_EXP_POWER_C } from '../config/constants'
 import { loadBuildingsGeoJSON, loadStreetsGeoJSON } from '../data/dataLoader'
 import { processBuildings, getBuildingsWithLandUse, getAvailableLandUses } from '../data/buildingStore'
@@ -9,6 +9,7 @@ import { computeDistanceMatrix, computeFullNetworkMatrix } from '../computation/
 import { calculateAccessibility, calculateAccessibilityFromPins, normalizeScores } from '../computation/accessibilityCalc'
 import { calculateGridAccessibility, normalizeGridScores, getGridScoreRange } from '../computation/gridAccessibilityCalc'
 import { createCurveEvaluatorForMode } from '../computation/curveEvaluator'
+import { findShortestPath } from '../computation/measurementCalc'
 
 interface AppState {
   // Loading
@@ -65,6 +66,13 @@ interface AppState {
   minRawScore: number
   maxRawScore: number
   avgRawScore: number
+
+  // Measurement tool state
+  isMeasurementActive: boolean
+  measurementPointA: MeasurementPoint | null
+  measurementPointB: MeasurementPoint | null
+  networkPath: [number, number][] | null
+  networkDistance: number | null
 }
 
 interface AppContextValue extends AppState {
@@ -90,6 +98,10 @@ interface AppContextValue extends AppState {
   updateGridAttractorAttractivity: (id: string, attractivity: number) => void
   removeGridAttractor: (id: string) => void
   clearGridAttractors: () => void
+  // Measurement tool actions
+  setMeasurementActive: (active: boolean) => void
+  addMeasurementPoint: (coord: [number, number]) => void
+  updateMeasurementPoint: (id: 'A' | 'B', coord: [number, number]) => void
 }
 
 const AppContext = createContext<AppContextValue | null>(null)
@@ -147,6 +159,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [gridMinRawScore, setGridMinRawScore] = useState(0)
   const [gridMaxRawScore, setGridMaxRawScore] = useState(0)
   const [gridAvgRawScore, setGridAvgRawScore] = useState(0)
+
+  // Measurement tool state
+  const [isMeasurementActive, setIsMeasurementActive] = useState(false)
+  const [measurementPointA, setMeasurementPointA] = useState<MeasurementPoint | null>(null)
+  const [measurementPointB, setMeasurementPointB] = useState<MeasurementPoint | null>(null)
+  const [networkPath, setNetworkPath] = useState<[number, number][] | null>(null)
+  const [networkDistance, setNetworkDistance] = useState<number | null>(null)
 
   // Recalculation refs to debounce
   const recalcTimeoutRef = useRef<number | null>(null)
@@ -316,6 +335,82 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const clearGridAttractors = useCallback(() => {
     setGridAttractors([])
   }, [])
+
+  // Measurement tool actions
+  const setMeasurementActive = useCallback((active: boolean) => {
+    setIsMeasurementActive(active)
+    if (!active) {
+      // Clear points and path when deactivating
+      setMeasurementPointA(null)
+      setMeasurementPointB(null)
+      setNetworkPath(null)
+      setNetworkDistance(null)
+    }
+  }, [])
+
+  const addMeasurementPoint = useCallback((coord: [number, number]) => {
+    if (!graph) return
+
+    const nearestNodeId = findNearestNode(graph, coord)
+
+    // If both points exist, clear and start new measurement with point A
+    if (measurementPointA && measurementPointB) {
+      setMeasurementPointA({ id: 'A', coord, nearestNodeId })
+      setMeasurementPointB(null)
+      setNetworkPath(null)
+      setNetworkDistance(null)
+      return
+    }
+
+    // If no point A, set point A
+    if (!measurementPointA) {
+      setMeasurementPointA({ id: 'A', coord, nearestNodeId })
+      return
+    }
+
+    // If point A exists but no point B, set point B
+    const newPointB: MeasurementPoint = { id: 'B', coord, nearestNodeId }
+    setMeasurementPointB(newPointB)
+
+    // Compute network path
+    const pathResult = findShortestPath(graph, measurementPointA, newPointB)
+    if (pathResult) {
+      setNetworkPath(pathResult.coordinates)
+      setNetworkDistance(pathResult.distance)
+    } else {
+      setNetworkPath(null)
+      setNetworkDistance(null)
+    }
+  }, [graph, measurementPointA, measurementPointB])
+
+  const updateMeasurementPoint = useCallback((id: 'A' | 'B', coord: [number, number]) => {
+    if (!graph) return
+    const nearestNodeId = findNearestNode(graph, coord)
+
+    let newPointA = measurementPointA
+    let newPointB = measurementPointB
+
+    if (id === 'A') {
+      newPointA = { id: 'A', coord, nearestNodeId }
+      setMeasurementPointA(newPointA)
+    } else {
+      newPointB = { id: 'B', coord, nearestNodeId }
+      setMeasurementPointB(newPointB)
+    }
+
+    // Recompute network path if both points exist
+    if (newPointA && newPointB) {
+      const pathResult = findShortestPath(graph, newPointA, newPointB)
+      if (pathResult) {
+        setNetworkPath(pathResult.coordinates)
+        setNetworkDistance(pathResult.distance)
+      } else {
+        setNetworkPath(null)
+        setNetworkDistance(null)
+      }
+    }
+  }, [graph, measurementPointA, measurementPointB])
+
 
   // Recalculate accessibility when inputs change
   const recalculate = useCallback(() => {
@@ -570,6 +665,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateGridAttractorAttractivity,
     removeGridAttractor,
     clearGridAttractors,
+    // Measurement tool
+    isMeasurementActive,
+    measurementPointA,
+    measurementPointB,
+    networkPath,
+    networkDistance,
+    setMeasurementActive,
+    addMeasurementPoint,
+    updateMeasurementPoint,
   }
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>

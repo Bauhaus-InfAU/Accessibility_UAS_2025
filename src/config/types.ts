@@ -97,5 +97,12 @@ export interface HexCell {
 
 export type DistanceMatrix = Map<string, Map<string, number>> // fromNodeId -> toNodeId -> distance
 
+// Measurement tool types
+export interface MeasurementPoint {
+  id: 'A' | 'B'
+  coord: [number, number]
+  nearestNodeId: string
+}
+
 export type BuildingsGeoJSON = FeatureCollection<MultiPolygon>
 export type StreetsGeoJSON = FeatureCollection<LineString>

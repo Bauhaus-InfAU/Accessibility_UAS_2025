@@ -56,8 +56,14 @@ export function ParametersPanel() {
           amenity <i>j</i>, weighted by how much the distance <strong>d<sub>ij</sub></strong> reduces
           its influence via the decay function <strong>f(d<sub>ij</sub>)</strong>.
         </p>
-        <div className="equation text-center mb-3">
-          Acc<sub>i</sub> = Σ Att<sub>j</sub> × f(d<sub>ij</sub>)
+        <div className="equation text-center mb-3 flex items-center justify-center gap-1">
+          <span>Acc<sub>i</sub> =</span>
+          <span className="inline-flex flex-col items-center mx-1" style={{ fontSize: '0.65em', lineHeight: 1 }}>
+            <span>N</span>
+            <span style={{ fontSize: '1.8em', lineHeight: 0.9 }}>Σ</span>
+            <span>j=0</span>
+          </span>
+          <span>[Att<sub>j</sub> × f(d<sub>ij</sub>)]</span>
         </div>
 
         {/* Collapsible content */}

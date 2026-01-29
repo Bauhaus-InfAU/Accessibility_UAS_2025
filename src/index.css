@@ -151,6 +151,13 @@ body {
   color: #5633ac;
 }
 
+/* Inline math variable references (same style as equation, inherits size) */
+.math-var {
+  font-family: 'Times New Roman', Georgia, serif;
+  font-style: italic;
+  color: #5633ac;
+}
+
 /* Unified tab styling */
 .tab-container {
   display: flex;
@@ -243,6 +250,56 @@ body {
 .glass-panel::-webkit-scrollbar-thumb:hover,
 .glass-panel *::-webkit-scrollbar-thumb:hover {
   background: rgba(86, 49, 173, 0.5);
+}
+
+/* Measurement marker styles */
+.measurement-marker {
+  cursor: grab;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: auto;
+}
+
+.measurement-marker:active {
+  cursor: grabbing;
+}
+
+.measurement-marker-circle {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #5631ad;
+  border: 3px solid #fcdb02;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: white;
+}
+
+.measurement-marker:hover .measurement-marker-circle {
+  transform: scale(1.1);
+}
+
+/* Distance measurement label styles */
+.measurement-distance-label {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: white;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+.measurement-distance-label:hover {
+  z-index: 100 !important;
+  transform: scale(1.05);
 }
 
 /* Mobile responsive styles */

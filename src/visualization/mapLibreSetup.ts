@@ -136,22 +136,6 @@ function addBuildingLayer(map: maplibregl.Map, buildings: Building[]) {
     },
   })
 
-  // Ground-level halo/glow for selected amenity buildings (rendered BEFORE 3D buildings)
-  map.addLayer({
-    id: 'buildings-amenity-halo',
-    type: 'fill',
-    source: 'buildings',
-    paint: {
-      'fill-color': '#fcdb02',  // Bright yellow
-      'fill-opacity': [
-        'case',
-        ['==', ['get', 'hasSelectedAmenity'], 1],
-        0.9,
-        0,
-      ],
-    },
-  })
-
   map.addLayer({
     id: 'buildings-fill',
     type: 'fill-extrusion',
@@ -161,7 +145,7 @@ function addBuildingLayer(map: maplibregl.Map, buildings: Building[]) {
         'case',
         // Selected amenity buildings: bright yellow
         ['==', ['get', 'hasSelectedAmenity'], 1],
-        '#fcdb02',  // Bright yellow
+        '#fcdb02',
         // Residential buildings with scores
         ['all', ['==', ['get', 'isResidential'], 1], ['>=', ['get', 'score'], 0]],
         [
@@ -175,21 +159,11 @@ function addBuildingLayer(map: maplibregl.Map, buildings: Building[]) {
         // Unscored residential
         ['==', ['get', 'isResidential'], 1],
         BUILDING_UNSCORED_COLOR,
-        // Non-residential (not selected amenity) - light grey
+        // Non-residential - light grey
         '#d8d8d8',
       ],
-      'fill-extrusion-height': [
-        'case',
-        ['==', ['get', 'hasSelectedAmenity'], 1],
-        ['+', ['to-number', ['get', 'Height'], 3], 3],  // Add 3m to compensate for elevated base
-        ['to-number', ['get', 'Height'], 3],
-      ],
-      'fill-extrusion-base': [
-        'case',
-        ['==', ['get', 'hasSelectedAmenity'], 1],
-        3,  // Amenity buildings float 3m above ground to show halo
-        0,
-      ],
+      'fill-extrusion-height': ['to-number', ['get', 'Height'], 3],
+      'fill-extrusion-base': 0,
       'fill-extrusion-opacity': 0.85,
     },
   })
