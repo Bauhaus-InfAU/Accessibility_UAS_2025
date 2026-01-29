@@ -9,6 +9,11 @@ const COLLABORATORS = [
   'Egor Gaydukov',
 ]
 
+const PARTNERS = [
+  { name: 'InfAU', fullName: 'Bauhaus-Universität Weimar - Chair Informatics in Architecture and Urbanism', url: 'https://www.uni-weimar.de/en/architecture-and-urbanism/chairs/infau/news/' },
+  { name: 'DecodingSpaces', fullName: 'DecodingSpaces', url: 'https://decodingspaces.de/' },
+]
+
 export function AppInfo() {
   const [expanded, setExpanded] = useState(false)
 
@@ -51,6 +56,24 @@ export function AppInfo() {
           ))}
         </div>
       )}
+
+      <div className="mt-1 flex flex-wrap items-center gap-1">
+        <span>in partnership with</span>
+        {PARTNERS.map((partner, i) => (
+          <span key={partner.name} className="flex items-center">
+            <a
+              href={partner.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-white transition-colors"
+              title={partner.fullName}
+            >
+              {partner.name}
+            </a>
+            {i < PARTNERS.length - 1 && <span className="mx-1">&</span>}
+          </span>
+        ))}
+      </div>
     </div>
   )
 }

@@ -211,6 +211,36 @@ Content:
 - **Size**: 224px wide on desktop, 160px on mobile
 - **Labels**: Low/High with min/max raw score values (from current mode)
 
+### App Info / Credentials
+- **Position**: Bottom-left corner, always visible
+- **Styling**: Small text (10px mobile, 12px desktop), white/70 opacity
+- **Layout**: Two lines
+
+**Line 1 - Credits:**
+- Format: `{VERSION} | {LICENSE} | {AUTHOR} • Collaborators ▾`
+- VERSION: Semantic version (e.g., v2026.1), links to GitHub repository
+- LICENSE: CC BY-NC 4.0 (Creative Commons Attribution-NonCommercial)
+- AUTHOR: Primary author name, links to GitHub repository
+- Collaborators: Expandable dropdown listing contributors
+
+**Line 2 - Partnership:**
+- Format: `in partnership with {PARTNER_1} & {PARTNER_2}`
+- Partner names use abbreviated display text
+- Full organization names shown as tooltip on hover
+- Each partner name links to their website
+
+**Data Structure (AppInfo.tsx):**
+```typescript
+const PARTNERS = [
+  { name: 'InfAU', fullName: 'Bauhaus-Universität Weimar - Chair Informatics in Architecture and Urbanism', url: '...' },
+  { name: 'DecodingSpaces', fullName: 'DecodingSpaces', url: '...' },
+]
+```
+
+**Partner URLs:**
+- InfAU: https://www.uni-weimar.de/en/architecture-and-urbanism/chairs/infau/news/
+- DecodingSpaces: https://decodingspaces.de/
+
 ## Data
 
 Using Weimar city center data from reference project:

@@ -128,6 +128,12 @@ CC BY-NC 4.0 (Creative Commons Attribution-NonCommercial)
 
 - Egor Gaydukov
 
+## Partners
+
+In partnership with:
+- [Bauhaus-Universität Weimar - Chair Informatics in Architecture and Urbanism](https://www.uni-weimar.de/en/architecture-and-urbanism/chairs/infau/news/)
+- [DecodingSpaces](https://decodingspaces.de/)
+
 ## Acknowledgments
 
 Adapted from [Bauhaus-InfAU/weimar-web](https://github.com/Bauhaus-InfAU/weimar-web) (data only)

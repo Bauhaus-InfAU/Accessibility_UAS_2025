@@ -244,10 +244,15 @@ Score color scale (bottom-right on desktop, bottom-left on mobile when panel col
 
 ### App Info (`AppInfo.tsx`)
 Version and credits display (bottom-left corner, always visible):
-- **Format**: `v2026.1 | CC BY-NC 4.0 | Martin Bielik • Collaborators ▾`
+- **Line 1**: `v2026.1 | CC BY-NC 4.0 | Martin Bielik • Collaborators ▾`
+- **Line 2**: `in partnership with InfAU & DecodingSpaces`
 - **Version**: Links to GitHub repository
 - **License**: CC BY-NC 4.0 (Creative Commons Attribution-NonCommercial)
+- **Author**: Links to GitHub repository
 - **Collaborators**: Click to expand/collapse list
+- **Partners**: Abbreviated names link to partner websites, full names shown as tooltip
+  - InfAU: Bauhaus-Universität Weimar - Chair Informatics in Architecture and Urbanism
+  - DecodingSpaces: DecodingSpaces
 - **Styling**: Small text (10px mobile, 12px desktop), white/70 opacity
 
 ### Loading Overlay (`LoadingOverlay.tsx`)
