@@ -33,7 +33,7 @@ export function ParametersPanel() {
   const isGridMode = analysisMode === 'grid'
 
   return (
-    <div className="absolute top-0 left-0 right-0 sm:top-3 sm:left-3 sm:right-auto glass-panel floating-panel p-3 sm:p-4 w-full sm:w-[540px] rounded-none sm:rounded-2xl max-h-[calc(100vh-112px)] sm:max-h-[calc(100vh-96px)] flex flex-col overflow-x-hidden">
+    <div className="absolute top-0 left-0 right-0 sm:top-3 sm:left-3 sm:right-auto glass-panel floating-panel p-3 sm:p-4 w-full sm:w-[540px] rounded-none sm:rounded-2xl max-h-[calc(100vh-92px)] sm:max-h-[calc(100vh-76px)] flex flex-col overflow-x-hidden">
       {/* Title - clickable to collapse/expand */}
       <button
         className="w-full flex items-center justify-between text-left flex-shrink-0"

@@ -51,9 +51,6 @@ export function CoefficientInputs({
           />
         </div>
 
-        <p className="text-sm text-gray-400">
-          Higher α = faster decay. Typical range: 0.001 to 0.01
-        </p>
       </div>
     )
   }
@@ -108,9 +105,6 @@ export function CoefficientInputs({
           />
         </div>
 
-        <p className="text-sm text-gray-400">
-          b = distance where f ≈ 0.37 (when c=1). c = shape (1=standard, &gt;1=steeper, &lt;1=flatter)
-        </p>
       </div>
     )
   }
