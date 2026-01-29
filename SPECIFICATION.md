@@ -7,7 +7,7 @@ Educational web app for a university course on spatial accessibility. Students i
 ## Core Formula
 
 ```
-Acc_i = Σ(j=0 to n) [Att_j * f(d_ij)]
+Acc_i = Σ(j=1 to n) [Att_j * f(d_ij)]
 ```
 
 - **Acc_i** = Accessibility of location i

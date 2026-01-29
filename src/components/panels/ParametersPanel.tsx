@@ -33,7 +33,7 @@ export function ParametersPanel() {
   const isGridMode = analysisMode === 'grid'
 
   return (
-    <div className="absolute top-0 left-0 right-0 sm:top-3 sm:left-3 sm:right-auto glass-panel floating-panel p-3 sm:p-4 w-full sm:w-[540px] rounded-none sm:rounded-2xl max-h-[calc(100vh-72px)] sm:max-h-[calc(100vh-56px)] flex flex-col overflow-x-hidden">
+    <div className="absolute top-0 left-0 right-0 sm:top-3 sm:left-3 sm:right-auto glass-panel floating-panel p-3 sm:p-4 w-full sm:w-[540px] rounded-none sm:rounded-2xl max-h-[calc(100vh-112px)] sm:max-h-[calc(100vh-96px)] flex flex-col overflow-x-hidden">
       {/* Title - clickable to collapse/expand */}
       <button
         className="w-full flex items-center justify-between text-left flex-shrink-0"
@@ -61,7 +61,7 @@ export function ParametersPanel() {
           <span className="inline-flex flex-col items-center mx-1" style={{ fontSize: '0.65em', lineHeight: 1 }}>
             <span>N</span>
             <span style={{ fontSize: '1.8em', lineHeight: 0.9 }}>Σ</span>
-            <span>j=0</span>
+            <span>j=1</span>
           </span>
           <span>[Att<sub>j</sub> × f(d<sub>ij</sub>)]</span>
         </div>
