@@ -1,10 +1,11 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback, useState } from 'react'
 import maplibregl from 'maplibre-gl'
 import { useAppContext } from '../../context/AppContext'
 import { useMapContext } from '../../context/MapContext'
 import { createMap } from '../../visualization/mapLibreSetup'
-import { updateBuildingColors } from '../../visualization/buildingColorUpdater'
-import { updateHexagonColors, setHexagonLayersVisibility, setBuildingLayersVisibility } from '../../visualization/hexagonColorUpdater'
+import { updateBuildingColors, setBuildingLayersVisibility } from '../../visualization/buildingColorUpdater'
+import { updateTerrainLayer, setTerrainLayerVisibility, isTerrainLayerInitialized } from '../../visualization/threeJsLayer'
+import { createCurveEvaluatorForMode } from '../../computation/curveEvaluator'
 import { calculateEuclideanDistance, formatDistance, getPathMidpoint, getLineMidpoint } from '../../computation/measurementCalc'
 import { ACCENT_COLOR, ACCENT_COLOR_2 } from '../../config/constants'
 
@@ -166,13 +167,16 @@ export function MapView() {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const mapLoadedRef = useRef(false)
+  const [mapLoaded, setMapLoaded] = useState(false) // State for triggering effects
   const markersRef = useRef<Map<string, maplibregl.Marker>>(new Map())
   const attractorMarkersRef = useRef<Map<string, maplibregl.Marker>>(new Map())
   const measurementMarkersRef = useRef<Map<'A' | 'B', maplibregl.Marker>>(new Map())
   const distanceLabelMarkersRef = useRef<Map<'network' | 'euclidean', maplibregl.Marker>>(new Map())
   const popupRef = useRef<maplibregl.Popup | null>(null)
+  const terrainUpdatePendingRef = useRef(false)
   const {
     buildings,
+    graph,
     accessibilityScores,
     rawAccessibilityScores,
     isLoading,
@@ -182,16 +186,23 @@ export function MapView() {
     updateCustomPin,
     updateCustomPinAttractivity,
     removeCustomPin,
+    // Curve parameters for terrain
+    curveTabMode,
+    customCurveType,
+    polylinePoints,
+    bezierHandles,
+    maxDistance,
+    negExpAlpha,
+    expPowerB,
+    expPowerC,
     // Grid mode state
     analysisMode,
-    hexCells,
     gridAttractors,
-    gridAccessibilityScores,
-    gridRawAccessibilityScores,
     addGridAttractor,
     updateGridAttractor,
     updateGridAttractorAttractivity,
     removeGridAttractor,
+    setTerrainStats,
     // Measurement tool state
     isMeasurementActive,
     measurementPointA,
@@ -216,21 +227,9 @@ export function MapView() {
     }
   }, [buildings, accessibilityScores, selectedLandUse])
 
-  // Memoized color update function for hexagons
-  const updateHexColors = useCallback(() => {
-    const map = mapRef.current
-    if (!map || !mapLoadedRef.current || hexCells.length === 0) return
-    if (map.getSource('hexagons')) {
-      updateHexagonColors(map, hexCells, gridAccessibilityScores)
-    }
-  }, [hexCells, gridAccessibilityScores])
-
   // Ref to always access latest updateColors in onLoad handler
   const updateColorsRef = useRef(updateColors)
   updateColorsRef.current = updateColors
-
-  const updateHexColorsRef = useRef(updateHexColors)
-  updateHexColorsRef.current = updateHexColors
 
   // Refs for event handlers
   const addCustomPinRef = useRef(addCustomPin)
@@ -240,8 +239,6 @@ export function MapView() {
   const isGridModeRef = useRef(isGridMode)
   const rawAccessibilityScoresRef = useRef(rawAccessibilityScores)
   const accessibilityScoresRef = useRef(accessibilityScores)
-  const gridRawAccessibilityScoresRef = useRef(gridRawAccessibilityScores)
-  const gridAccessibilityScoresRef = useRef(gridAccessibilityScores)
   const addGridAttractorRef = useRef(addGridAttractor)
   const updateGridAttractorRef = useRef(updateGridAttractor)
   const updateGridAttractorAttractivityRef = useRef(updateGridAttractorAttractivity)
@@ -259,8 +256,6 @@ export function MapView() {
   isGridModeRef.current = isGridMode
   rawAccessibilityScoresRef.current = rawAccessibilityScores
   accessibilityScoresRef.current = accessibilityScores
-  gridRawAccessibilityScoresRef.current = gridRawAccessibilityScores
-  gridAccessibilityScoresRef.current = gridAccessibilityScores
   addGridAttractorRef.current = addGridAttractor
   updateGridAttractorRef.current = updateGridAttractor
   updateGridAttractorAttractivityRef.current = updateGridAttractorAttractivity
@@ -274,13 +269,14 @@ export function MapView() {
     if (isLoading || !containerRef.current || buildings.length === 0) return
     if (mapRef.current) return // already initialized
 
-    const map = createMap(containerRef.current, buildings, hexCells)
+    const map = createMap(containerRef.current, buildings, graph)
     mapRef.current = map
     mapLoadedRef.current = false
     setMapInstance(map)
 
     const onLoad = () => {
       mapLoadedRef.current = true
+      setMapLoaded(true) // Trigger effects that depend on map being loaded
       // Compute and store initial bounds from buildings
       if (buildings.length > 0) {
         let minLng = Infinity, maxLng = -Infinity
@@ -296,6 +292,18 @@ export function MapView() {
       }
       // Use ref to get latest updateColors
       updateColorsRef.current()
+
+      // Mark that we need to update terrain once initialized
+      terrainUpdatePendingRef.current = true
+
+      // Set initial layer visibility based on current mode
+      if (isGridModeRef.current) {
+        setBuildingLayersVisibility(map, false)
+        setTerrainLayerVisibility(true)
+      } else {
+        setTerrainLayerVisibility(false)
+        setBuildingLayersVisibility(map, true)
+      }
 
       // Building hover handlers for score popup
       map.on('mousemove', 'buildings-fill', (e) => {
@@ -358,59 +366,6 @@ export function MapView() {
           map.getCanvas().style.cursor = isCustomModeRef.current ? 'crosshair' : ''
         }
       })
-
-      // Hexagon hover handlers for score popup
-      map.on('mousemove', 'hexagons-fill', (e) => {
-        // Skip if not in grid mode
-        if (!isGridModeRef.current) return
-
-        const feature = e.features?.[0]
-        if (!feature?.properties) return
-
-        const { id } = feature.properties
-        const rawScore = gridRawAccessibilityScoresRef.current.get(id)
-        const normalizedScore = gridAccessibilityScoresRef.current.get(id)
-
-        // Skip unscored hexagons
-        if (rawScore === undefined || normalizedScore === undefined) {
-          if (popupRef.current) {
-            popupRef.current.remove()
-            popupRef.current = null
-          }
-          map.getCanvas().style.cursor = 'crosshair'
-          return
-        }
-
-        // Show pointer cursor for scored hexagons
-        map.getCanvas().style.cursor = 'pointer'
-
-        // Get color matching the hexagon's color
-        const color = getScoreColor(normalizedScore)
-
-        // Create or update popup
-        if (!popupRef.current) {
-          popupRef.current = new maplibregl.Popup({
-            closeButton: false,
-            closeOnClick: false,
-            className: 'score-popup',
-          })
-        }
-
-        popupRef.current
-          .setLngLat(e.lngLat)
-          .setHTML(`<div class="score-value" style="color: ${color}">${rawScore.toFixed(1)}</div>`)
-          .addTo(map)
-      })
-
-      map.on('mouseleave', 'hexagons-fill', () => {
-        if (popupRef.current) {
-          popupRef.current.remove()
-          popupRef.current = null
-        }
-        if (isGridModeRef.current) {
-          map.getCanvas().style.cursor = 'crosshair'
-        }
-      })
     }
 
     // Handle map click for adding pins, attractors, or measurement points
@@ -470,31 +425,67 @@ export function MapView() {
       mapLoadedRef.current = false
       setMapInstance(null)
     }
-  }, [isLoading, buildings, hexCells, setMapInstance, setInitialBounds])
+  }, [isLoading, buildings, graph, setMapInstance, setInitialBounds])
 
   // Update building colors when scores or settings change
   useEffect(() => {
     updateColors()
   }, [updateColors])
 
-  // Update hexagon colors when grid scores change
+  // Update terrain when attractors or curve parameters change
   useEffect(() => {
-    updateHexColors()
-  }, [updateHexColors])
+    if (!mapLoaded || !isGridMode) return
+
+    // Function to perform the terrain update
+    const performTerrainUpdate = () => {
+      // Create curve evaluator
+      const evaluator = createCurveEvaluatorForMode(
+        curveTabMode,
+        customCurveType,
+        polylinePoints,
+        bezierHandles,
+        maxDistance,
+        negExpAlpha,
+        expPowerB,
+        expPowerC
+      )
+
+      // Update terrain with current attractors
+      const stats = updateTerrainLayer(gridAttractors, evaluator)
+      if (stats) {
+        setTerrainStats(stats)
+      }
+    }
+
+    // Wait for terrain layer to be initialized using polling
+    if (!isTerrainLayerInitialized()) {
+      const checkInterval = setInterval(() => {
+        if (isTerrainLayerInitialized()) {
+          clearInterval(checkInterval)
+          performTerrainUpdate()
+        }
+      }, 50)
+      // Clean up interval on unmount or dependency change
+      return () => clearInterval(checkInterval)
+    }
+
+    // Terrain is already initialized, update immediately
+    performTerrainUpdate()
+  }, [mapLoaded, isGridMode, gridAttractors, curveTabMode, customCurveType, polylinePoints, bezierHandles, maxDistance, negExpAlpha, expPowerB, expPowerC, setTerrainStats])
 
   // Update layer visibility when analysis mode changes
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !mapLoadedRef.current) return
+    if (!map || !mapLoaded) return
 
     if (isGridMode) {
       setBuildingLayersVisibility(map, false)
-      setHexagonLayersVisibility(map, true)
+      setTerrainLayerVisibility(true)
     } else {
-      setHexagonLayersVisibility(map, false)
+      setTerrainLayerVisibility(false)
       setBuildingLayersVisibility(map, true)
     }
-  }, [isGridMode])
+  }, [mapLoaded, isGridMode])
 
   // Sync markers with customPins (only show when in Custom mode AND not in Grid mode)
   useEffect(() => {
@@ -565,7 +556,7 @@ export function MapView() {
   // Sync attractor markers with gridAttractors (only show when in Grid mode)
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !mapLoadedRef.current) return
+    if (!map || !mapLoaded) return
 
     // If not in Grid mode, remove all attractor markers
     if (!isGridMode) {
@@ -626,7 +617,7 @@ export function MapView() {
         updatePinAttractivity(el, amenity.attractivity)
       }
     }
-  }, [gridAttractors, isGridMode])
+  }, [mapLoaded, gridAttractors, isGridMode])
 
   // Sync measurement markers with measurement points
   useEffect(() => {
@@ -918,11 +909,6 @@ export function MapView() {
     // Update building layers opacity
     if (map.getLayer('buildings-fill')) {
       map.setPaintProperty('buildings-fill', 'fill-extrusion-opacity', opacity)
-    }
-
-    // Update hexagon layers opacity
-    if (map.getLayer('hexagons-fill')) {
-      map.setPaintProperty('hexagons-fill', 'fill-opacity', opacity)
     }
   }, [isMeasurementActive])
 

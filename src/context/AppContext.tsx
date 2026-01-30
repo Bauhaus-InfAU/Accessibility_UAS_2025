@@ -1,14 +1,11 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo, type ReactNode } from 'react'
-import type { Building, ControlPoint, CurveMode, CurveTabMode, AttractivityMode, DistanceMatrix, LandUse, StreetGraph, CustomPin, AnalysisMode, GridAttractor, HexCell, StreetsGeoJSON, MeasurementPoint } from '../config/types'
+import type { Building, ControlPoint, CurveMode, CurveTabMode, AttractivityMode, DistanceMatrix, LandUse, StreetGraph, CustomPin, AnalysisMode, GridAttractor, StreetsGeoJSON, MeasurementPoint } from '../config/types'
 import { MAX_DISTANCE_DEFAULT, DEFAULT_POLYLINE_POINTS, DEFAULT_BEZIER_HANDLES, DEFAULT_NEG_EXP_ALPHA, DEFAULT_EXP_POWER_B, DEFAULT_EXP_POWER_C } from '../config/constants'
 import { loadBuildingsGeoJSON, loadStreetsGeoJSON } from '../data/dataLoader'
 import { processBuildings, getBuildingsWithLandUse, getAvailableLandUses } from '../data/buildingStore'
 import { buildStreetGraph, mapBuildingsToNodes, serializeGraph, findNearestNode } from '../data/streetGraph'
-import { generateHexagonGrid, getVisibleHexCells } from '../data/hexagonGrid'
-import { computeDistanceMatrix, computeFullNetworkMatrix } from '../computation/distanceMatrix'
+import { computeDistanceMatrix } from '../computation/distanceMatrix'
 import { calculateAccessibility, calculateAccessibilityFromPins, normalizeScores } from '../computation/accessibilityCalc'
-import { calculateGridAccessibility, normalizeGridScores, getGridScoreRange } from '../computation/gridAccessibilityCalc'
-import { createCurveEvaluatorForMode } from '../computation/curveEvaluator'
 import { findShortestPath } from '../computation/measurementCalc'
 
 interface AppState {
@@ -49,15 +46,10 @@ interface AppState {
   totalCustomPinAttractivity: number
 
   // Grid mode state
-  hexCells: HexCell[]
   gridAttractors: GridAttractor[]
-  fullNetworkMatrix: DistanceMatrix | null
-  isComputingFullMatrix: boolean
-  gridAccessibilityScores: Map<string, number>
-  gridRawAccessibilityScores: Map<string, number>
-  gridMinRawScore: number
-  gridMaxRawScore: number
-  gridAvgRawScore: number
+  terrainMinScore: number
+  terrainMaxScore: number
+  terrainAvgScore: number
   totalGridAttractivity: number
 
   // Results (for buildings mode)
@@ -98,6 +90,7 @@ interface AppContextValue extends AppState {
   updateGridAttractorAttractivity: (id: string, attractivity: number) => void
   removeGridAttractor: (id: string) => void
   clearGridAttractors: () => void
+  setTerrainStats: (stats: { min: number; max: number; avg: number }) => void
   // Measurement tool actions
   setMeasurementActive: (active: boolean) => void
   addMeasurementPoint: (coord: [number, number]) => void
@@ -126,8 +119,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [availableLandUses, setAvailableLandUses] = useState<LandUse[]>([])
   const [streetsGeoJSON, setStreetsGeoJSON] = useState<StreetsGeoJSON | null>(null)
 
-  // Analysis mode
-  const [analysisMode, setAnalysisMode] = useState<AnalysisMode>('buildings')
+  // Analysis mode - default to 'grid' for development/testing
+  const [analysisMode, setAnalysisMode] = useState<AnalysisMode>('grid')
 
   const [curveTabMode, setCurveTabMode] = useState<CurveTabMode>('custom')
   const [customCurveType, setCustomCurveType] = useState<CurveMode>('polyline')
@@ -149,16 +142,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [avgRawScore, setAvgRawScore] = useState(0)
   const [customPins, setCustomPins] = useState<CustomPin[]>([])
 
-  // Grid mode state
-  const [hexCells, setHexCells] = useState<HexCell[]>([])
+  // Grid mode state - terrain stats (calculated by terrain layer)
   const [gridAttractors, setGridAttractors] = useState<GridAttractor[]>([])
-  const [fullNetworkMatrix, setFullNetworkMatrix] = useState<DistanceMatrix | null>(null)
-  const [isComputingFullMatrix, setIsComputingFullMatrix] = useState(false)
-  const [gridAccessibilityScores, setGridAccessibilityScores] = useState<Map<string, number>>(new Map())
-  const [gridRawAccessibilityScores, setGridRawAccessibilityScores] = useState<Map<string, number>>(new Map())
-  const [gridMinRawScore, setGridMinRawScore] = useState(0)
-  const [gridMaxRawScore, setGridMaxRawScore] = useState(0)
-  const [gridAvgRawScore, setGridAvgRawScore] = useState(0)
+  const [terrainMinScore, setTerrainMinScore] = useState(0)
+  const [terrainMaxScore, setTerrainMaxScore] = useState(0)
+  const [terrainAvgScore, setTerrainAvgScore] = useState(0)
 
   // Measurement tool state
   const [isMeasurementActive, setIsMeasurementActive] = useState(false)
@@ -169,7 +157,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Recalculation refs to debounce
   const recalcTimeoutRef = useRef<number | null>(null)
-  const gridRecalcTimeoutRef = useRef<number | null>(null)
 
   // Startup: load data and precompute distances
   useEffect(() => {
@@ -203,17 +190,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
           serialized,
           processedBuildings,
           (percent) => {
-            setLoadingProgress(45 + Math.floor(percent * 0.4))
+            setLoadingProgress(45 + Math.floor(percent * 0.5))
             setLoadingStatus(`Computing shortest paths... ${percent}%`)
           }
         )
-
-        setLoadingStatus('Generating hexagon grid...')
-        setLoadingProgress(85)
-        const generatedHexCells = generateHexagonGrid(streetGraph, loadedStreetsGeoJSON, (percent) => {
-          setLoadingProgress(85 + Math.floor(percent * 0.1))
-        })
-        const visibleCells = getVisibleHexCells(generatedHexCells)
 
         setLoadingStatus('Ready!')
         setLoadingProgress(100)
@@ -223,7 +203,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setGraph(streetGraph)
         setDistanceMatrix(matrix)
         setAvailableLandUses(available)
-        setHexCells(visibleCells)
 
         // Set initial land use to first available
         if (available.length > 0 && !available.includes(selectedLandUse)) {
@@ -336,6 +315,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setGridAttractors([])
   }, [])
 
+  // Terrain stats setter (called by MapView when terrain updates)
+  const setTerrainStats = useCallback((stats: { min: number; max: number; avg: number }) => {
+    setTerrainMinScore(stats.min)
+    setTerrainMaxScore(stats.max)
+    setTerrainAvgScore(stats.avg)
+  }, [])
+
   // Measurement tool actions
   const setMeasurementActive = useCallback((active: boolean) => {
     setIsMeasurementActive(active)
@@ -412,7 +398,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [graph, measurementPointA, measurementPointB])
 
 
-  // Recalculate accessibility when inputs change
+  // Recalculate accessibility when inputs change (buildings mode only)
   const recalculate = useCallback(() => {
     if (!distanceMatrix || buildings.length === 0) return
 
@@ -437,51 +423,54 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setAccessibilityScores(normalizeScores(rawScores))
     }
 
-    // Create evaluator based on current curve mode
-    const evaluator = createCurveEvaluatorForMode(
-      curveTabMode,
-      customCurveType,
-      polylinePoints,
-      bezierHandles,
-      maxDistance,
-      negExpAlpha,
-      expPowerB,
-      expPowerC
-    )
+    // Import curve evaluator dynamically to avoid circular deps
+    import('../computation/curveEvaluator').then(({ createCurveEvaluatorForMode }) => {
+      // Create evaluator based on current curve mode
+      const evaluator = createCurveEvaluatorForMode(
+        curveTabMode,
+        customCurveType,
+        polylinePoints,
+        bezierHandles,
+        maxDistance,
+        negExpAlpha,
+        expPowerB,
+        expPowerC
+      )
 
-    // Handle Custom mode with pins
-    if (selectedLandUse === 'Custom') {
-      if (customPins.length === 0) {
+      // Handle Custom mode with pins
+      if (selectedLandUse === 'Custom') {
+        if (customPins.length === 0) {
+          processScores(new Map())
+          return
+        }
+        const rawScores = calculateAccessibilityFromPins(
+          residentialBuildings,
+          customPins,
+          distanceMatrix,
+          evaluator
+        )
+        processScores(rawScores)
+        return
+      }
+
+      // Handle regular amenity types
+      const amenityBuildings = getBuildingsWithLandUse(buildings, selectedLandUse)
+
+      if (amenityBuildings.length === 0) {
         processScores(new Map())
         return
       }
-      const rawScores = calculateAccessibilityFromPins(
+
+      const rawScores = calculateAccessibility(
         residentialBuildings,
-        customPins,
+        amenityBuildings,
+        selectedLandUse,
         distanceMatrix,
-        evaluator
+        evaluator,
+        attractivityMode
       )
       processScores(rawScores)
-      return
-    }
-
-    // Handle regular amenity types
-    const amenityBuildings = getBuildingsWithLandUse(buildings, selectedLandUse)
-
-    if (amenityBuildings.length === 0) {
-      processScores(new Map())
-      return
-    }
-
-    const rawScores = calculateAccessibility(
-      residentialBuildings,
-      amenityBuildings,
-      selectedLandUse,
-      distanceMatrix,
-      evaluator,
-      attractivityMode
-    )
-    processScores(rawScores)
+    })
   }, [buildings, distanceMatrix, curveTabMode, customCurveType, polylinePoints, bezierHandles, maxDistance, selectedLandUse, attractivityMode, customPins, negExpAlpha, expPowerB, expPowerC])
 
   // Debounced recalculation for buildings mode
@@ -501,99 +490,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     }
   }, [isLoading, recalculate, analysisMode])
-
-  // Compute full network matrix when switching to grid mode (lazy loading)
-  useEffect(() => {
-    if (isLoading || analysisMode !== 'grid' || fullNetworkMatrix || isComputingFullMatrix || !graph) return
-
-    const computeMatrix = async () => {
-      setIsComputingFullMatrix(true)
-      setLoadingStatus('Computing full network distances...')
-      try {
-        const serialized = serializeGraph(graph)
-        const matrix = await computeFullNetworkMatrix(serialized, (percent) => {
-          setLoadingStatus(`Computing full network distances... ${percent}%`)
-        })
-        setFullNetworkMatrix(matrix)
-        setLoadingStatus('')
-      } catch (error) {
-        console.error('Full network matrix computation failed:', error)
-        setLoadingStatus('Error computing distances')
-      } finally {
-        setIsComputingFullMatrix(false)
-      }
-    }
-
-    computeMatrix()
-  }, [isLoading, analysisMode, fullNetworkMatrix, isComputingFullMatrix, graph])
-
-  // Grid mode recalculation
-  const recalculateGrid = useCallback(() => {
-    if (!fullNetworkMatrix || hexCells.length === 0) return
-
-    // Helper to compute min/max/avg and update state
-    const processGridScores = (rawScores: Map<string, number>) => {
-      if (rawScores.size === 0) {
-        setGridMinRawScore(0)
-        setGridMaxRawScore(0)
-        setGridAvgRawScore(0)
-        setGridRawAccessibilityScores(new Map())
-        setGridAccessibilityScores(new Map())
-        return
-      }
-      const values = Array.from(rawScores.values())
-      const avg = values.reduce((sum, v) => sum + v, 0) / values.length
-      const { min, max } = getGridScoreRange(rawScores)
-      setGridMinRawScore(min)
-      setGridMaxRawScore(max)
-      setGridAvgRawScore(avg)
-      setGridRawAccessibilityScores(new Map(rawScores))
-      setGridAccessibilityScores(normalizeGridScores(rawScores))
-    }
-
-    if (gridAttractors.length === 0) {
-      processGridScores(new Map())
-      return
-    }
-
-    // Create evaluator based on current curve mode
-    const evaluator = createCurveEvaluatorForMode(
-      curveTabMode,
-      customCurveType,
-      polylinePoints,
-      bezierHandles,
-      maxDistance,
-      negExpAlpha,
-      expPowerB,
-      expPowerC
-    )
-
-    const rawScores = calculateGridAccessibility(
-      hexCells,
-      gridAttractors,
-      fullNetworkMatrix,
-      evaluator
-    )
-    processGridScores(rawScores)
-  }, [hexCells, gridAttractors, fullNetworkMatrix, curveTabMode, customCurveType, polylinePoints, bezierHandles, maxDistance, negExpAlpha, expPowerB, expPowerC])
-
-  // Debounced recalculation for grid mode
-  useEffect(() => {
-    if (isLoading || analysisMode !== 'grid' || !fullNetworkMatrix) return
-
-    if (gridRecalcTimeoutRef.current !== null) {
-      cancelAnimationFrame(gridRecalcTimeoutRef.current)
-    }
-    gridRecalcTimeoutRef.current = requestAnimationFrame(() => {
-      recalculateGrid()
-    })
-
-    return () => {
-      if (gridRecalcTimeoutRef.current !== null) {
-        cancelAnimationFrame(gridRecalcTimeoutRef.current)
-      }
-    }
-  }, [isLoading, analysisMode, fullNetworkMatrix, recalculateGrid])
 
   // Computed totals for attractivity
   const totalGridAttractivity = useMemo(() =>
@@ -629,15 +525,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     expPowerC,
     customPins,
     totalCustomPinAttractivity,
-    hexCells,
     gridAttractors,
-    fullNetworkMatrix,
-    isComputingFullMatrix,
-    gridAccessibilityScores,
-    gridRawAccessibilityScores,
-    gridMinRawScore,
-    gridMaxRawScore,
-    gridAvgRawScore,
+    terrainMinScore,
+    terrainMaxScore,
+    terrainAvgScore,
     totalGridAttractivity,
     accessibilityScores,
     rawAccessibilityScores,
@@ -665,6 +556,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateGridAttractorAttractivity,
     removeGridAttractor,
     clearGridAttractors,
+    setTerrainStats,
     // Measurement tool
     isMeasurementActive,
     measurementPointA,

@@ -91,3 +91,7 @@ export const DEFAULT_NEG_EXP_ALPHA = 0.003  // decay rate
 // Exponential Power: f(d) = e^{-(d/b)^c}
 export const DEFAULT_EXP_POWER_B = 700      // scale parameter
 export const DEFAULT_EXP_POWER_C = 2        // shape parameter
+
+// Terrain mesh configuration
+export const TERRAIN_SEGMENTS = 64          // 65x65 = 4225 vertices
+export const TERRAIN_HEIGHT_SCALE = 200     // meters per unit score

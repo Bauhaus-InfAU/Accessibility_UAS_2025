@@ -23,8 +23,6 @@ export function ParametersPanel() {
     isLoading,
     gridAttractors,
     clearGridAttractors,
-    isComputingFullMatrix,
-    loadingStatus,
     totalGridAttractivity,
   } = useAppContext()
 
@@ -75,11 +73,6 @@ export function ParametersPanel() {
             {/* Section B: Parameters (Buildings mode) or Amenity Info (Grid mode) */}
             {isGridMode ? (
               <div className="mb-4">
-                {isComputingFullMatrix && (
-                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-2 mb-3">
-                    <p className="text-xs sm:text-sm text-purple-700">{loadingStatus}</p>
-                  </div>
-                )}
                 <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                   {/* Left column: Amenities */}
                   <div className="flex-1">

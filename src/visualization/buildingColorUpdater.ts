@@ -2,6 +2,20 @@ import type maplibregl from 'maplibre-gl'
 import type { Building, LandUse } from '../config/types'
 
 /**
+ * Set the visibility of building layers
+ */
+export function setBuildingLayersVisibility(map: maplibregl.Map, visible: boolean) {
+  const visibility = visible ? 'visible' : 'none'
+
+  if (map.getLayer('buildings-fill')) {
+    map.setLayoutProperty('buildings-fill', 'visibility', visibility)
+  }
+  if (map.getLayer('buildings-amenity-halo')) {
+    map.setLayoutProperty('buildings-amenity-halo', 'visibility', visibility)
+  }
+}
+
+/**
  * Update building colors on the map based on accessibility scores.
  * Sets the 'score' and 'hasSelectedAmenity' properties on each building feature.
  */

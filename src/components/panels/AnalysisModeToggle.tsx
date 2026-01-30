@@ -8,17 +8,11 @@ const TABS = [
 ]
 
 export function AnalysisModeToggle() {
-  const { analysisMode, setAnalysisMode, isComputingFullMatrix } = useAppContext()
-
-  const tabs = TABS.map(tab => ({
-    ...tab,
-    label: tab.id === 'grid' && isComputingFullMatrix ? 'Loading...' : tab.label,
-    disabled: tab.id === 'grid' && isComputingFullMatrix,
-  }))
+  const { analysisMode, setAnalysisMode } = useAppContext()
 
   return (
     <TabContainer
-      tabs={tabs}
+      tabs={TABS}
       activeTab={analysisMode}
       onTabChange={(id) => setAnalysisMode(id as AnalysisMode)}
     />

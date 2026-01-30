@@ -86,15 +86,6 @@ export interface GridAttractor {
   attractivity: number  // Default 1, editable by user
 }
 
-// Hexagon cell for grid analysis
-export interface HexCell {
-  id: string
-  center: [number, number]
-  vertices: [number, number][]  // 6 vertices
-  nearestNodeId: string
-  intersectsStreet: boolean
-}
-
 export type DistanceMatrix = Map<string, Map<string, number>> // fromNodeId -> toNodeId -> distance
 
 // Measurement tool types

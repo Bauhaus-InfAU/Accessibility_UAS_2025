@@ -7,9 +7,9 @@ export function Legend() {
     avgRawScore,
     selectedLandUse,
     analysisMode,
-    gridMinRawScore,
-    gridMaxRawScore,
-    gridAvgRawScore,
+    terrainMinScore,
+    terrainMaxScore,
+    terrainAvgScore,
     gridAttractors,
     isPanelCollapsed,
   } = useAppContext()
@@ -17,9 +17,9 @@ export function Legend() {
   const isGridMode = analysisMode === 'grid'
 
   // Use appropriate scores based on mode
-  const displayMinScore = isGridMode ? gridMinRawScore : minRawScore
-  const displayMaxScore = isGridMode ? gridMaxRawScore : maxRawScore
-  const displayAvgScore = isGridMode ? gridAvgRawScore : avgRawScore
+  const displayMinScore = isGridMode ? terrainMinScore : minRawScore
+  const displayMaxScore = isGridMode ? terrainMaxScore : maxRawScore
+  const displayAvgScore = isGridMode ? terrainAvgScore : avgRawScore
 
   // Calculate average position as percentage
   const range = displayMaxScore - displayMinScore
@@ -47,7 +47,7 @@ export function Legend() {
             </div>
           </div>
 
-          {/* Hexagon Indicator */}
+          {/* Terrain Surface Indicator */}
           <div className="flex items-center gap-3 mt-2">
             <span className="text-xs text-white invisible">Low</span>
             <div className="flex items-center gap-2">
@@ -57,7 +57,7 @@ export function Legend() {
                   background: 'linear-gradient(135deg, #4A3AB4 0%, #FD681D 50%, #FD1D1D 100%)',
                 }}
               />
-              <span className="text-sm text-white">Hexagon Grid</span>
+              <span className="text-sm text-white">Terrain Surface</span>
             </div>
           </div>
         </>
