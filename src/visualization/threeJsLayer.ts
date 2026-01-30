@@ -10,9 +10,17 @@ import {
   updateWireframePositions,
   createStreetNetworkLines,
   updateStreetNetworkHeights,
-  type TerrainMeshConfig
+  syncAttractorPins,
+  updateAttractorPinHeights,
+  sampleTerrainHeight,
+  lngLatToLocalMeters,
+  type TerrainMeshConfig,
+  type AttractorPinData
 } from './terrainMesh'
 import { SDFLineMaterial } from './SDFLineMaterial'
+
+// Height offset for pins above terrain (in meters)
+const PIN_HEIGHT_OFFSET = 5
 
 /**
  * Three.js terrain layer for MapLibre
@@ -30,6 +38,8 @@ interface ThreeJsTerrainLayerState {
   terrainMesh: THREE.Mesh | null
   wireframeGrid: THREE.Mesh | null  // Mesh with SDF line material
   streetNetworkLines: THREE.Mesh | null  // Mesh with SDF line material
+  attractorPinsGroup: THREE.Group | null  // Group containing all 3D attractor pins
+  attractorPinData: Map<string, AttractorPinData>  // Pin data for updates
   graph: StreetGraph | null
   config: TerrainMeshConfig | null
   map: maplibregl.Map | null
@@ -40,6 +50,9 @@ interface ThreeJsTerrainLayerState {
 
 // Global state for the layer
 let layerState: ThreeJsTerrainLayerState | null = null
+
+// Cached screen positions for attractor pins (computed during render)
+let cachedScreenPositions: Map<string, { x: number; y: number; visible: boolean }> = new Map()
 
 /**
  * Create the Three.js custom layer interface for MapLibre
@@ -133,6 +146,10 @@ export function createThreeJsTerrainLayer(
         directionalLight.position.set(0, -70, 100).normalize()
         scene.add(directionalLight)
 
+        // Create empty group for attractor pins (will be populated when attractors are added)
+        const attractorPinsGroup = new THREE.Group()
+        scene.add(attractorPinsGroup)
+
         // Store state - start visible by default (will be controlled by MapView)
         layerState = {
           scene,
@@ -141,6 +158,8 @@ export function createThreeJsTerrainLayer(
           terrainMesh,
           wireframeGrid,
           streetNetworkLines,
+          attractorPinsGroup,
+          attractorPinData: new Map(),
           graph,
           config,
           map,
@@ -287,9 +306,52 @@ export function createThreeJsTerrainLayer(
             const material = layerState.wireframeGrid.material as SDFLineMaterial
             material.resolution.set(canvas.width, canvas.height)
           }
+          // Update resolution for attractor pin connecting lines
+          if (layerState.attractorPinData) {
+            for (const data of layerState.attractorPinData.values()) {
+              const material = data.line.material as SDFLineMaterial
+              material.resolution.set(canvas.width, canvas.height)
+            }
+          }
         }
 
         renderer.render(scene, camera)
+
+        // Compute and cache screen positions for attractor pins during render
+        // (when the camera projection matrix is valid)
+        if (layerState.attractorPinData && layerState.attractorPinData.size > 0 && canvas) {
+          cachedScreenPositions.clear()
+
+          // Get device pixel ratio to convert from canvas pixels to CSS pixels
+          // MapLibre's map.project() returns CSS pixels, so we need to match that
+          const dpr = window.devicePixelRatio || 1
+          const cssWidth = canvas.width / dpr
+          const cssHeight = canvas.height / dpr
+
+          for (const [id, data] of layerState.attractorPinData) {
+            // Sample terrain height and compute total height
+            const terrainHeight = sampleTerrainHeight(data.coord, terrainMesh)
+            const totalHeight = terrainHeight + PIN_HEIGHT_OFFSET
+
+            // Convert to local meters
+            const localPos = lngLatToLocalMeters(data.coord, layerState.config!)
+
+            // Create 3D point and project using current camera matrix
+            const point = new THREE.Vector3(localPos.x, localPos.y, totalHeight)
+            const projected = point.clone().applyMatrix4(camera.projectionMatrix)
+
+            // Check visibility
+            const visible = projected.x >= -1 && projected.x <= 1 &&
+                           projected.y >= -1 && projected.y <= 1 &&
+                           projected.z >= -1 && projected.z <= 1
+
+            // Convert NDC to CSS pixels (matching MapLibre's coordinate system)
+            const x = (projected.x + 1) * 0.5 * cssWidth
+            const y = (1 - projected.y) * 0.5 * cssHeight
+
+            cachedScreenPositions.set(id, { x, y, visible })
+          }
+        }
 
         // Log MVP matrix once
         if (DEBUG_TERRAIN_LAYER && !(this as any)._renderLogged) {
@@ -323,6 +385,16 @@ export function createThreeJsTerrainLayer(
           if (layerState.streetNetworkLines.material instanceof THREE.Material) {
             layerState.streetNetworkLines.material.dispose()
           }
+        }
+        // Clean up attractor pins
+        if (layerState.attractorPinData) {
+          for (const data of layerState.attractorPinData.values()) {
+            data.sprite.geometry?.dispose()
+            ;(data.sprite.material as THREE.MeshBasicMaterial).dispose()
+            data.line.geometry.dispose()
+            ;(data.line.material as THREE.Material).dispose()
+          }
+          layerState.attractorPinData.clear()
         }
         layerState = null
       }
@@ -361,12 +433,40 @@ export function updateTerrainLayer(
     updateStreetNetworkHeights(layerState.streetNetworkLines, layerState.terrainMesh, layerState.graph)
   }
 
+  // Update attractor pin heights to match terrain
+  if (layerState.attractorPinsGroup && layerState.attractorPinData.size > 0) {
+    updateAttractorPinHeights(layerState.attractorPinData, layerState.terrainMesh)
+  }
+
   // Trigger map repaint
   if (layerState.map) {
     layerState.map.triggerRepaint()
   }
 
   return stats
+}
+
+/**
+ * Update attractor pins (add/remove/update based on current attractors)
+ * Call this when attractors change (add, remove, drag, attractivity edit)
+ */
+export function updateAttractorPins(attractors: GridAttractor[]): void {
+  if (!layerState || !layerState.terrainMesh || !layerState.attractorPinsGroup) {
+    return
+  }
+
+  // Sync pins with current attractor state
+  layerState.attractorPinData = syncAttractorPins(
+    layerState.attractorPinsGroup,
+    layerState.attractorPinData,
+    attractors,
+    layerState.terrainMesh
+  )
+
+  // Trigger map repaint
+  if (layerState.map) {
+    layerState.map.triggerRepaint()
+  }
 }
 
 /**
@@ -428,4 +528,80 @@ export function setStreetNetworkVisibility(visible: boolean): void {
   if (layerState.map) {
     layerState.map.triggerRepaint()
   }
+}
+
+/**
+ * Project a 3D point (lng/lat + altitude above terrain) to screen coordinates.
+ *
+ * This function accounts for terrain height, unlike MapLibre's map.project() which
+ * only does 2D projection. Use this for positioning HTML elements that should
+ * appear at terrain-relative positions.
+ *
+ * @param lngLat - Longitude/latitude coordinates
+ * @param altitude - Height above terrain in meters (default: 0)
+ * @returns Screen coordinates {x, y, visible} or null if layer not initialized
+ */
+export function projectToScreen(
+  lngLat: [number, number],
+  altitude: number = 0
+): { x: number; y: number; visible: boolean } | null {
+  if (!layerState || !layerState.terrainMesh || !layerState.camera || !layerState.map || !layerState.config) {
+    return null
+  }
+
+  const config = layerState.config
+  const canvas = layerState.map.getCanvas()
+
+  // 1. Sample terrain height at the given lng/lat
+  const terrainHeight = sampleTerrainHeight(lngLat, layerState.terrainMesh)
+  const totalHeight = terrainHeight + altitude
+
+  // 2. Convert lng/lat to local meters (same coord system as terrain mesh)
+  const localPos = lngLatToLocalMeters(lngLat, config)
+
+  // 3. Create 3D vector in terrain's local coordinate system
+  // Note: In our model space, Y is north-positive and Z is up.
+  // But the projection matrix includes a -90° X rotation, which maps:
+  //   model Y -> screen Z (depth)
+  //   model Z -> screen Y (up on screen after negation)
+  // So we need: point.y = localPos.y (north), point.z = height
+  const point = new THREE.Vector3(localPos.x, localPos.y, totalHeight)
+
+  // 4. Apply the camera's projection matrix (which includes model transform)
+  // This gives us Normalized Device Coordinates (NDC) in range [-1, 1]
+  const projected = point.clone().applyMatrix4(layerState.camera.projectionMatrix)
+
+  // 5. Check if point is visible (in front of camera and within frustum)
+  // In NDC, points outside [-1, 1] range for x, y, z are clipped
+  const visible = projected.x >= -1 && projected.x <= 1 &&
+                  projected.y >= -1 && projected.y <= 1 &&
+                  projected.z >= -1 && projected.z <= 1
+
+  // 6. Convert NDC to screen pixels
+  // NDC x: -1 (left) to +1 (right) -> 0 to canvas.width
+  // NDC y: -1 (bottom) to +1 (top) -> canvas.height to 0 (screen Y is inverted)
+  const x = (projected.x + 1) * 0.5 * canvas.width
+  const y = (1 - projected.y) * 0.5 * canvas.height
+
+  return { x, y, visible }
+}
+
+/**
+ * Get screen positions for all attractor pins.
+ *
+ * Returns a Map of attractor ID to screen position {x, y, visible}.
+ * Use this to position HTML marker elements that should appear above terrain pins.
+ *
+ * Note: These positions are computed during the Three.js render cycle when the
+ * camera projection matrix is valid, and cached for use by the HTML positioning code.
+ */
+export function getAttractorPinScreenPositions(): Map<string, { x: number; y: number; visible: boolean }> {
+  return cachedScreenPositions
+}
+
+/**
+ * Get the terrain layer state for external access (e.g., for render event subscription)
+ */
+export function getTerrainLayerMap(): maplibregl.Map | null {
+  return layerState?.map ?? null
 }

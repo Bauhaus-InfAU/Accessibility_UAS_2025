@@ -4,7 +4,7 @@ import { useAppContext } from '../../context/AppContext'
 import { useMapContext } from '../../context/MapContext'
 import { createMap, setStreetLayersVisibility } from '../../visualization/mapLibreSetup'
 import { updateBuildingColors, setBuildingLayersVisibility } from '../../visualization/buildingColorUpdater'
-import { updateTerrainLayer, setTerrainLayerVisibility, isTerrainLayerInitialized } from '../../visualization/threeJsLayer'
+import { updateTerrainLayer, setTerrainLayerVisibility, isTerrainLayerInitialized, updateAttractorPins } from '../../visualization/threeJsLayer'
 import { createCurveEvaluatorForMode } from '../../computation/curveEvaluator'
 import { calculateEuclideanDistance, formatDistance, getPathMidpoint, getLineMidpoint } from '../../computation/measurementCalc'
 import { ACCENT_COLOR, ACCENT_COLOR_2 } from '../../config/constants'
@@ -125,7 +125,7 @@ function updatePinAttractivity(el: HTMLElement, attractivity: number): void {
     attValue.textContent = attractivity.toString()
   }
 
-  // Update pin size
+  // Update pin size (only if it has an SVG - not for box-only markers)
   const svg = el.querySelector('svg')
   if (svg) {
     const scale = getPinScale(attractivity)
@@ -133,8 +133,75 @@ function updatePinAttractivity(el: HTMLElement, attractivity: number): void {
     const height = Math.round(32 * scale)
     svg.setAttribute('width', width.toString())
     svg.setAttribute('height', height.toString())
-    el.setAttribute('data-scale', scale.toString())
+    // Update data-scale on the pin SVG element
+    const pinSvg = el.querySelector('.terrain-pin-svg')
+    if (pinSvg) {
+      pinSvg.setAttribute('data-scale', scale.toString())
+      // Update margin-left for centering based on new width
+      ;(pinSvg as HTMLElement).style.marginLeft = `${-width / 2}px`
+    }
   }
+}
+
+// Create simple attractivity box element for Grid mode (MapLibre marker at ground level)
+// The 3D pins are rendered by Three.js in the terrain layer
+function createGridAttractorElement(
+  attractivity: number,
+  onAttractivityChange: (newValue: number) => void
+): HTMLDivElement {
+  const el = document.createElement('div')
+  el.className = 'grid-attractor-marker'
+  el.innerHTML = `
+    <div class="attractivity-box">
+      <span class="att-value">${attractivity}</span>
+    </div>
+  `
+
+  const attBox = el.querySelector('.attractivity-box') as HTMLDivElement
+  const attValue = attBox.querySelector('.att-value') as HTMLSpanElement
+
+  // Handle click on attractivity box to edit
+  attBox.addEventListener('click', (e) => {
+    e.stopPropagation()
+
+    // Already editing, don't create another input
+    if (attBox.querySelector('input')) return
+
+    const currentValue = parseFloat(attValue.textContent || '1')
+    attValue.style.display = 'none'
+
+    const input = document.createElement('input')
+    input.type = 'number'
+    input.className = 'att-input'
+    input.value = currentValue.toString()
+    input.min = '0'
+    input.step = '0.1'
+    attBox.appendChild(input)
+    input.focus()
+    input.select()
+
+    const finishEditing = () => {
+      const newValue = parseFloat(input.value)
+      if (!isNaN(newValue) && newValue >= 0) {
+        attValue.textContent = newValue.toString()
+        onAttractivityChange(newValue)
+      }
+      input.remove()
+      attValue.style.display = ''
+    }
+
+    input.addEventListener('blur', finishEditing)
+    input.addEventListener('keydown', (ke) => {
+      if (ke.key === 'Enter') {
+        finishEditing()
+      } else if (ke.key === 'Escape') {
+        input.remove()
+        attValue.style.display = ''
+      }
+    })
+  })
+
+  return el
 }
 
 // Create measurement marker element (purple circle with A/B label)
@@ -558,16 +625,20 @@ export function MapView() {
   }, [customPins, isCustomMode, isGridMode])
 
   // Sync attractor markers with gridAttractors (only show when in Grid mode)
+  // MapLibre markers show the attractivity box at ground level
+  // Three.js renders the 3D pins at terrain height with connecting lines
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapLoaded) return
 
-    // If not in Grid mode, remove all attractor markers
+    // If not in Grid mode, remove all attractor markers and clear 3D pins
     if (!isGridMode) {
       for (const marker of attractorMarkersRef.current.values()) {
         marker.remove()
       }
       attractorMarkersRef.current.clear()
+      // Clear 3D pins when exiting Grid mode
+      updateAttractorPins([])
       return
     }
 
@@ -588,14 +659,16 @@ export function MapView() {
       let marker = attractorMarkersRef.current.get(amenity.id)
 
       if (!marker) {
-        // Create new marker with attractivity
-        const el = createPinElement(amenity.attractivity, (newValue) => {
+        // Create attractivity box element (pin is rendered in 3D by Three.js)
+        const el = createGridAttractorElement(amenity.attractivity, (newValue) => {
           updateGridAttractorAttractivityRef.current(amenity.id, newValue)
         })
+
+        // Create marker anchored at center (box at ground level)
         marker = new maplibregl.Marker({
           element: el,
           draggable: true,
-          anchor: 'bottom',
+          anchor: 'center',
         })
           .setLngLat(amenity.coord)
           .addTo(map)
@@ -620,6 +693,22 @@ export function MapView() {
         const el = marker.getElement()
         updatePinAttractivity(el, amenity.attractivity)
       }
+    }
+
+    // Update 3D attractor pins in the terrain layer
+    // Wait for terrain layer to be initialized
+    if (isTerrainLayerInitialized()) {
+      updateAttractorPins(gridAttractors)
+    } else {
+      // Poll for terrain layer initialization
+      const checkInterval = setInterval(() => {
+        if (isTerrainLayerInitialized()) {
+          clearInterval(checkInterval)
+          updateAttractorPins(gridAttractors)
+        }
+      }, 50)
+      // Clean up interval after 5 seconds max
+      setTimeout(() => clearInterval(checkInterval), 5000)
     }
   }, [mapLoaded, gridAttractors, isGridMode])
 

@@ -28,7 +28,7 @@ body {
   cursor: grabbing;
 }
 
-/* Attractivity box below pin */
+/* Attractivity box below pin (or standalone for Grid mode) */
 .attractivity-box {
   display: flex;
   align-items: center;
@@ -41,6 +41,41 @@ body {
   margin-top: 2px;
   cursor: pointer;
   min-width: 20px;
+}
+
+/* Grid attractor marker (attractivity box at ground level) */
+/* The 3D pin is rendered by Three.js in the terrain layer */
+.grid-attractor-marker {
+  cursor: grab;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: auto;
+}
+
+.grid-attractor-marker:hover .attractivity-box {
+  transform: scale(1.1);
+}
+
+.grid-attractor-marker:active {
+  cursor: grabbing;
+}
+
+/* Attractivity marker (box-only, legacy - kept for compatibility) */
+.attractivity-marker {
+  cursor: grab;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: auto;
+}
+
+.attractivity-marker:hover .attractivity-box {
+  transform: scale(1.1);
+}
+
+.attractivity-marker:active {
+  cursor: grabbing;
 }
 
 .attractivity-box:hover {
