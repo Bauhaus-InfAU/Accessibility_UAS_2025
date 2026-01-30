@@ -123,6 +123,20 @@ function addBuildingLayer(map: maplibregl.Map, buildings: Building[]) {
   })
 }
 
+/**
+ * Set the visibility of street layers
+ */
+export function setStreetLayersVisibility(map: maplibregl.Map, visible: boolean) {
+  const visibility = visible ? 'visible' : 'none'
+
+  if (map.getLayer('streets-shadow')) {
+    map.setLayoutProperty('streets-shadow', 'visibility', visibility)
+  }
+  if (map.getLayer('streets-line')) {
+    map.setLayoutProperty('streets-line', 'visibility', visibility)
+  }
+}
+
 function fitMapToBounds(map: maplibregl.Map, buildings: Building[]) {
   if (buildings.length === 0) return
 

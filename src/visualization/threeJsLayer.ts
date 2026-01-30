@@ -1,4 +1,6 @@
 import * as THREE from 'three'
+import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js'
+import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js'
 import maplibregl from 'maplibre-gl'
 import type { StreetGraph, GridAttractor } from '../config/types'
 import {
@@ -8,6 +10,8 @@ import {
   getGraphBounds,
   createTerrainWireframe,
   updateWireframePositions,
+  createStreetNetworkLines,
+  updateStreetNetworkHeights,
   type TerrainMeshConfig
 } from './terrainMesh'
 
@@ -26,6 +30,8 @@ interface ThreeJsTerrainLayerState {
   renderer: THREE.WebGLRenderer
   terrainMesh: THREE.Mesh | null
   wireframeGrid: THREE.LineSegments | null
+  streetNetworkLines: LineSegments2 | null
+  graph: StreetGraph | null
   config: TerrainMeshConfig | null
   map: maplibregl.Map | null
   lastCanvasWidth: number
@@ -98,6 +104,11 @@ export function createThreeJsTerrainLayer(
         wireframeGrid.frustumCulled = false
         scene.add(wireframeGrid)
 
+        // Create street network lines
+        if (DEBUG_TERRAIN_LAYER) console.log('[TerrainLayer] Creating street network lines...')
+        const streetNetworkLines = createStreetNetworkLines(terrainMesh, graph)
+        scene.add(streetNetworkLines)
+
         if (DEBUG_TERRAIN_LAYER) {
           console.log('[TerrainLayer] Model transform:', terrainMesh.userData.modelTransform)
           console.log('[TerrainLayer] Center Mercator:', centerMerc.x, centerMerc.y)
@@ -130,6 +141,8 @@ export function createThreeJsTerrainLayer(
           renderer,
           terrainMesh,
           wireframeGrid,
+          streetNetworkLines,
+          graph,
           config,
           map,
           lastCanvasWidth: 0,
@@ -262,6 +275,14 @@ export function createThreeJsTerrainLayer(
           }
         }
 
+        // Update street network LineMaterial resolution (required for Line2)
+        if (layerState.streetNetworkLines) {
+          const material = layerState.streetNetworkLines.material as LineMaterial
+          if (canvas) {
+            material.resolution.set(canvas.width, canvas.height)
+          }
+        }
+
         renderer.render(scene, camera)
 
         // Log MVP matrix once
@@ -289,6 +310,12 @@ export function createThreeJsTerrainLayer(
           layerState.wireframeGrid.geometry.dispose()
           if (layerState.wireframeGrid.material instanceof THREE.Material) {
             layerState.wireframeGrid.material.dispose()
+          }
+        }
+        if (layerState.streetNetworkLines) {
+          layerState.streetNetworkLines.geometry.dispose()
+          if (layerState.streetNetworkLines.material instanceof THREE.Material) {
+            layerState.streetNetworkLines.material.dispose()
           }
         }
         layerState = null
@@ -321,6 +348,11 @@ export function updateTerrainLayer(
   // Update wireframe positions to match terrain
   if (layerState.wireframeGrid) {
     updateWireframePositions(layerState.wireframeGrid, layerState.terrainMesh)
+  }
+
+  // Update street network heights to match terrain
+  if (layerState.streetNetworkLines && layerState.graph) {
+    updateStreetNetworkHeights(layerState.streetNetworkLines, layerState.terrainMesh, layerState.graph)
   }
 
   // Trigger map repaint
@@ -372,6 +404,19 @@ export function getTerrainLayerId(): string {
 export function setWireframeVisibility(visible: boolean): void {
   if (!layerState || !layerState.wireframeGrid) return
   layerState.wireframeGrid.visible = visible
+
+  // Trigger repaint to update visibility
+  if (layerState.map) {
+    layerState.map.triggerRepaint()
+  }
+}
+
+/**
+ * Set the visibility of the street network lines
+ */
+export function setStreetNetworkVisibility(visible: boolean): void {
+  if (!layerState || !layerState.streetNetworkLines) return
+  layerState.streetNetworkLines.visible = visible
 
   // Trigger repaint to update visibility
   if (layerState.map) {

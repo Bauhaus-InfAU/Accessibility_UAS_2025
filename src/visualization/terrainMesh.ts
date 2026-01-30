@@ -1,10 +1,18 @@
 import * as THREE from 'three'
+import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js'
+import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js'
+import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js'
 import maplibregl from 'maplibre-gl'
 import type { StreetGraph, GridAttractor } from '../config/types'
 import { DEGREES_TO_METERS, TERRAIN_SEGMENTS, TERRAIN_HEIGHT_SCALE } from '../config/constants'
 import { calculateTerrainScores } from '../computation/terrainAccessibilityCalc'
 
 export { TERRAIN_SEGMENTS }
+
+// Street network constants
+export const STREET_NETWORK_Z_OFFSET = 3  // meters above terrain
+export const STREET_NETWORK_COLOR = 0xffffff  // white
+export const STREET_NETWORK_LINE_WIDTH = 2  // pixels
 
 /**
  * Configuration for terrain mesh creation
@@ -445,4 +453,208 @@ export function updateWireframePositions(
   }
 
   wireframeGeometry.attributes.position.needsUpdate = true
+}
+
+/**
+ * Convert lng/lat to local meters (same coordinate system as terrain mesh)
+ */
+function lngLatToLocalMeters(
+  lngLat: [number, number],
+  config: TerrainMeshConfig
+): { x: number; y: number } {
+  // Convert to Mercator
+  const merc = maplibregl.MercatorCoordinate.fromLngLat(lngLat)
+
+  // Get center Mercator position
+  const centerX = (config.mercatorMinX + config.mercatorMaxX) / 2
+  const centerY = (config.mercatorMinY + config.mercatorMaxY) / 2
+
+  // Local position in Mercator units
+  const localMercX = merc.x - centerX
+  const localMercY = merc.y - centerY
+
+  // Convert to meters (same formula as createTerrainMesh)
+  return {
+    x: localMercX / config.meterScale,
+    y: -localMercY / config.meterScale  // Inverted for north-positive
+  }
+}
+
+/**
+ * Sample terrain height at lng/lat using bilinear interpolation.
+ *
+ * @param lngLat - Longitude/latitude coordinates
+ * @param terrainMesh - The terrain mesh with height data
+ * @returns Height in meters at the given location
+ */
+export function sampleTerrainHeight(
+  lngLat: [number, number],
+  terrainMesh: THREE.Mesh
+): number {
+  const config = terrainMesh.userData.terrainConfig as TerrainMeshConfig
+  const positions = (terrainMesh.geometry as THREE.BufferGeometry)
+    .attributes.position.array as Float32Array
+
+  // Normalize lng/lat to 0-1 within terrain bounds
+  const normX = (lngLat[0] - config.minLng) / (config.maxLng - config.minLng)
+  const normY = (lngLat[1] - config.minLat) / (config.maxLat - config.minLat)
+
+  // Clamp to terrain bounds
+  const clampedX = Math.max(0, Math.min(1, normX))
+  const clampedY = Math.max(0, Math.min(1, normY))
+
+  // Map to grid indices (0-64 for 65 vertices)
+  const gridX = clampedX * config.segmentsX
+  const gridY = clampedY * config.segmentsY
+
+  // Get surrounding vertex indices
+  const x0 = Math.floor(gridX)
+  const x1 = Math.min(x0 + 1, config.segmentsX)
+  const y0 = Math.floor(gridY)
+  const y1 = Math.min(y0 + 1, config.segmentsY)
+
+  // Fractional position for interpolation
+  const fx = gridX - x0
+  const fy = gridY - y0
+
+  // Get heights from 4 corners (Z is at index * 3 + 2)
+  const verticesPerRow = config.segmentsX + 1
+  const h00 = positions[(y0 * verticesPerRow + x0) * 3 + 2]
+  const h10 = positions[(y0 * verticesPerRow + x1) * 3 + 2]
+  const h01 = positions[(y1 * verticesPerRow + x0) * 3 + 2]
+  const h11 = positions[(y1 * verticesPerRow + x1) * 3 + 2]
+
+  // Bilinear interpolation
+  const h0 = h00 * (1 - fx) + h10 * fx
+  const h1 = h01 * (1 - fx) + h11 * fx
+  return h0 * (1 - fy) + h1 * fy
+}
+
+/**
+ * Create street network as LineSegments2 (thick lines) following terrain height.
+ * Uses LineSegments2 from three/examples/jsm/lines for proper thick line support
+ * that works across all WebGL implementations.
+ *
+ * @param terrainMesh - The terrain mesh to sample heights from
+ * @param graph - Street graph with nodes and edges
+ * @param color - Line color (default: white)
+ * @param opacity - Line opacity (default: 0.9)
+ * @param zOffset - Height offset above terrain in meters (default: 3)
+ * @param lineWidth - Line width in pixels (default: 2)
+ * @returns LineSegments2 object to add to the scene
+ */
+export function createStreetNetworkLines(
+  terrainMesh: THREE.Mesh,
+  graph: StreetGraph,
+  color: number = STREET_NETWORK_COLOR,
+  opacity: number = 0.9,
+  zOffset: number = STREET_NETWORK_Z_OFFSET,
+  lineWidth: number = STREET_NETWORK_LINE_WIDTH
+): LineSegments2 {
+  const config = terrainMesh.userData.terrainConfig as TerrainMeshConfig
+
+  // Extract unique edges (avoid duplicates from bidirectional adjacency)
+  const visitedEdges = new Set<string>()
+  const segments: Array<{ from: [number, number]; to: [number, number] }> = []
+
+  for (const [fromId, edges] of graph.adjacency) {
+    for (const edge of edges) {
+      const edgeKey = [fromId, edge.to].sort().join('-')
+      if (!visitedEdges.has(edgeKey)) {
+        visitedEdges.add(edgeKey)
+        const fromNode = graph.nodes.get(fromId)
+        const toNode = graph.nodes.get(edge.to)
+        if (fromNode && toNode) {
+          segments.push({ from: fromNode.coord, to: toNode.coord })
+        }
+      }
+    }
+  }
+
+  // Build positions array (Line2 uses flat array format)
+  const positions: number[] = []
+
+  for (let i = 0; i < segments.length; i++) {
+    const { from, to } = segments[i]
+
+    // Convert lng/lat to local meters (same as terrain mesh)
+    const fromPos = lngLatToLocalMeters(from, config)
+    const toPos = lngLatToLocalMeters(to, config)
+
+    // Sample terrain height + offset
+    const fromZ = sampleTerrainHeight(from, terrainMesh) + zOffset
+    const toZ = sampleTerrainHeight(to, terrainMesh) + zOffset
+
+    // Add positions for this segment (start and end points)
+    positions.push(fromPos.x, fromPos.y, fromZ)
+    positions.push(toPos.x, toPos.y, toZ)
+  }
+
+  // Create LineSegmentsGeometry (for disconnected line segments)
+  const geometry = new LineSegmentsGeometry()
+  geometry.setPositions(positions)
+
+  // LineMaterial supports proper thick lines via geometry-based rendering
+  const material = new LineMaterial({
+    color,
+    opacity,
+    transparent: true,
+    linewidth: lineWidth,  // Width in pixels
+    depthTest: false,      // Always render on top
+    depthWrite: false,
+    worldUnits: false      // Use screen-space pixels for line width
+  })
+
+  const lines = new LineSegments2(geometry, material)
+  lines.frustumCulled = false
+  lines.computeLineDistances()  // Required for LineMaterial
+
+  // Store segment data for updates
+  lines.userData.segments = segments
+  lines.userData.zOffset = zOffset
+  lines.userData.terrainConfig = config
+
+  return lines
+}
+
+/**
+ * Update street network heights after terrain changes.
+ *
+ * @param streetLines - The street network LineSegments2
+ * @param terrainMesh - The terrain mesh with updated heights
+ * @param graph - Street graph (not used directly, stored in streetLines.userData)
+ * @param zOffset - Height offset above terrain in meters
+ */
+export function updateStreetNetworkHeights(
+  streetLines: LineSegments2,
+  terrainMesh: THREE.Mesh,
+  _graph: StreetGraph,
+  zOffset: number = STREET_NETWORK_Z_OFFSET
+): void {
+  const segments = streetLines.userData.segments as Array<{ from: [number, number]; to: [number, number] }>
+  const config = streetLines.userData.terrainConfig as TerrainMeshConfig
+
+  // Build new positions array with updated heights
+  const positions: number[] = []
+
+  for (let i = 0; i < segments.length; i++) {
+    const { from, to } = segments[i]
+
+    // Convert lng/lat to local meters
+    const fromPos = lngLatToLocalMeters(from, config)
+    const toPos = lngLatToLocalMeters(to, config)
+
+    // Sample terrain height + offset
+    const fromZ = sampleTerrainHeight(from, terrainMesh) + zOffset
+    const toZ = sampleTerrainHeight(to, terrainMesh) + zOffset
+
+    // Add positions for this segment
+    positions.push(fromPos.x, fromPos.y, fromZ)
+    positions.push(toPos.x, toPos.y, toZ)
+  }
+
+  // Update LineSegmentsGeometry
+  const geometry = streetLines.geometry as LineSegmentsGeometry
+  geometry.setPositions(positions)
+  streetLines.computeLineDistances()  // Recompute for LineMaterial
 }

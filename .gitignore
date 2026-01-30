@@ -3,3 +3,4 @@ dist
 .vite
 UsersMartinBielikDevDistanceDecayBuilder_reference_repo
 media/
+.playwright-mcp/

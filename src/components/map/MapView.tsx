@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback, useState } from 'react'
 import maplibregl from 'maplibre-gl'
 import { useAppContext } from '../../context/AppContext'
 import { useMapContext } from '../../context/MapContext'
-import { createMap } from '../../visualization/mapLibreSetup'
+import { createMap, setStreetLayersVisibility } from '../../visualization/mapLibreSetup'
 import { updateBuildingColors, setBuildingLayersVisibility } from '../../visualization/buildingColorUpdater'
 import { updateTerrainLayer, setTerrainLayerVisibility, isTerrainLayerInitialized } from '../../visualization/threeJsLayer'
 import { createCurveEvaluatorForMode } from '../../computation/curveEvaluator'
@@ -299,10 +299,12 @@ export function MapView() {
       // Set initial layer visibility based on current mode
       if (isGridModeRef.current) {
         setBuildingLayersVisibility(map, false)
+        setStreetLayersVisibility(map, false)  // Hide MapLibre streets in Grid mode
         setTerrainLayerVisibility(true)
       } else {
         setTerrainLayerVisibility(false)
         setBuildingLayersVisibility(map, true)
+        setStreetLayersVisibility(map, true)
       }
 
       // Building hover handlers for score popup
@@ -480,10 +482,12 @@ export function MapView() {
 
     if (isGridMode) {
       setBuildingLayersVisibility(map, false)
+      setStreetLayersVisibility(map, false)  // Hide MapLibre streets in Grid mode
       setTerrainLayerVisibility(true)
     } else {
       setTerrainLayerVisibility(false)
       setBuildingLayersVisibility(map, true)
+      setStreetLayersVisibility(map, true)
     }
   }, [mapLoaded, isGridMode])
 
