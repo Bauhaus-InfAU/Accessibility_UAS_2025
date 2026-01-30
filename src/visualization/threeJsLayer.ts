@@ -6,6 +6,8 @@ import {
   updateTerrainFromAttractors,
   resetTerrainMesh,
   getGraphBounds,
+  createTerrainWireframe,
+  updateWireframePositions,
   type TerrainMeshConfig
 } from './terrainMesh'
 
@@ -23,6 +25,7 @@ interface ThreeJsTerrainLayerState {
   camera: THREE.Camera
   renderer: THREE.WebGLRenderer
   terrainMesh: THREE.Mesh | null
+  wireframeGrid: THREE.LineSegments | null
   config: TerrainMeshConfig | null
   map: maplibregl.Map | null
   lastCanvasWidth: number
@@ -88,6 +91,13 @@ export function createThreeJsTerrainLayer(
         terrainMesh.userData.centerMerc = centerMerc
 
         scene.add(terrainMesh)
+
+        // Create wireframe grid overlay
+        if (DEBUG_TERRAIN_LAYER) console.log('[TerrainLayer] Creating wireframe grid...')
+        const wireframeGrid = createTerrainWireframe(terrainMesh, 0x000000, 0.3)
+        wireframeGrid.frustumCulled = false
+        scene.add(wireframeGrid)
+
         if (DEBUG_TERRAIN_LAYER) {
           console.log('[TerrainLayer] Model transform:', terrainMesh.userData.modelTransform)
           console.log('[TerrainLayer] Center Mercator:', centerMerc.x, centerMerc.y)
@@ -119,6 +129,7 @@ export function createThreeJsTerrainLayer(
           camera,
           renderer,
           terrainMesh,
+          wireframeGrid,
           config,
           map,
           lastCanvasWidth: 0,
@@ -243,6 +254,14 @@ export function createThreeJsTerrainLayer(
           geometry.attributes.position.needsUpdate = true
         }
 
+        // Also update wireframe geometry attributes
+        if (layerState.wireframeGrid) {
+          const wireframeGeometry = layerState.wireframeGrid.geometry as THREE.BufferGeometry
+          if (wireframeGeometry.attributes.position) {
+            wireframeGeometry.attributes.position.needsUpdate = true
+          }
+        }
+
         renderer.render(scene, camera)
 
         // Log MVP matrix once
@@ -264,6 +283,12 @@ export function createThreeJsTerrainLayer(
           layerState.terrainMesh.geometry.dispose()
           if (layerState.terrainMesh.material instanceof THREE.Material) {
             layerState.terrainMesh.material.dispose()
+          }
+        }
+        if (layerState.wireframeGrid) {
+          layerState.wireframeGrid.geometry.dispose()
+          if (layerState.wireframeGrid.material instanceof THREE.Material) {
+            layerState.wireframeGrid.material.dispose()
           }
         }
         layerState = null
@@ -292,6 +317,11 @@ export function updateTerrainLayer(
     attractors,
     decayFn
   )
+
+  // Update wireframe positions to match terrain
+  if (layerState.wireframeGrid) {
+    updateWireframePositions(layerState.wireframeGrid, layerState.terrainMesh)
+  }
 
   // Trigger map repaint
   if (layerState.map) {
@@ -334,4 +364,17 @@ export function isTerrainLayerInitialized(): boolean {
  */
 export function getTerrainLayerId(): string {
   return 'terrain-3d-threejs'
+}
+
+/**
+ * Set the visibility of the wireframe grid overlay
+ */
+export function setWireframeVisibility(visible: boolean): void {
+  if (!layerState || !layerState.wireframeGrid) return
+  layerState.wireframeGrid.visible = visible
+
+  // Trigger repaint to update visibility
+  if (layerState.map) {
+    layerState.map.triggerRepaint()
+  }
 }

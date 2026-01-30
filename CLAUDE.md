@@ -21,6 +21,7 @@ Students define a custom distance decay function f(d) graphically, then see how 
 ## Tech Stack
 - TypeScript + React + Vite
 - MapLibre GL JS (3D building rendering + custom markers)
+- Three.js (terrain mesh visualization via MapLibre custom layer)
 - Tailwind CSS (styling)
 - SVG (interactive curve editor)
 - Web Worker (Dijkstra precomputation)
@@ -66,6 +67,7 @@ src/
 │   ├── distanceMatrix.ts       # Distance matrix computation (buildings + full network)
 │   ├── accessibilityCalc.ts    # Buildings mode accessibility calculation
 │   ├── gridAccessibilityCalc.ts # Grid mode accessibility calculation
+│   ├── terrainAccessibilityCalc.ts # Terrain mode Euclidean distance calculation
 │   └── curveEvaluator.ts       # Distance decay function evaluation
 ├── components/      # React UI (App, CurveEditor, panels, map)
 │   ├── CurveEditor/ # Tabbed curve editor with multiple modes
@@ -77,10 +79,12 @@ src/
 │   │   └── CoefficientInputs.tsx # Parameter inputs for math functions
 │   ├── panels/      # ParametersPanel, NavigationWidget, Legend, AppInfo, MeasurementWidget, dropdowns, AnalysisModeToggle
 │   └── map/         # MapView (includes custom pin/attractor marker management)
-├── visualization/   # MapLibre setup + color updates
+├── visualization/   # MapLibre setup + color updates + Three.js terrain
 │   ├── mapLibreSetup.ts         # Map initialization, layers (buildings, hexagons, streets)
 │   ├── buildingColorUpdater.ts  # Building color updates based on scores
-│   └── hexagonColorUpdater.ts   # Hexagon color updates and layer visibility
+│   ├── hexagonColorUpdater.ts   # Hexagon color updates and layer visibility
+│   ├── terrainMesh.ts           # Terrain mesh creation, updates, wireframe overlay
+│   └── threeJsLayer.ts          # MapLibre custom layer for Three.js terrain rendering
 ├── context/         # React Context (AppContext stores scores + avg/min/max + curve state + grid state, MapContext)
 └── lib/             # Utilities
 ```
@@ -319,9 +323,174 @@ Key responsive styles:
 - `public/data/weimar-streets.geojson` — 1,183 street segments
 - Coordinates in local degree-based system, distances via sqrt((Δlng*111000)²+(Δlat*111000)²)
 
+## Terrain Visualization (Three.js + MapLibre Integration)
+
+### Architecture Overview
+
+The terrain visualization uses Three.js rendered as a MapLibre custom layer. Both systems share the same WebGL context but render sequentially (not a unified 3D scene).
+
+### File Structure
+
+| File | Purpose |
+|------|---------|
+| `src/visualization/terrainMesh.ts` | Terrain mesh creation, updates, and wireframe overlay |
+| `src/visualization/threeJsLayer.ts` | MapLibre custom layer integration for Three.js |
+| `src/computation/terrainAccessibilityCalc.ts` | Euclidean distance-based accessibility calculation |
+| `src/config/constants.ts` | `TERRAIN_SEGMENTS` (64) and `TERRAIN_HEIGHT_SCALE` (200m) |
+
+### Key Constants
+
+| Constant | Value | Purpose |
+|----------|-------|---------|
+| `TERRAIN_SEGMENTS` | 64 | Grid resolution (65×65 = 4,225 vertices) |
+| `TERRAIN_HEIGHT_SCALE` | 200 | Meters per unit accessibility score |
+| Base height | 10m | Offset above ground level |
+
+### Terrain Mesh Creation (`terrainMesh.ts`)
+
+**`createTerrainMesh(config)`**:
+1. Creates `PlaneGeometry(width, height, 64, 64)` → 65×65 = 4,225 vertices
+2. Vertices stored in **meters**, centered at origin
+3. Stores lng/lat coordinates for each vertex in `mesh.userData.lngLatCoords`
+4. Initial height: 10m (base offset above ground)
+5. Initial color: grey (#cccccc) for unscored
+
+**`updateTerrainFromAttractors(mesh, attractors, decayFn)`**:
+1. Calls `calculateTerrainScores()` to compute accessibility for each vertex
+2. Updates vertex heights: `heightMeters = rawScore * TERRAIN_HEIGHT_SCALE + 10`
+3. Updates vertex colors using gradient: Purple (#4A3AB4) → Orange (#FD681D) → Red (#FD1D1D)
+4. Returns `{ min, max, avg }` statistics for Legend
+
+**`createTerrainWireframe(terrainMesh, color, opacity)`**:
+1. Creates `THREE.LineSegments` with 8,320 line segments (4,160 horizontal + 4,160 vertical)
+2. Default: black lines at 30% opacity
+3. `depthWrite: false` to render on top of terrain surface
+
+**`updateWireframePositions(wireframe, terrainMesh)`**:
+- Syncs wireframe vertex positions with terrain mesh after height updates
+
+### MapLibre Integration (`threeJsLayer.ts`)
+
+**Custom Layer Interface**:
+- `onAdd()`: Creates Three.js scene, camera, renderer sharing MapLibre's WebGL context
+- `render()`: Called each frame by MapLibre, applies model transform and renders
+- `onRemove()`: Disposes of geometry and materials
+
+**Model Transform** (critical for positioning):
+```typescript
+// Uses MapLibre 5.x getMatrixForModel API
+const modelMatrix = map.transform.getMatrixForModel([centerLng, centerLat], 0)
+l = new THREE.Matrix4().fromArray(modelMatrix)
+
+// Rotate to orient horizontally (PlaneGeometry is in XY, we need XZ)
+const rotationX = new THREE.Matrix4().makeRotationX(-Math.PI / 2)
+l.multiply(rotationX)
+```
+
+**State Management**:
+```typescript
+interface ThreeJsTerrainLayerState {
+  scene: THREE.Scene
+  camera: THREE.Camera
+  renderer: THREE.WebGLRenderer
+  terrainMesh: THREE.Mesh | null
+  wireframeGrid: THREE.LineSegments | null
+  config: TerrainMeshConfig | null
+  map: maplibregl.Map | null
+  visible: boolean
+}
+```
+
+**Exported Functions**:
+- `createThreeJsTerrainLayer(graph)` - Creates the MapLibre custom layer
+- `updateTerrainLayer(attractors, decayFn)` - Updates terrain and wireframe positions
+- `resetTerrainLayer()` - Resets to flat grey
+- `setTerrainLayerVisibility(visible)` - Shows/hides terrain layer
+- `setWireframeVisibility(visible)` - Shows/hides wireframe overlay (future UI toggle)
+- `isTerrainLayerInitialized()` - Check if ready
+- `getTerrainLayerId()` - Returns layer ID for MapLibre
+
+### Terrain Accessibility Calculation (`terrainAccessibilityCalc.ts`)
+
+Uses **Euclidean distance** (not network distance) for real-time performance (~1ms for 4,225 vertices).
+
+```typescript
+function calculateTerrainScores(vertices, attractors, decayFn) {
+  // For each vertex: score = Σ(attractivity × decayFn(euclideanDistance))
+  // Returns { rawScores, normalizedScores, min, max, avg }
+}
+```
+
+### Limitations
+
+| Limitation | Description |
+|------------|-------------|
+| **Euclidean distance only** | Terrain uses straight-line distance, not street network distance, for performance |
+| **No lighting effects** | Uses `MeshBasicMaterial` (vertex colors only), ignores scene lighting |
+| **Fixed resolution** | 64×64 grid cannot be changed at runtime |
+| **Shared WebGL context** | Must reset WebGL state each frame; attributes re-uploaded every render |
+| **No terrain interaction** | Cannot click/hover on terrain mesh (MapLibre events only hit 2D layers) |
+| **Sequential rendering** | MapLibre renders first, then Three.js overlays (no depth integration) |
+| **Memory overhead** | Wireframe duplicates position data (separate geometry buffer) |
+
+### Visual Result
+
+```
+BEFORE (flat):                   AFTER (with wireframe):
+┌─────────────────────┐          ┌─────────────────────┐
+│                     │          │ ┼──┼──┼──┼──┼──┼──┼ │
+│   Smooth colored    │          │ │  │  │  │  │  │  │ │
+│   surface - looks   │    →     │ ┼──┼──┼──┼──┼──┼──┼ │
+│   flat despite      │          │ │  │  │  │  │  │  │ │
+│   height variation  │          │ ┼──┼──┼──┼──┼──┼──┼ │
+│                     │          │  Grid lines visible │
+└─────────────────────┘          └─────────────────────┘
+```
+
+## Testing with Playwright MCP
+
+When implementing new features or fixing bugs, use the Playwright MCP tools for browser-based testing:
+
+### Setup
+1. Start dev server: `npm run dev`
+2. Use `mcp__playwright__browser_navigate` to open the app URL
+3. Use `mcp__playwright__browser_snapshot` to capture accessibility tree (preferred over screenshots)
+
+### Common Testing Patterns
+
+**Navigate and verify page loaded:**
+```
+mcp__playwright__browser_navigate({ url: "http://localhost:5173/Accessibility_UAS_2025/" })
+mcp__playwright__browser_snapshot()
+```
+
+**Click UI elements:**
+```
+mcp__playwright__browser_click({ ref: "button_ref", element: "Grid mode button" })
+```
+
+**Verify visual changes:**
+```
+mcp__playwright__browser_take_screenshot({ type: "png", filename: "terrain-test.png" })
+```
+
+**Wait for async operations:**
+```
+mcp__playwright__browser_wait_for({ text: "Loading...", textGone: true })
+```
+
+### Test Scenarios for Terrain
+
+1. **Terrain visibility**: Switch to Grid mode → verify terrain layer appears
+2. **Wireframe overlay**: Verify grid lines visible on terrain surface
+3. **Height updates**: Add/move attractors → verify terrain heights change
+4. **Perspective view**: Switch to 3D perspective → verify terrain depth perception
+5. **Color gradient**: Verify purple→orange→red gradient on terrain
+
 ## Important Notes for AI Operations
 - This is NOT an agent simulation — no movement, no animation, no trips
 - Never kill all node.exe processes (kills the AI agent process)
 - Never mark failed tests as passing
 - Always read files before proposing changes
 - When referencing mathematical variables in UI text (i, j, d_ij, f(d_ij), Att_j, etc.), wrap them in `<span className="math-var">` to match the equation styling (Times New Roman, italic, purple)
+- **Use Playwright MCP for visual testing** - browser automation tools are available via `mcp__playwright__*` functions

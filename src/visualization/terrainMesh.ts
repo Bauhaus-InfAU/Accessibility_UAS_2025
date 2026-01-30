@@ -282,3 +282,167 @@ export function resetTerrainMesh(mesh: THREE.Mesh): void {
   geometry.attributes.color.needsUpdate = true
   geometry.computeVertexNormals()
 }
+
+/**
+ * Create a wireframe grid overlay for the terrain mesh.
+ * Uses LineSegments to draw grid lines that follow terrain height.
+ *
+ * The grid consists of horizontal and vertical lines connecting vertices,
+ * creating a visible mesh structure on top of the colored terrain surface.
+ *
+ * @param terrainMesh - The terrain mesh to create wireframe for
+ * @param color - Line color (default: black)
+ * @param opacity - Line opacity (default: 0.3)
+ * @returns LineSegments object to add to the scene
+ */
+export function createTerrainWireframe(
+  terrainMesh: THREE.Mesh,
+  color: number = 0x000000,
+  opacity: number = 0.3
+): THREE.LineSegments {
+  const geometry = terrainMesh.geometry as THREE.BufferGeometry
+  const positions = geometry.attributes.position.array as Float32Array
+  const config = terrainMesh.userData.terrainConfig as TerrainMeshConfig
+
+  const segmentsX = config.segmentsX  // 64
+  const segmentsY = config.segmentsY  // 64
+  const verticesPerRow = segmentsX + 1  // 65
+
+  // Calculate number of line segments
+  // Horizontal lines: (segmentsY + 1) rows × segmentsX segments per row = 65 × 64 = 4160
+  // Vertical lines: segmentsY rows × (segmentsX + 1) segments per row = 64 × 65 = 4160
+  // Total: 8320 line segments = 16640 vertices
+  const numHorizontalSegments = (segmentsY + 1) * segmentsX
+  const numVerticalSegments = segmentsY * (segmentsX + 1)
+  const totalSegments = numHorizontalSegments + numVerticalSegments
+  const linePositions = new Float32Array(totalSegments * 2 * 3)
+
+  let lineIndex = 0
+
+  // Build horizontal lines (along X direction)
+  for (let y = 0; y <= segmentsY; y++) {
+    for (let x = 0; x < segmentsX; x++) {
+      // Line from vertex (x, y) to vertex (x+1, y)
+      const i1 = y * verticesPerRow + x
+      const i2 = y * verticesPerRow + (x + 1)
+
+      // Start vertex
+      linePositions[lineIndex * 6 + 0] = positions[i1 * 3 + 0]
+      linePositions[lineIndex * 6 + 1] = positions[i1 * 3 + 1]
+      linePositions[lineIndex * 6 + 2] = positions[i1 * 3 + 2]
+
+      // End vertex
+      linePositions[lineIndex * 6 + 3] = positions[i2 * 3 + 0]
+      linePositions[lineIndex * 6 + 4] = positions[i2 * 3 + 1]
+      linePositions[lineIndex * 6 + 5] = positions[i2 * 3 + 2]
+
+      lineIndex++
+    }
+  }
+
+  // Build vertical lines (along Y direction)
+  for (let y = 0; y < segmentsY; y++) {
+    for (let x = 0; x <= segmentsX; x++) {
+      // Line from vertex (x, y) to vertex (x, y+1)
+      const i1 = y * verticesPerRow + x
+      const i2 = (y + 1) * verticesPerRow + x
+
+      // Start vertex
+      linePositions[lineIndex * 6 + 0] = positions[i1 * 3 + 0]
+      linePositions[lineIndex * 6 + 1] = positions[i1 * 3 + 1]
+      linePositions[lineIndex * 6 + 2] = positions[i1 * 3 + 2]
+
+      // End vertex
+      linePositions[lineIndex * 6 + 3] = positions[i2 * 3 + 0]
+      linePositions[lineIndex * 6 + 4] = positions[i2 * 3 + 1]
+      linePositions[lineIndex * 6 + 5] = positions[i2 * 3 + 2]
+
+      lineIndex++
+    }
+  }
+
+  const lineGeometry = new THREE.BufferGeometry()
+  lineGeometry.setAttribute('position', new THREE.BufferAttribute(linePositions, 3))
+
+  const lineMaterial = new THREE.LineBasicMaterial({
+    color,
+    opacity,
+    transparent: true,
+    depthTest: true,
+    depthWrite: false  // Render on top of terrain surface
+  })
+
+  const wireframe = new THREE.LineSegments(lineGeometry, lineMaterial)
+
+  // Store reference to terrain config for updates
+  wireframe.userData.terrainConfig = config
+
+  return wireframe
+}
+
+/**
+ * Update wireframe positions to match the terrain mesh.
+ * Call this after updating terrain vertex positions.
+ *
+ * @param wireframe - The wireframe LineSegments object
+ * @param terrainMesh - The terrain mesh with updated positions
+ */
+export function updateWireframePositions(
+  wireframe: THREE.LineSegments,
+  terrainMesh: THREE.Mesh
+): void {
+  const terrainGeometry = terrainMesh.geometry as THREE.BufferGeometry
+  const terrainPositions = terrainGeometry.attributes.position.array as Float32Array
+
+  const wireframeGeometry = wireframe.geometry as THREE.BufferGeometry
+  const linePositions = wireframeGeometry.attributes.position.array as Float32Array
+
+  const config = terrainMesh.userData.terrainConfig as TerrainMeshConfig
+  const segmentsX = config.segmentsX
+  const segmentsY = config.segmentsY
+  const verticesPerRow = segmentsX + 1
+
+  let lineIndex = 0
+
+  // Update horizontal lines
+  for (let y = 0; y <= segmentsY; y++) {
+    for (let x = 0; x < segmentsX; x++) {
+      const i1 = y * verticesPerRow + x
+      const i2 = y * verticesPerRow + (x + 1)
+
+      // Start vertex
+      linePositions[lineIndex * 6 + 0] = terrainPositions[i1 * 3 + 0]
+      linePositions[lineIndex * 6 + 1] = terrainPositions[i1 * 3 + 1]
+      linePositions[lineIndex * 6 + 2] = terrainPositions[i1 * 3 + 2]
+
+      // End vertex
+      linePositions[lineIndex * 6 + 3] = terrainPositions[i2 * 3 + 0]
+      linePositions[lineIndex * 6 + 4] = terrainPositions[i2 * 3 + 1]
+      linePositions[lineIndex * 6 + 5] = terrainPositions[i2 * 3 + 2]
+
+      lineIndex++
+    }
+  }
+
+  // Update vertical lines
+  for (let y = 0; y < segmentsY; y++) {
+    for (let x = 0; x <= segmentsX; x++) {
+      const i1 = y * verticesPerRow + x
+      const i2 = (y + 1) * verticesPerRow + x
+
+      // Start vertex
+      linePositions[lineIndex * 6 + 0] = terrainPositions[i1 * 3 + 0]
+      linePositions[lineIndex * 6 + 1] = terrainPositions[i1 * 3 + 1]
+      linePositions[lineIndex * 6 + 2] = terrainPositions[i1 * 3 + 2]
+
+      // End vertex
+      linePositions[lineIndex * 6 + 3] = terrainPositions[i2 * 3 + 0]
+      linePositions[lineIndex * 6 + 4] = terrainPositions[i2 * 3 + 1]
+      linePositions[lineIndex * 6 + 5] = terrainPositions[i2 * 3 + 2]
+
+      lineIndex++
+    }
+  }
+
+  wireframeGeometry.attributes.position.needsUpdate = true
+}

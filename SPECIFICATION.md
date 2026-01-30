@@ -95,6 +95,21 @@ Calculates accessibility on a hexagonal grid based on user-placed attractors. Us
 - Colored by accessibility score: Purple → Orange → Red gradient
 - Thin white outline for cell boundaries
 
+### Terrain Mesh (Grid Mode - Alternative Visualization)
+A continuous 3D terrain surface rendered using Three.js as a MapLibre custom layer:
+- **Mesh resolution**: 65×65 vertices (4,225 points) on a 64×64 segment grid
+- **Height mapping**: Vertex height = accessibility score × 200 meters + 10m base
+- **Color gradient**: Same as buildings/hexagons (Purple → Orange → Red)
+- **Wireframe overlay**: Black grid lines at 30% opacity to visualize mesh structure
+- **Distance calculation**: Uses Euclidean distance (not network) for real-time performance (~1ms)
+- **Bounds**: Covers street network area with 100m padding
+
+**Technical integration**:
+- Three.js and MapLibre share the same WebGL context
+- Model matrix from MapLibre's `getMatrixForModel()` API positions the mesh
+- Plane geometry rotated -90° around X axis to be horizontal
+- Attributes re-uploaded each frame (shared WebGL context requirement)
+
 ### Measurement Tool
 - **Point markers**: Purple circles (#5631ad) with yellow border (#fcdb02), labeled "A" and "B"
 - **Network path**: Solid 5px line in accent color (#5631ad), follows street network
@@ -282,9 +297,33 @@ Using Weimar city center data from reference project:
 - Each pin has attractivity = 1 (count mode only)
 - Accessibility: `Acc_i = Σ(pins) f(d_i_pin)` where d is network distance
 
+### Terrain Mesh Calculation (Grid Mode)
+Uses Euclidean distance for real-time performance (~1ms for 4,225 vertices):
+- For each mesh vertex at position (lng, lat):
+  - Calculate: `score = Σ(attractors) attractivity × f(euclideanDistance)`
+- Min-max normalize scores to [0, 1]
+- Update vertex heights: `z = rawScore × TERRAIN_HEIGHT_SCALE + 10m`
+- Update vertex colors using accessibility gradient
+- Sync wireframe positions with mesh
+
+**Key difference from hexagon grid**: Terrain uses straight-line (Euclidean) distance instead of network distance. This enables real-time updates but may not accurately represent travel distances along streets.
+
 ## Technical Constraints
 
 - No backend (GitHub Pages static hosting)
 - All computation in-browser
 - Web Worker for Dijkstra to avoid UI blocking
 - Real-time curve editing feedback (~16ms frame budget for recalculation)
+
+## Terrain Visualization Limitations
+
+| Limitation | Description | Workaround |
+|------------|-------------|------------|
+| **Euclidean distance only** | Terrain uses straight-line distance, not street network | Hexagon grid uses network distance for accuracy |
+| **No lighting effects** | Uses `MeshBasicMaterial` (ignores scene lighting) | Wireframe overlay provides depth perception |
+| **Fixed resolution** | 64×64 grid cannot be changed at runtime | Sufficient for current area size |
+| **Shared WebGL context** | Must reset WebGL state each frame | Handled automatically in render loop |
+| **No terrain interaction** | Cannot click/hover on terrain (MapLibre 2D events only) | Use hexagon grid for interaction |
+| **Sequential rendering** | MapLibre renders first, then Three.js overlays | No depth integration between layers |
+| **Memory overhead** | Wireframe duplicates position data | Acceptable for 8,320 line segments |
+| **No terrain hover popup** | Terrain mesh doesn't trigger MapLibre events | Hexagon grid shows scores on hover |
