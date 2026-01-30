@@ -1,6 +1,4 @@
 import * as THREE from 'three'
-import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js'
-import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js'
 import maplibregl from 'maplibre-gl'
 import type { StreetGraph, GridAttractor } from '../config/types'
 import {
@@ -14,6 +12,7 @@ import {
   updateStreetNetworkHeights,
   type TerrainMeshConfig
 } from './terrainMesh'
+import { SDFLineMaterial } from './SDFLineMaterial'
 
 /**
  * Three.js terrain layer for MapLibre
@@ -29,8 +28,8 @@ interface ThreeJsTerrainLayerState {
   camera: THREE.Camera
   renderer: THREE.WebGLRenderer
   terrainMesh: THREE.Mesh | null
-  wireframeGrid: THREE.LineSegments | null
-  streetNetworkLines: LineSegments2 | null
+  wireframeGrid: THREE.Mesh | null  // Mesh with SDF line material
+  streetNetworkLines: THREE.Mesh | null  // Mesh with SDF line material
   graph: StreetGraph | null
   config: TerrainMeshConfig | null
   map: maplibregl.Map | null
@@ -267,18 +266,25 @@ export function createThreeJsTerrainLayer(
           geometry.attributes.position.needsUpdate = true
         }
 
-        // Also update wireframe geometry attributes
+        // Also update wireframe geometry attributes (SDF instanced geometry)
         if (layerState.wireframeGrid) {
-          const wireframeGeometry = layerState.wireframeGrid.geometry as THREE.BufferGeometry
-          if (wireframeGeometry.attributes.position) {
-            wireframeGeometry.attributes.position.needsUpdate = true
+          const wireframeGeometry = layerState.wireframeGrid.geometry as THREE.InstancedBufferGeometry
+          if (wireframeGeometry.attributes.instanceStart) {
+            wireframeGeometry.attributes.instanceStart.needsUpdate = true
+          }
+          if (wireframeGeometry.attributes.instanceEnd) {
+            wireframeGeometry.attributes.instanceEnd.needsUpdate = true
           }
         }
 
-        // Update street network LineMaterial resolution (required for Line2)
-        if (layerState.streetNetworkLines) {
-          const material = layerState.streetNetworkLines.material as LineMaterial
-          if (canvas) {
+        // Update SDF material resolution for all line meshes (required for screen-space calculations)
+        if (canvas) {
+          if (layerState.streetNetworkLines) {
+            const material = layerState.streetNetworkLines.material as SDFLineMaterial
+            material.resolution.set(canvas.width, canvas.height)
+          }
+          if (layerState.wireframeGrid) {
+            const material = layerState.wireframeGrid.material as SDFLineMaterial
             material.resolution.set(canvas.width, canvas.height)
           }
         }

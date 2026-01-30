@@ -101,14 +101,79 @@ A continuous 3D terrain surface rendered using Three.js as a MapLibre custom lay
 - **Height mapping**: Vertex height = accessibility score × 200 meters + 10m base
 - **Color gradient**: Same as buildings/hexagons (Purple → Orange → Red)
 - **Wireframe overlay**: Black grid lines at 30% opacity to visualize mesh structure
+- **Street network overlay**: White lines following terrain height to show connectivity
 - **Distance calculation**: Uses Euclidean distance (not network) for real-time performance (~1ms)
 - **Bounds**: Covers street network area with 100m padding
 
+**Why Three.js instead of MapLibre alone?**
+
+MapLibre GL JS is optimized for 2D map rendering with limited 3D capabilities:
+- MapLibre's native 3D is limited to building extrusions (fixed height, no terrain deformation)
+- No support for custom vertex-displaced meshes (accessibility terrain surface)
+- Line layers use 2D screen-space rendering, not true 3D lines following terrain height
+
+Three.js provides the flexibility needed for:
+- Custom geometry with per-vertex height displacement based on accessibility scores
+- True 3D lines that follow the terrain surface (wireframe grid, street network)
+- Custom shader materials for advanced rendering effects
+
 **Technical integration**:
-- Three.js and MapLibre share the same WebGL context
+- Three.js and MapLibre share the same WebGL context via MapLibre's Custom Layer API
 - Model matrix from MapLibre's `getMatrixForModel()` API positions the mesh
 - Plane geometry rotated -90° around X axis to be horizontal
 - Attributes re-uploaded each frame (shared WebGL context requirement)
+
+### SDF Line Rendering (Smooth Anti-Aliased Lines)
+
+**Problem**: Standard WebGL line primitives have no anti-aliasing support, resulting in jagged/pixelated edges that look unprofessional, especially at certain angles and zoom levels. This affects both the terrain wireframe grid and the street network overlay.
+
+```
+Standard WebGL Lines          SDF Shader Lines
+(jagged)                      (smooth)
+
+████████████████              ░▒▓████████████▓▒░
+Hard pixel edges              Soft alpha gradient
+```
+
+**Why MapLibre's line rendering couldn't be used**:
+- MapLibre renders lines in 2D screen space, not in 3D world space
+- Cannot make MapLibre lines follow terrain height (they would float flat above the mesh)
+- MapLibre's smooth lines are implemented via SDF shaders internally, but not exposed for custom 3D use
+
+**Solution**: Custom SDF (Signed Distance Field) shaders for Three.js that:
+1. Expand line segments into screen-aligned quads (geometry-based thick lines)
+2. Use fragment shader with `smoothstep()` and `fwidth()` for adaptive anti-aliasing
+3. Work correctly with MapLibre's custom layer projection matrix
+
+**How SDF line rendering works**:
+
+1. **Vertex Shader** - Expands each line segment into a screen-aligned quad:
+   - Takes line endpoints as instanced attributes (`instanceStart`, `instanceEnd`)
+   - Transforms to clip space, calculates screen-space direction
+   - Expands perpendicular to line direction by half the line width
+   - Outputs UV coordinates for fragment shader (distance from line center)
+
+2. **Fragment Shader** - Creates smooth edges using signed distance:
+   ```glsl
+   float dist = abs(vUV.y);              // 0 at center, 1 at edge
+   float fw = fwidth(dist);              // Screen-space derivative (adaptive)
+   float feather = max(fw * 1.5, 0.01);  // Anti-aliasing width
+   float alpha = 1.0 - smoothstep(1.0 - feather, 1.0 + feather, dist);
+   ```
+   - `fwidth()` returns how fast the distance value changes across pixels
+   - This makes anti-aliasing adaptive: more feathering where needed, less where not
+   - Result: consistent smooth edges at any zoom level or viewing angle
+
+**Applied to**:
+| Component | Color | Width | Opacity | Purpose |
+|-----------|-------|-------|---------|---------|
+| Wireframe grid | Black | 1px | 30% | Shows mesh structure and terrain deformation |
+| Street network | White | 3px | 90% | Shows connectivity following terrain height |
+
+**Key implementation details**:
+- Uses instanced rendering (one draw call for all line segments)
+- Resolution uniform must be updated each frame for correct screen-space calculations
+- Compatible with MapLibre's custom layer projection (uses `projectionMatrix` directly as MVP)
 
 ### Measurement Tool
 - **Point markers**: Purple circles (#5631ad) with yellow border (#fcdb02), labeled "A" and "B"
@@ -325,5 +390,5 @@ Uses Euclidean distance for real-time performance (~1ms for 4,225 vertices):
 | **Shared WebGL context** | Must reset WebGL state each frame | Handled automatically in render loop |
 | **No terrain interaction** | Cannot click/hover on terrain (MapLibre 2D events only) | Use hexagon grid for interaction |
 | **Sequential rendering** | MapLibre renders first, then Three.js overlays | No depth integration between layers |
-| **Memory overhead** | Wireframe duplicates position data | Acceptable for 8,320 line segments |
+| **SDF resolution dependency** | SDF line materials require canvas resolution each frame | Updated automatically in render loop |
 | **No terrain hover popup** | Terrain mesh doesn't trigger MapLibre events | Hexagon grid shows scores on hover |

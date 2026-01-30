@@ -83,8 +83,11 @@ src/
 │   ├── mapLibreSetup.ts         # Map initialization, layers (buildings, hexagons, streets)
 │   ├── buildingColorUpdater.ts  # Building color updates based on scores
 │   ├── hexagonColorUpdater.ts   # Hexagon color updates and layer visibility
-│   ├── terrainMesh.ts           # Terrain mesh creation, updates, wireframe overlay
-│   └── threeJsLayer.ts          # MapLibre custom layer for Three.js terrain rendering
+│   ├── terrainMesh.ts           # Terrain mesh creation, updates, wireframe, street network
+│   ├── threeJsLayer.ts          # MapLibre custom layer for Three.js terrain rendering
+│   ├── SDFLineMaterial.ts       # Custom material for smooth anti-aliased lines
+│   └── shaders/
+│       └── sdfLine.ts           # GLSL vertex/fragment shaders for SDF lines
 ├── context/         # React Context (AppContext stores scores + avg/min/max + curve state + grid state, MapContext)
 └── lib/             # Utilities
 ```
@@ -333,8 +336,10 @@ The terrain visualization uses Three.js rendered as a MapLibre custom layer. Bot
 
 | File | Purpose |
 |------|---------|
-| `src/visualization/terrainMesh.ts` | Terrain mesh creation, updates, and wireframe overlay |
+| `src/visualization/terrainMesh.ts` | Terrain mesh creation, updates, wireframe, and street network |
 | `src/visualization/threeJsLayer.ts` | MapLibre custom layer integration for Three.js |
+| `src/visualization/shaders/sdfLine.ts` | GLSL shaders for SDF anti-aliased line rendering |
+| `src/visualization/SDFLineMaterial.ts` | Custom Three.js material for smooth lines |
 | `src/computation/terrainAccessibilityCalc.ts` | Euclidean distance-based accessibility calculation |
 | `src/config/constants.ts` | `TERRAIN_SEGMENTS` (64) and `TERRAIN_HEIGHT_SCALE` (200m) |
 
@@ -361,13 +366,21 @@ The terrain visualization uses Three.js rendered as a MapLibre custom layer. Bot
 3. Updates vertex colors using gradient: Purple (#4A3AB4) → Orange (#FD681D) → Red (#FD1D1D)
 4. Returns `{ min, max, avg }` statistics for Legend
 
-**`createTerrainWireframe(terrainMesh, color, opacity)`**:
-1. Creates `THREE.LineSegments` with 8,320 line segments (4,160 horizontal + 4,160 vertical)
-2. Default: black lines at 30% opacity
-3. `depthWrite: false` to render on top of terrain surface
+**`createTerrainWireframe(terrainMesh, color, opacity, lineWidth)`**:
+1. Creates `THREE.Mesh` with SDF line material (8,320 line segments)
+2. Default: black lines at 30% opacity, 1px width
+3. Uses instanced geometry for efficient rendering
 
 **`updateWireframePositions(wireframe, terrainMesh)`**:
 - Syncs wireframe vertex positions with terrain mesh after height updates
+
+**`createStreetNetworkLines(terrainMesh, graph, color, opacity, zOffset, lineWidth)`**:
+1. Creates `THREE.Mesh` with SDF line material from street graph edges
+2. Default: white lines at 90% opacity, 3px width
+3. Lines follow terrain height with configurable Z offset (default: 3m)
+
+**`updateStreetNetworkHeights(streetLines, terrainMesh, graph, zOffset)`**:
+- Updates street line heights to follow terrain after height changes
 
 ### MapLibre Integration (`threeJsLayer.ts`)
 
@@ -394,7 +407,9 @@ interface ThreeJsTerrainLayerState {
   camera: THREE.Camera
   renderer: THREE.WebGLRenderer
   terrainMesh: THREE.Mesh | null
-  wireframeGrid: THREE.LineSegments | null
+  wireframeGrid: THREE.Mesh | null       // SDF line mesh
+  streetNetworkLines: THREE.Mesh | null  // SDF line mesh
+  graph: StreetGraph | null
   config: TerrainMeshConfig | null
   map: maplibregl.Map | null
   visible: boolean
@@ -421,6 +436,55 @@ function calculateTerrainScores(vertices, attractors, decayFn) {
 }
 ```
 
+### SDF Line Rendering (`shaders/sdfLine.ts`, `SDFLineMaterial.ts`)
+
+Custom SDF (Signed Distance Field) shaders for smooth anti-aliased line rendering. Used by both the wireframe grid and street network.
+
+**Problem Solved**: WebGL line primitives have no anti-aliasing, resulting in jagged edges. SDF shaders create smooth lines at any zoom level.
+
+**How It Works**:
+```
+Standard WebGL Lines          SDF Shader Lines
+(jagged)                      (smooth)
+
+████████████████              ░▒▓████████████▓▒░
+Hard pixel edges              Soft alpha gradient
+```
+
+**Vertex Shader** (`sdfLineVertexShader`):
+1. Takes line segment endpoints as instanced attributes (`instanceStart`, `instanceEnd`)
+2. Transforms to clip space using `projectionMatrix` (full MVP in MapLibre custom layers)
+3. Expands each segment into a screen-aligned quad
+4. Outputs UV coordinates for fragment shader
+
+**Fragment Shader** (`sdfLineFragmentShader`):
+```glsl
+float dist = abs(vUV.y);              // 0 at center, 1 at edge
+float fw = fwidth(dist);              // Screen-space derivative
+float feather = max(fw * 1.5, 0.01);  // Anti-aliasing width
+float alpha = 1.0 - smoothstep(1.0 - feather, 1.0 + feather, dist);
+```
+
+**SDFLineMaterial Class**:
+```typescript
+const material = new SDFLineMaterial({
+  color: 0xffffff,    // Line color
+  linewidth: 2,       // Width in screen pixels
+  opacity: 1.0,       // Transparency
+  resolution: new THREE.Vector2(w, h)  // Must update each frame!
+})
+```
+
+**Helper Functions**:
+- `createSDFLineGeometry(segments)` - Creates instanced geometry for line segments
+- `updateSDFLineGeometry(geometry, segments)` - Updates segment positions
+
+**Usage in Terrain**:
+| Component | Color | Width | Opacity |
+|-----------|-------|-------|---------|
+| Wireframe grid | Black (#000000) | 1px | 30% |
+| Street network | White (#ffffff) | 3px | 90% |
+
 ### Limitations
 
 | Limitation | Description |
@@ -431,7 +495,7 @@ function calculateTerrainScores(vertices, attractors, decayFn) {
 | **Shared WebGL context** | Must reset WebGL state each frame; attributes re-uploaded every render |
 | **No terrain interaction** | Cannot click/hover on terrain mesh (MapLibre events only hit 2D layers) |
 | **Sequential rendering** | MapLibre renders first, then Three.js overlays (no depth integration) |
-| **Memory overhead** | Wireframe duplicates position data (separate geometry buffer) |
+| **SDF resolution dependency** | SDF materials require resolution uniform updates each frame |
 
 ### Visual Result
 

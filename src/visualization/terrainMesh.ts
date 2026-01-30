@@ -1,11 +1,9 @@
 import * as THREE from 'three'
-import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js'
-import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js'
-import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js'
 import maplibregl from 'maplibre-gl'
 import type { StreetGraph, GridAttractor } from '../config/types'
 import { DEGREES_TO_METERS, TERRAIN_SEGMENTS, TERRAIN_HEIGHT_SCALE } from '../config/constants'
 import { calculateTerrainScores } from '../computation/terrainAccessibilityCalc'
+import { SDFLineMaterial, createSDFLineGeometry, updateSDFLineGeometry } from './SDFLineMaterial'
 
 export { TERRAIN_SEGMENTS }
 
@@ -292,8 +290,8 @@ export function resetTerrainMesh(mesh: THREE.Mesh): void {
 }
 
 /**
- * Create a wireframe grid overlay for the terrain mesh.
- * Uses LineSegments to draw grid lines that follow terrain height.
+ * Create a wireframe grid overlay for the terrain mesh using SDF line rendering.
+ * Uses the same smooth anti-aliased SDF shader as the street network.
  *
  * The grid consists of horizontal and vertical lines connecting vertices,
  * creating a visible mesh structure on top of the colored terrain surface.
@@ -301,13 +299,15 @@ export function resetTerrainMesh(mesh: THREE.Mesh): void {
  * @param terrainMesh - The terrain mesh to create wireframe for
  * @param color - Line color (default: black)
  * @param opacity - Line opacity (default: 0.3)
- * @returns LineSegments object to add to the scene
+ * @param lineWidth - Line width in pixels (default: 1)
+ * @returns Mesh object with SDF line material to add to the scene
  */
 export function createTerrainWireframe(
   terrainMesh: THREE.Mesh,
   color: number = 0x000000,
-  opacity: number = 0.3
-): THREE.LineSegments {
+  opacity: number = 0.3,
+  lineWidth: number = 1
+): THREE.Mesh {
   const geometry = terrainMesh.geometry as THREE.BufferGeometry
   const positions = geometry.attributes.position.array as Float32Array
   const config = terrainMesh.userData.terrainConfig as TerrainMeshConfig
@@ -316,16 +316,8 @@ export function createTerrainWireframe(
   const segmentsY = config.segmentsY  // 64
   const verticesPerRow = segmentsX + 1  // 65
 
-  // Calculate number of line segments
-  // Horizontal lines: (segmentsY + 1) rows × segmentsX segments per row = 65 × 64 = 4160
-  // Vertical lines: segmentsY rows × (segmentsX + 1) segments per row = 64 × 65 = 4160
-  // Total: 8320 line segments = 16640 vertices
-  const numHorizontalSegments = (segmentsY + 1) * segmentsX
-  const numVerticalSegments = segmentsY * (segmentsX + 1)
-  const totalSegments = numHorizontalSegments + numVerticalSegments
-  const linePositions = new Float32Array(totalSegments * 2 * 3)
-
-  let lineIndex = 0
+  // Build segments array for SDF geometry
+  const segments: Array<{ start: [number, number, number]; end: [number, number, number] }> = []
 
   // Build horizontal lines (along X direction)
   for (let y = 0; y <= segmentsY; y++) {
@@ -334,17 +326,10 @@ export function createTerrainWireframe(
       const i1 = y * verticesPerRow + x
       const i2 = y * verticesPerRow + (x + 1)
 
-      // Start vertex
-      linePositions[lineIndex * 6 + 0] = positions[i1 * 3 + 0]
-      linePositions[lineIndex * 6 + 1] = positions[i1 * 3 + 1]
-      linePositions[lineIndex * 6 + 2] = positions[i1 * 3 + 2]
-
-      // End vertex
-      linePositions[lineIndex * 6 + 3] = positions[i2 * 3 + 0]
-      linePositions[lineIndex * 6 + 4] = positions[i2 * 3 + 1]
-      linePositions[lineIndex * 6 + 5] = positions[i2 * 3 + 2]
-
-      lineIndex++
+      segments.push({
+        start: [positions[i1 * 3 + 0], positions[i1 * 3 + 1], positions[i1 * 3 + 2]],
+        end: [positions[i2 * 3 + 0], positions[i2 * 3 + 1], positions[i2 * 3 + 2]]
+      })
     }
   }
 
@@ -355,32 +340,25 @@ export function createTerrainWireframe(
       const i1 = y * verticesPerRow + x
       const i2 = (y + 1) * verticesPerRow + x
 
-      // Start vertex
-      linePositions[lineIndex * 6 + 0] = positions[i1 * 3 + 0]
-      linePositions[lineIndex * 6 + 1] = positions[i1 * 3 + 1]
-      linePositions[lineIndex * 6 + 2] = positions[i1 * 3 + 2]
-
-      // End vertex
-      linePositions[lineIndex * 6 + 3] = positions[i2 * 3 + 0]
-      linePositions[lineIndex * 6 + 4] = positions[i2 * 3 + 1]
-      linePositions[lineIndex * 6 + 5] = positions[i2 * 3 + 2]
-
-      lineIndex++
+      segments.push({
+        start: [positions[i1 * 3 + 0], positions[i1 * 3 + 1], positions[i1 * 3 + 2]],
+        end: [positions[i2 * 3 + 0], positions[i2 * 3 + 1], positions[i2 * 3 + 2]]
+      })
     }
   }
 
-  const lineGeometry = new THREE.BufferGeometry()
-  lineGeometry.setAttribute('position', new THREE.BufferAttribute(linePositions, 3))
+  // Create SDF line geometry
+  const sdfGeometry = createSDFLineGeometry(segments)
 
-  const lineMaterial = new THREE.LineBasicMaterial({
+  // Create SDF line material with smooth anti-aliased edges
+  const material = new SDFLineMaterial({
     color,
     opacity,
-    transparent: true,
-    depthTest: true,
-    depthWrite: false  // Render on top of terrain surface
+    linewidth: lineWidth
   })
 
-  const wireframe = new THREE.LineSegments(lineGeometry, lineMaterial)
+  const wireframe = new THREE.Mesh(sdfGeometry, material)
+  wireframe.frustumCulled = false
 
   // Store reference to terrain config for updates
   wireframe.userData.terrainConfig = config
@@ -392,25 +370,23 @@ export function createTerrainWireframe(
  * Update wireframe positions to match the terrain mesh.
  * Call this after updating terrain vertex positions.
  *
- * @param wireframe - The wireframe LineSegments object
+ * @param wireframe - The wireframe Mesh with SDF geometry
  * @param terrainMesh - The terrain mesh with updated positions
  */
 export function updateWireframePositions(
-  wireframe: THREE.LineSegments,
+  wireframe: THREE.Mesh,
   terrainMesh: THREE.Mesh
 ): void {
   const terrainGeometry = terrainMesh.geometry as THREE.BufferGeometry
   const terrainPositions = terrainGeometry.attributes.position.array as Float32Array
-
-  const wireframeGeometry = wireframe.geometry as THREE.BufferGeometry
-  const linePositions = wireframeGeometry.attributes.position.array as Float32Array
 
   const config = terrainMesh.userData.terrainConfig as TerrainMeshConfig
   const segmentsX = config.segmentsX
   const segmentsY = config.segmentsY
   const verticesPerRow = segmentsX + 1
 
-  let lineIndex = 0
+  // Build updated segments array
+  const segments: Array<{ start: [number, number, number]; end: [number, number, number] }> = []
 
   // Update horizontal lines
   for (let y = 0; y <= segmentsY; y++) {
@@ -418,17 +394,10 @@ export function updateWireframePositions(
       const i1 = y * verticesPerRow + x
       const i2 = y * verticesPerRow + (x + 1)
 
-      // Start vertex
-      linePositions[lineIndex * 6 + 0] = terrainPositions[i1 * 3 + 0]
-      linePositions[lineIndex * 6 + 1] = terrainPositions[i1 * 3 + 1]
-      linePositions[lineIndex * 6 + 2] = terrainPositions[i1 * 3 + 2]
-
-      // End vertex
-      linePositions[lineIndex * 6 + 3] = terrainPositions[i2 * 3 + 0]
-      linePositions[lineIndex * 6 + 4] = terrainPositions[i2 * 3 + 1]
-      linePositions[lineIndex * 6 + 5] = terrainPositions[i2 * 3 + 2]
-
-      lineIndex++
+      segments.push({
+        start: [terrainPositions[i1 * 3 + 0], terrainPositions[i1 * 3 + 1], terrainPositions[i1 * 3 + 2]],
+        end: [terrainPositions[i2 * 3 + 0], terrainPositions[i2 * 3 + 1], terrainPositions[i2 * 3 + 2]]
+      })
     }
   }
 
@@ -438,21 +407,16 @@ export function updateWireframePositions(
       const i1 = y * verticesPerRow + x
       const i2 = (y + 1) * verticesPerRow + x
 
-      // Start vertex
-      linePositions[lineIndex * 6 + 0] = terrainPositions[i1 * 3 + 0]
-      linePositions[lineIndex * 6 + 1] = terrainPositions[i1 * 3 + 1]
-      linePositions[lineIndex * 6 + 2] = terrainPositions[i1 * 3 + 2]
-
-      // End vertex
-      linePositions[lineIndex * 6 + 3] = terrainPositions[i2 * 3 + 0]
-      linePositions[lineIndex * 6 + 4] = terrainPositions[i2 * 3 + 1]
-      linePositions[lineIndex * 6 + 5] = terrainPositions[i2 * 3 + 2]
-
-      lineIndex++
+      segments.push({
+        start: [terrainPositions[i1 * 3 + 0], terrainPositions[i1 * 3 + 1], terrainPositions[i1 * 3 + 2]],
+        end: [terrainPositions[i2 * 3 + 0], terrainPositions[i2 * 3 + 1], terrainPositions[i2 * 3 + 2]]
+      })
     }
   }
 
-  wireframeGeometry.attributes.position.needsUpdate = true
+  // Update SDF line geometry
+  const geometry = wireframe.geometry as THREE.InstancedBufferGeometry
+  updateSDFLineGeometry(geometry, segments)
 }
 
 /**
@@ -531,17 +495,20 @@ export function sampleTerrainHeight(
 }
 
 /**
- * Create street network as LineSegments2 (thick lines) following terrain height.
- * Uses LineSegments2 from three/examples/jsm/lines for proper thick line support
- * that works across all WebGL implementations.
+ * Create street network as a THREE.Mesh with SDF (Signed Distance Field) line rendering.
+ * Uses custom shaders to achieve smooth anti-aliased lines that look good at any scale.
+ *
+ * The SDF technique expands line segments into screen-aligned quads and uses
+ * smoothstep in the fragment shader to create soft edges, similar to MapLibre's
+ * line rendering.
  *
  * @param terrainMesh - The terrain mesh to sample heights from
  * @param graph - Street graph with nodes and edges
  * @param color - Line color (default: white)
  * @param opacity - Line opacity (default: 0.9)
  * @param zOffset - Height offset above terrain in meters (default: 3)
- * @param lineWidth - Line width in pixels (default: 2)
- * @returns LineSegments2 object to add to the scene
+ * @param lineWidth - Line width in pixels (default: 3)
+ * @returns Mesh object with SDF line material to add to the scene
  */
 export function createStreetNetworkLines(
   terrainMesh: THREE.Mesh,
@@ -549,13 +516,13 @@ export function createStreetNetworkLines(
   color: number = STREET_NETWORK_COLOR,
   opacity: number = 0.9,
   zOffset: number = STREET_NETWORK_Z_OFFSET,
-  lineWidth: number = STREET_NETWORK_LINE_WIDTH
-): LineSegments2 {
+  lineWidth: number = 3  // Increased from 2 to 3 for better visibility with SDF
+): THREE.Mesh {
   const config = terrainMesh.userData.terrainConfig as TerrainMeshConfig
 
   // Extract unique edges (avoid duplicates from bidirectional adjacency)
   const visitedEdges = new Set<string>()
-  const segments: Array<{ from: [number, number]; to: [number, number] }> = []
+  const lngLatSegments: Array<{ from: [number, number]; to: [number, number] }> = []
 
   for (const [fromId, edges] of graph.adjacency) {
     for (const edge of edges) {
@@ -565,17 +532,17 @@ export function createStreetNetworkLines(
         const fromNode = graph.nodes.get(fromId)
         const toNode = graph.nodes.get(edge.to)
         if (fromNode && toNode) {
-          segments.push({ from: fromNode.coord, to: toNode.coord })
+          lngLatSegments.push({ from: fromNode.coord, to: toNode.coord })
         }
       }
     }
   }
 
-  // Build positions array (Line2 uses flat array format)
-  const positions: number[] = []
+  // Build segments array for SDF geometry
+  const segments: Array<{ start: [number, number, number]; end: [number, number, number] }> = []
 
-  for (let i = 0; i < segments.length; i++) {
-    const { from, to } = segments[i]
+  for (let i = 0; i < lngLatSegments.length; i++) {
+    const { from, to } = lngLatSegments[i]
 
     // Convert lng/lat to local meters (same as terrain mesh)
     const fromPos = lngLatToLocalMeters(from, config)
@@ -585,60 +552,55 @@ export function createStreetNetworkLines(
     const fromZ = sampleTerrainHeight(from, terrainMesh) + zOffset
     const toZ = sampleTerrainHeight(to, terrainMesh) + zOffset
 
-    // Add positions for this segment (start and end points)
-    positions.push(fromPos.x, fromPos.y, fromZ)
-    positions.push(toPos.x, toPos.y, toZ)
+    segments.push({
+      start: [fromPos.x, fromPos.y, fromZ],
+      end: [toPos.x, toPos.y, toZ]
+    })
   }
 
-  // Create LineSegmentsGeometry (for disconnected line segments)
-  const geometry = new LineSegmentsGeometry()
-  geometry.setPositions(positions)
+  // Create SDF line geometry (instanced quads for each segment)
+  const geometry = createSDFLineGeometry(segments)
 
-  // LineMaterial supports proper thick lines via geometry-based rendering
-  const material = new LineMaterial({
+  // Create SDF line material with smooth anti-aliased edges
+  const material = new SDFLineMaterial({
     color,
     opacity,
-    transparent: true,
-    linewidth: lineWidth,  // Width in pixels
-    depthTest: false,      // Always render on top
-    depthWrite: false,
-    worldUnits: false      // Use screen-space pixels for line width
+    linewidth: lineWidth
   })
 
-  const lines = new LineSegments2(geometry, material)
-  lines.frustumCulled = false
-  lines.computeLineDistances()  // Required for LineMaterial
+  const mesh = new THREE.Mesh(geometry, material)
+  mesh.frustumCulled = false
 
   // Store segment data for updates
-  lines.userData.segments = segments
-  lines.userData.zOffset = zOffset
-  lines.userData.terrainConfig = config
+  mesh.userData.lngLatSegments = lngLatSegments
+  mesh.userData.zOffset = zOffset
+  mesh.userData.terrainConfig = config
 
-  return lines
+  return mesh
 }
 
 /**
  * Update street network heights after terrain changes.
  *
- * @param streetLines - The street network LineSegments2
+ * @param streetLines - The street network mesh with SDF geometry
  * @param terrainMesh - The terrain mesh with updated heights
  * @param graph - Street graph (not used directly, stored in streetLines.userData)
  * @param zOffset - Height offset above terrain in meters
  */
 export function updateStreetNetworkHeights(
-  streetLines: LineSegments2,
+  streetLines: THREE.Mesh,
   terrainMesh: THREE.Mesh,
   _graph: StreetGraph,
   zOffset: number = STREET_NETWORK_Z_OFFSET
 ): void {
-  const segments = streetLines.userData.segments as Array<{ from: [number, number]; to: [number, number] }>
+  const lngLatSegments = streetLines.userData.lngLatSegments as Array<{ from: [number, number]; to: [number, number] }>
   const config = streetLines.userData.terrainConfig as TerrainMeshConfig
 
-  // Build new positions array with updated heights
-  const positions: number[] = []
+  // Build new segments array with updated heights
+  const segments: Array<{ start: [number, number, number]; end: [number, number, number] }> = []
 
-  for (let i = 0; i < segments.length; i++) {
-    const { from, to } = segments[i]
+  for (let i = 0; i < lngLatSegments.length; i++) {
+    const { from, to } = lngLatSegments[i]
 
     // Convert lng/lat to local meters
     const fromPos = lngLatToLocalMeters(from, config)
@@ -648,13 +610,13 @@ export function updateStreetNetworkHeights(
     const fromZ = sampleTerrainHeight(from, terrainMesh) + zOffset
     const toZ = sampleTerrainHeight(to, terrainMesh) + zOffset
 
-    // Add positions for this segment
-    positions.push(fromPos.x, fromPos.y, fromZ)
-    positions.push(toPos.x, toPos.y, toZ)
+    segments.push({
+      start: [fromPos.x, fromPos.y, fromZ],
+      end: [toPos.x, toPos.y, toZ]
+    })
   }
 
-  // Update LineSegmentsGeometry
-  const geometry = streetLines.geometry as LineSegmentsGeometry
-  geometry.setPositions(positions)
-  streetLines.computeLineDistances()  // Recompute for LineMaterial
+  // Update SDF line geometry
+  const geometry = streetLines.geometry as THREE.InstancedBufferGeometry
+  updateSDFLineGeometry(geometry, segments)
 }
