@@ -54,6 +54,47 @@ let layerState: ThreeJsTerrainLayerState | null = null
 // Cached screen positions for attractor pins (computed during render)
 let cachedScreenPositions: Map<string, { x: number; y: number; visible: boolean }> = new Map()
 
+// Pin overlay container for HTML pin elements
+let pinOverlayContainer: HTMLDivElement | null = null
+
+/**
+ * Create a container for HTML pin overlays.
+ * This container sits over the map canvas and holds pin SVG elements
+ * that are positioned using 3D projection.
+ */
+export function createPinOverlayContainer(mapContainer: HTMLElement): HTMLDivElement {
+  const container = document.createElement('div')
+  container.className = 'terrain-pin-overlay'
+  container.style.position = 'absolute'
+  container.style.top = '0'
+  container.style.left = '0'
+  container.style.width = '100%'
+  container.style.height = '100%'
+  container.style.pointerEvents = 'none'
+  container.style.overflow = 'hidden'
+  container.style.zIndex = '1' // Above map canvas but below MapLibre markers
+  mapContainer.appendChild(container)
+  pinOverlayContainer = container
+  return container
+}
+
+/**
+ * Get the pin overlay container.
+ */
+export function getPinOverlayContainer(): HTMLDivElement | null {
+  return pinOverlayContainer
+}
+
+/**
+ * Clean up the pin overlay container.
+ */
+export function removePinOverlayContainer(): void {
+  if (pinOverlayContainer) {
+    pinOverlayContainer.remove()
+    pinOverlayContainer = null
+  }
+}
+
 /**
  * Create the Three.js custom layer interface for MapLibre
  */
@@ -389,14 +430,21 @@ export function createThreeJsTerrainLayer(
         // Clean up attractor pins
         if (layerState.attractorPinData) {
           for (const data of layerState.attractorPinData.values()) {
-            data.sprite.geometry?.dispose()
-            ;(data.sprite.material as THREE.MeshBasicMaterial).dispose()
+            // Sprite may be null if we're using HTML pins instead
+            if (data.sprite) {
+              data.sprite.geometry?.dispose()
+              if (data.sprite.material instanceof THREE.Material) {
+                data.sprite.material.dispose()
+              }
+            }
             data.line.geometry.dispose()
             ;(data.line.material as THREE.Material).dispose()
           }
           layerState.attractorPinData.clear()
         }
         layerState = null
+        // Clear cached screen positions
+        cachedScreenPositions.clear()
       }
     }
   }
@@ -596,7 +644,8 @@ export function projectToScreen(
  * camera projection matrix is valid, and cached for use by the HTML positioning code.
  */
 export function getAttractorPinScreenPositions(): Map<string, { x: number; y: number; visible: boolean }> {
-  return cachedScreenPositions
+  // Return a copy to prevent external mutation
+  return new Map(cachedScreenPositions)
 }
 
 /**

@@ -303,6 +303,9 @@ Shown during initial data loading:
   - Hover on labels brings to foreground
   - Buildings/grid fade to 30% opacity when measurement active
   - CSS classes: `.measurement-marker`, `.measurement-marker-circle`, `.measurement-distance-label`
+- **Terrain Pin Overlay** (HTML pins positioned via 3D projection):
+  - Container: `.terrain-pin-overlay` - absolute positioned, pointer-events none
+  - Pin elements: `.terrain-pin-svg` - individual pin with drop shadow, `will-change: transform`
 
 ### CSS (`index.css`)
 Key responsive styles:
@@ -382,6 +385,23 @@ The terrain visualization uses Three.js rendered as a MapLibre custom layer. Bot
 **`updateStreetNetworkHeights(streetLines, terrainMesh, graph, zOffset)`**:
 - Updates street line heights to follow terrain after height changes
 
+**`lngLatToLocalMeters(lngLat, config)`** (exported):
+- Converts geographic coordinates to local model space (meters from center)
+- Returns `{ x: number, y: number }` where X is east-positive, Y is north-positive
+
+**`sampleTerrainHeight(lngLat, terrainMesh)`** (exported):
+- Uses bilinear interpolation to sample terrain height at any lng/lat position
+- Returns height in meters
+
+**`syncAttractorPins(group, pinData, attractors, terrainMesh)`**:
+- Syncs 3D connecting lines with current attractor state
+- Adds new lines, removes deleted lines, updates positions
+- Note: Pin visuals are HTML overlays (not 3D sprites) for constant screen size
+
+**`getPinScale(attractivity)`** (exported):
+- Calculates pin scale factor based on attractivity value
+- Uses sqrt scaling: 1→1.0x, 5→1.5x, 10→1.86x, clamped to [0.8, 2.0]
+
 ### MapLibre Integration (`threeJsLayer.ts`)
 
 **Custom Layer Interface**:
@@ -419,11 +439,17 @@ interface ThreeJsTerrainLayerState {
 **Exported Functions**:
 - `createThreeJsTerrainLayer(graph)` - Creates the MapLibre custom layer
 - `updateTerrainLayer(attractors, decayFn)` - Updates terrain and wireframe positions
+- `updateAttractorPins(attractors)` - Syncs 3D pin connecting lines with attractors
 - `resetTerrainLayer()` - Resets to flat grey
 - `setTerrainLayerVisibility(visible)` - Shows/hides terrain layer
 - `setWireframeVisibility(visible)` - Shows/hides wireframe overlay (future UI toggle)
 - `isTerrainLayerInitialized()` - Check if ready
 - `getTerrainLayerId()` - Returns layer ID for MapLibre
+- `createPinOverlayContainer(el)` - Creates HTML container for pin overlays
+- `getPinOverlayContainer()` - Returns the pin overlay container
+- `removePinOverlayContainer()` - Cleans up the pin overlay container
+- `getAttractorPinScreenPositions()` - Returns cached screen positions for all pins
+- `projectToScreen(lngLat, altitude)` - Projects a 3D point to screen coordinates
 
 ### Terrain Accessibility Calculation (`terrainAccessibilityCalc.ts`)
 
@@ -496,6 +522,7 @@ const material = new SDFLineMaterial({
 | **No terrain interaction** | Cannot click/hover on terrain mesh (MapLibre events only hit 2D layers) |
 | **Sequential rendering** | MapLibre renders first, then Three.js overlays (no depth integration) |
 | **SDF resolution dependency** | SDF materials require resolution uniform updates each frame |
+| **HTML pins require render sync** | Pin positions computed during Three.js render callback; slight lag possible |
 
 ### Visual Result
 
@@ -510,6 +537,229 @@ BEFORE (flat):                   AFTER (with wireframe):
 │                     │          │  Grid lines visible │
 └─────────────────────┘          └─────────────────────┘
 ```
+
+### 3D Projection: Map Coordinates to Screen Coordinates
+
+This system projects 3D world positions (lng/lat + altitude) to 2D screen coordinates, accounting for terrain height. Use this for positioning HTML elements at terrain-relative positions.
+
+#### Why Not Use MapLibre's `map.project()`?
+
+MapLibre's `map.project([lng, lat])` only does 2D projection - it ignores altitude/terrain height. For elements that need to appear at terrain height (like pins floating above the terrain surface), we need custom 3D projection using Three.js's camera matrix.
+
+#### Coordinate Systems Overview
+
+```
+Geographic (lng/lat)          Local Meters (model space)       Screen (CSS pixels)
+     ┌───┐                         ┌───┐                           ┌───┐
+     │lat│                         │ Y │ (north)                   │ Y │ (down)
+     └─┬─┘                         └─┬─┘                           └─┬─┘
+       │                             │                               │
+   lng─┴─►                       X ──┴──► (east)                 X ──┴──► (right)
+                                     │
+                                     Z (up/altitude)
+```
+
+**Transformation Pipeline:**
+```
+[lng, lat] → [Mercator X/Y] → [Local Meters] → [3D Point] → [NDC] → [Screen Pixels]
+```
+
+#### Step-by-Step Projection Process
+
+**1. Convert lng/lat to local meters** (`lngLatToLocalMeters` in `terrainMesh.ts`):
+```typescript
+function lngLatToLocalMeters(lngLat: [number, number], config: TerrainMeshConfig) {
+  // Convert to Mercator coordinates
+  const merc = maplibregl.MercatorCoordinate.fromLngLat(lngLat)
+
+  // Get center of terrain mesh in Mercator
+  const centerX = (config.mercatorMinX + config.mercatorMaxX) / 2
+  const centerY = (config.mercatorMinY + config.mercatorMaxY) / 2
+
+  // Local offset in Mercator units
+  const localMercX = merc.x - centerX
+  const localMercY = merc.y - centerY
+
+  // Convert to meters (divide by meterScale)
+  // Note: Y is inverted for north-positive convention
+  return {
+    x: localMercX / config.meterScale,
+    y: -localMercY / config.meterScale
+  }
+}
+```
+
+**2. Sample terrain height** (`sampleTerrainHeight` in `terrainMesh.ts`):
+```typescript
+// Uses bilinear interpolation across terrain mesh vertices
+const terrainHeight = sampleTerrainHeight(lngLat, terrainMesh)
+const totalHeight = terrainHeight + altitudeOffset  // e.g., PIN_HEIGHT_OFFSET = 5m
+```
+
+**3. Create 3D point and project** (in `threeJsLayer.ts` render callback):
+```typescript
+// Create point in model space (x=east, y=north, z=up)
+const point = new THREE.Vector3(localPos.x, localPos.y, totalHeight)
+
+// Project using camera's combined projection matrix
+// camera.projectionMatrix = MVP × modelTransform × rotation
+const projected = point.clone().applyMatrix4(camera.projectionMatrix)
+
+// Result is in Normalized Device Coordinates (NDC): [-1, 1] range
+```
+
+**4. Convert NDC to screen pixels**:
+```typescript
+// Get device pixel ratio for CSS pixel conversion
+const dpr = window.devicePixelRatio || 1
+const cssWidth = canvas.width / dpr
+const cssHeight = canvas.height / dpr
+
+// NDC to screen: x from [-1,1] to [0, width], y from [-1,1] to [height, 0]
+const screenX = (projected.x + 1) * 0.5 * cssWidth
+const screenY = (1 - projected.y) * 0.5 * cssHeight  // Y inverted for screen coords
+
+// Check visibility (point is in view frustum)
+const visible = projected.x >= -1 && projected.x <= 1 &&
+                projected.y >= -1 && projected.y <= 1 &&
+                projected.z >= -1 && projected.z <= 1
+```
+
+#### Important: Projection Timing
+
+Screen positions **must be computed during the Three.js render callback** when the camera projection matrix is valid. They are cached and read by React components:
+
+```typescript
+// In threeJsLayer.ts render() callback:
+cachedScreenPositions.clear()
+for (const [id, data] of layerState.attractorPinData) {
+  // ... compute position ...
+  cachedScreenPositions.set(id, { x, y, visible })
+}
+
+// Export for external use:
+export function getAttractorPinScreenPositions() {
+  return new Map(cachedScreenPositions)  // Return copy to prevent mutation
+}
+```
+
+#### HTML Pin Overlay System
+
+For elements that need constant screen size and always face the camera (like map markers), use HTML overlays instead of Three.js sprites.
+
+**Architecture:**
+```
+┌─────────────────────────────────────────────────────────────────┐
+│   Three.js Layer           │     HTML Overlay Layer             │
+│   ─────────────────        │     ──────────────────             │
+│   • Connecting lines       │     • Pin SVG elements             │
+│   • Rendered in 3D         │     • Constant screen size         │
+│   • Follows terrain        │     • Positioned via 3D projection │
+│                            │                                    │
+│   MapLibre Markers         │                                    │
+│   ────────────────         │                                    │
+│   • Ground-level elements  │                                    │
+│   • Use map.project()      │                                    │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Creating the overlay container** (`threeJsLayer.ts`):
+```typescript
+export function createPinOverlayContainer(mapContainer: HTMLElement): HTMLDivElement {
+  const container = document.createElement('div')
+  container.className = 'terrain-pin-overlay'
+  container.style.position = 'absolute'
+  container.style.top = '0'
+  container.style.left = '0'
+  container.style.width = '100%'
+  container.style.height = '100%'
+  container.style.pointerEvents = 'none'  // Allow clicks to pass through
+  container.style.overflow = 'hidden'
+  container.style.zIndex = '1'  // Above canvas, below MapLibre markers
+  mapContainer.appendChild(container)
+  return container
+}
+```
+
+**Positioning HTML elements** (`MapView.tsx`):
+```typescript
+// Subscribe to map render events for continuous updates
+useEffect(() => {
+  const updatePinPositions = () => {
+    const positions = getAttractorPinScreenPositions()
+    for (const [id, pos] of positions) {
+      const el = pinElementsRef.current.get(id)
+      if (el) {
+        if (pos.visible) {
+          el.style.display = 'block'
+          // Anchor at bottom center (pin tip)
+          el.style.transform = `translate(${pos.x - width/2}px, ${pos.y - height}px)`
+        } else {
+          el.style.display = 'none'
+        }
+      }
+    }
+  }
+
+  map.on('render', updatePinPositions)
+  return () => map.off('render', updatePinPositions)
+}, [mapLoaded, isGridMode, gridAttractors])
+```
+
+#### Reusing for Future Features
+
+To add new terrain-aware positioned elements:
+
+**1. Add position caching in render callback** (`threeJsLayer.ts`):
+```typescript
+// In render() callback, after existing position computation:
+for (const item of yourNewItems) {
+  const localPos = lngLatToLocalMeters(item.coord, config)
+  const height = sampleTerrainHeight(item.coord, terrainMesh) + item.altitudeOffset
+  const point = new THREE.Vector3(localPos.x, localPos.y, height)
+  const projected = point.clone().applyMatrix4(camera.projectionMatrix)
+  // ... convert to screen coords and cache ...
+}
+```
+
+**2. Export getter function**:
+```typescript
+export function getYourItemScreenPositions(): Map<string, ScreenPosition> {
+  return new Map(yourCachedPositions)
+}
+```
+
+**3. Create HTML elements in React** (`MapView.tsx`):
+```typescript
+useEffect(() => {
+  // Create/update HTML elements
+  // Subscribe to map.on('render', updatePositions)
+}, [dependencies])
+```
+
+**CSS for overlay elements** (`index.css`):
+```css
+.terrain-pin-overlay {
+  pointer-events: none;
+}
+
+.your-overlay-element {
+  position: absolute;
+  pointer-events: none;  /* or 'auto' if interactive */
+  will-change: transform;  /* GPU acceleration hint */
+  transition: none;  /* Disable for smooth following */
+}
+```
+
+#### Key Functions Reference
+
+| Function | File | Purpose |
+|----------|------|---------|
+| `lngLatToLocalMeters(lngLat, config)` | `terrainMesh.ts` | Convert geographic to model coordinates |
+| `sampleTerrainHeight(lngLat, mesh)` | `terrainMesh.ts` | Get terrain height at position |
+| `getAttractorPinScreenPositions()` | `threeJsLayer.ts` | Get cached screen positions |
+| `createPinOverlayContainer(el)` | `threeJsLayer.ts` | Create HTML overlay container |
+| `projectToScreen(lngLat, altitude)` | `threeJsLayer.ts` | One-off projection (use sparingly) |
 
 ## Testing with Playwright MCP
 

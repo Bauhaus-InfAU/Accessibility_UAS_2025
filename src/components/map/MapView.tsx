@@ -4,7 +4,7 @@ import { useAppContext } from '../../context/AppContext'
 import { useMapContext } from '../../context/MapContext'
 import { createMap, setStreetLayersVisibility } from '../../visualization/mapLibreSetup'
 import { updateBuildingColors, setBuildingLayersVisibility } from '../../visualization/buildingColorUpdater'
-import { updateTerrainLayer, setTerrainLayerVisibility, isTerrainLayerInitialized, updateAttractorPins } from '../../visualization/threeJsLayer'
+import { updateTerrainLayer, setTerrainLayerVisibility, isTerrainLayerInitialized, updateAttractorPins, createPinOverlayContainer, removePinOverlayContainer, getAttractorPinScreenPositions } from '../../visualization/threeJsLayer'
 import { createCurveEvaluatorForMode } from '../../computation/curveEvaluator'
 import { calculateEuclideanDistance, formatDistance, getPathMidpoint, getLineMidpoint } from '../../computation/measurementCalc'
 import { ACCENT_COLOR, ACCENT_COLOR_2 } from '../../config/constants'
@@ -230,6 +230,40 @@ function updateDistanceLabelElement(el: HTMLElement, distance: string): void {
   el.textContent = distance
 }
 
+// Create terrain pin SVG element (HTML overlay positioned via 3D projection)
+function createTerrainPinSVGElement(attractivity: number): HTMLDivElement {
+  const scale = getPinScale(attractivity)
+  const width = Math.round(24 * scale)
+  const height = Math.round(32 * scale)
+
+  const el = document.createElement('div')
+  el.className = 'terrain-pin-svg'
+  el.style.position = 'absolute'
+  el.style.pointerEvents = 'none'
+  el.style.willChange = 'transform'
+  el.setAttribute('data-scale', scale.toString())
+  el.innerHTML = `
+    <svg width="${width}" height="${height}" viewBox="0 0 24 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 0C5.373 0 0 5.373 0 12c0 9 12 20 12 20s12-11 12-20c0-6.627-5.373-12-12-12z" fill="#fcdb02" stroke="#000" stroke-width="1.5"/>
+      <circle cx="12" cy="12" r="4" fill="#000"/>
+    </svg>
+  `
+  return el
+}
+
+// Update terrain pin SVG element size when attractivity changes
+function updateTerrainPinSVGElement(el: HTMLDivElement, attractivity: number): void {
+  const scale = getPinScale(attractivity)
+  const width = Math.round(24 * scale)
+  const height = Math.round(32 * scale)
+  const svg = el.querySelector('svg')
+  if (svg) {
+    svg.setAttribute('width', width.toString())
+    svg.setAttribute('height', height.toString())
+  }
+  el.setAttribute('data-scale', scale.toString())
+}
+
 export function MapView() {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
@@ -241,6 +275,9 @@ export function MapView() {
   const distanceLabelMarkersRef = useRef<Map<'network' | 'euclidean', maplibregl.Marker>>(new Map())
   const popupRef = useRef<maplibregl.Popup | null>(null)
   const terrainUpdatePendingRef = useRef(false)
+  // HTML pin overlay refs for terrain-aware 3D-projected pins
+  const pinOverlayRef = useRef<HTMLDivElement | null>(null)
+  const pinElementsRef = useRef<Map<string, HTMLDivElement>>(new Map())
   const {
     buildings,
     graph,
@@ -340,6 +377,11 @@ export function MapView() {
     mapRef.current = map
     mapLoadedRef.current = false
     setMapInstance(map)
+
+    // Create pin overlay container for terrain-aware 3D-projected pins
+    if (containerRef.current) {
+      pinOverlayRef.current = createPinOverlayContainer(containerRef.current)
+    }
 
     const onLoad = () => {
       mapLoadedRef.current = true
@@ -489,6 +531,14 @@ export function MapView() {
         popupRef.current.remove()
         popupRef.current = null
       }
+      // Clean up terrain pin overlay
+      for (const el of pinElementsRef.current.values()) {
+        el.remove()
+      }
+      pinElementsRef.current.clear()
+      removePinOverlayContainer()
+      pinOverlayRef.current = null
+
       map.remove()
       mapRef.current = null
       mapLoadedRef.current = false
@@ -695,7 +745,7 @@ export function MapView() {
       }
     }
 
-    // Update 3D attractor pins in the terrain layer
+    // Update 3D attractor pins (connecting lines) in the terrain layer
     // Wait for terrain layer to be initialized
     if (isTerrainLayerInitialized()) {
       updateAttractorPins(gridAttractors)
@@ -711,6 +761,81 @@ export function MapView() {
       setTimeout(() => clearInterval(checkInterval), 5000)
     }
   }, [mapLoaded, gridAttractors, isGridMode])
+
+  // Manage HTML pin overlay elements (positioned via 3D projection at terrain height)
+  // This is separate from the MapLibre attractor markers which show the attractivity box at ground level
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapLoaded || !isGridMode) {
+      // Clear pin overlays when not in grid mode
+      for (const el of pinElementsRef.current.values()) {
+        el.remove()
+      }
+      pinElementsRef.current.clear()
+      return
+    }
+
+    const overlay = pinOverlayRef.current
+    if (!overlay) return
+
+    // Sync pin elements with gridAttractors
+    const currentIds = new Set(gridAttractors.map(a => a.id))
+
+    // Remove deleted pins
+    for (const [id, el] of pinElementsRef.current) {
+      if (!currentIds.has(id)) {
+        el.remove()
+        pinElementsRef.current.delete(id)
+      }
+    }
+
+    // Add/update pin elements
+    for (const attractor of gridAttractors) {
+      let el = pinElementsRef.current.get(attractor.id)
+      if (!el) {
+        el = createTerrainPinSVGElement(attractor.attractivity)
+        overlay.appendChild(el)
+        pinElementsRef.current.set(attractor.id, el)
+      } else {
+        // Update size if attractivity changed
+        const currentScale = el.getAttribute('data-scale')
+        const newScale = getPinScale(attractor.attractivity).toString()
+        if (currentScale !== newScale) {
+          updateTerrainPinSVGElement(el, attractor.attractivity)
+        }
+      }
+    }
+
+    // Subscribe to render events to update pin positions
+    const updatePinPositions = () => {
+      const positions = getAttractorPinScreenPositions()
+      for (const [id, pos] of positions) {
+        const el = pinElementsRef.current.get(id)
+        if (el) {
+          if (pos.visible) {
+            el.style.display = 'block'
+            // Get pin height for proper anchoring at bottom (tip of teardrop)
+            const scale = parseFloat(el.getAttribute('data-scale') || '1')
+            const pinHeight = Math.round(32 * scale)
+            const pinWidth = Math.round(24 * scale)
+            // Position: translate to screen coords, then offset to center horizontally and anchor at bottom
+            el.style.transform = `translate(${pos.x - pinWidth / 2}px, ${pos.y - pinHeight}px)`
+          } else {
+            el.style.display = 'none'
+          }
+        }
+      }
+    }
+
+    // Initial position update
+    updatePinPositions()
+
+    // Update on each render frame
+    map.on('render', updatePinPositions)
+    return () => {
+      map.off('render', updatePinPositions)
+    }
+  }, [mapLoaded, isGridMode, gridAttractors])
 
   // Sync measurement markers with measurement points
   useEffect(() => {

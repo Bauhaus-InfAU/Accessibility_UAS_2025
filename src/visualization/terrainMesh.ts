@@ -629,7 +629,6 @@ export function updateStreetNetworkHeights(
 // ============================================================================
 
 // Pin constants
-const PIN_BASE_SIZE = 24  // Base width in meters (will be scaled)
 const PIN_HEIGHT_OFFSET = 5  // Height above terrain in meters
 const PIN_GROUND_LEVEL = 10  // Ground level (same as terrain base)
 
@@ -642,101 +641,6 @@ export function getPinScale(attractivity: number): number {
   if (attractivity <= 0) return minScale
   const sqrtScale = 0.6 + 0.4 * Math.sqrt(attractivity)
   return Math.min(maxScale, Math.max(minScale, sqrtScale))
-}
-
-/**
- * Create a canvas-based texture for the pin sprite.
- * Creates a yellow teardrop/balloon shape with black outline and center dot.
- */
-function createPinTexture(): THREE.CanvasTexture {
-  const canvas = document.createElement('canvas')
-  const size = 128  // High res for quality
-  canvas.width = size
-  canvas.height = Math.round(size * (32 / 24))  // Match 24x32 aspect ratio
-  const ctx = canvas.getContext('2d')!
-
-  // Scale factor to map 24x32 viewBox to canvas size
-  const scaleX = size / 24
-  const scaleY = canvas.height / 32
-
-  // Draw teardrop path (from SVG: d="M12 0C5.373 0 0 5.373 0 12c0 9 12 20 12 20s12-11 12-20c0-6.627-5.373-12-12-12z")
-  ctx.save()
-  ctx.scale(scaleX, scaleY)
-
-  // Fill
-  ctx.beginPath()
-  ctx.moveTo(12, 0)
-  ctx.bezierCurveTo(5.373, 0, 0, 5.373, 0, 12)
-  ctx.bezierCurveTo(0, 21, 12, 32, 12, 32)
-  ctx.bezierCurveTo(12, 32, 24, 21, 24, 12)
-  ctx.bezierCurveTo(24, 5.373, 18.627, 0, 12, 0)
-  ctx.closePath()
-  ctx.fillStyle = '#fcdb02'
-  ctx.fill()
-
-  // Stroke
-  ctx.lineWidth = 1.5
-  ctx.strokeStyle = '#000000'
-  ctx.stroke()
-
-  // Center dot
-  ctx.beginPath()
-  ctx.arc(12, 12, 4, 0, Math.PI * 2)
-  ctx.fillStyle = '#000000'
-  ctx.fill()
-
-  ctx.restore()
-
-  const texture = new THREE.CanvasTexture(canvas)
-  texture.needsUpdate = true
-  return texture
-}
-
-// Shared pin texture (created once)
-let sharedPinTexture: THREE.CanvasTexture | null = null
-
-function getSharedPinTexture(): THREE.CanvasTexture {
-  if (!sharedPinTexture) {
-    sharedPinTexture = createPinTexture()
-  }
-  return sharedPinTexture
-}
-
-/**
- * Create a single pin mesh using PlaneGeometry instead of Sprite.
- * This allows us to control the orientation directly, which is necessary
- * because our custom MapLibre layer applies a -90° X rotation in the projection matrix.
- *
- * @param scale - Scale factor based on attractivity
- * @returns THREE.Mesh for the pin (PlaneGeometry facing +Y direction)
- */
-function createPinSprite(scale: number): THREE.Mesh {
-  const texture = getSharedPinTexture()
-
-  // Set size in meters (width x height with aspect ratio 24:32)
-  const baseWidth = PIN_BASE_SIZE * scale
-  const baseHeight = baseWidth * (32 / 24)
-
-  // Create a plane geometry instead of sprite
-  const geometry = new THREE.PlaneGeometry(baseWidth, baseHeight)
-
-  const material = new THREE.MeshBasicMaterial({
-    map: texture,
-    transparent: true,
-    depthTest: true,
-    depthWrite: false,
-    side: THREE.DoubleSide
-  })
-
-  const mesh = new THREE.Mesh(geometry, material)
-  mesh.frustumCulled = false
-
-  // Counter-rotate to compensate for the -90° X rotation in the projection matrix.
-  // The scene is rotated -90° around X, so we rotate the pin +90° around X
-  // to make it stand upright (facing the camera in the rotated coordinate system).
-  mesh.rotation.x = Math.PI / 2
-
-  return mesh
 }
 
 /**
@@ -771,11 +675,11 @@ function createConnectingLine(
 }
 
 /**
- * Data structure for a single attractor pin (pin mesh + connecting line)
+ * Data structure for a single attractor pin (connecting line only; pin is HTML overlay)
  */
 export interface AttractorPinData {
   id: string
-  sprite: THREE.Mesh  // PlaneGeometry mesh (was Sprite, now Mesh for proper orientation control)
+  sprite: THREE.Mesh | null  // null - 3D pin replaced by HTML overlay
   line: THREE.Mesh
   coord: [number, number]
   attractivity: number
@@ -783,11 +687,11 @@ export interface AttractorPinData {
 
 /**
  * Create 3D attractor pins for all grid attractors.
- * Each attractor has a pin sprite at terrain height and a connecting line to ground.
+ * Now only creates connecting lines - the pin visual is an HTML overlay.
  *
  * @param attractors - Array of grid attractors
  * @param terrainMesh - The terrain mesh to sample heights from
- * @returns THREE.Group containing all pins and lines, plus pin data for updates
+ * @returns THREE.Group containing lines, plus pin data for updates
  */
 export function createAttractorPins(
   attractors: GridAttractor[],
@@ -807,21 +711,16 @@ export function createAttractorPins(
     // Calculate pin position (above terrain)
     const pinZ = terrainHeight + PIN_HEIGHT_OFFSET
 
-    // Create pin sprite
-    const scale = getPinScale(attractor.attractivity)
-    const sprite = createPinSprite(scale)
-    sprite.position.set(localPos.x, localPos.y, pinZ + (PIN_BASE_SIZE * scale * (32 / 24)) / 2)
-
-    // Create connecting line from bottom of sprite to ground
+    // Create connecting line from terrain height to ground
+    // (the pin SVG is now an HTML overlay positioned via 3D projection)
     const lineTopZ = pinZ
     const line = createConnectingLine(localPos, lineTopZ, PIN_GROUND_LEVEL)
 
-    group.add(sprite)
     group.add(line)
 
     pinData.set(attractor.id, {
       id: attractor.id,
-      sprite,
+      sprite: null,  // Pin is now HTML overlay
       line,
       coord: attractor.coord,
       attractivity: attractor.attractivity
@@ -851,11 +750,7 @@ export function updateAttractorPinHeights(
     const terrainHeight = sampleTerrainHeight(data.coord, terrainMesh)
     const pinZ = terrainHeight + PIN_HEIGHT_OFFSET
 
-    // Update sprite position
-    const scale = getPinScale(data.attractivity)
-    data.sprite.position.set(localPos.x, localPos.y, pinZ + (PIN_BASE_SIZE * scale * (32 / 24)) / 2)
-
-    // Update connecting line
+    // Update connecting line (pin position is handled by HTML overlay via screen projection)
     const lineTopZ = pinZ
     const segments = [{
       start: [localPos.x, localPos.y, lineTopZ] as [number, number, number],
@@ -868,9 +763,9 @@ export function updateAttractorPinHeights(
 
 /**
  * Sync attractor pins with current attractor state.
- * Adds new pins, removes deleted pins, updates positions and scales.
+ * Now only manages connecting lines - pin visuals are HTML overlays.
  *
- * @param group - The THREE.Group containing all pins
+ * @param group - The THREE.Group containing all lines
  * @param pinData - Current pin data map
  * @param attractors - Current array of grid attractors
  * @param terrainMesh - The terrain mesh to sample heights from
@@ -890,10 +785,15 @@ export function syncAttractorPins(
   for (const id of existingIds) {
     if (!currentIds.has(id)) {
       const data = pinData.get(id)!
-      group.remove(data.sprite)
+      // Sprite may be null if using HTML overlay
+      if (data.sprite) {
+        group.remove(data.sprite)
+        data.sprite.geometry?.dispose()
+        if (data.sprite.material instanceof THREE.MeshBasicMaterial) {
+          data.sprite.material.dispose()
+        }
+      }
       group.remove(data.line)
-      data.sprite.geometry?.dispose()
-      ;(data.sprite.material as THREE.MeshBasicMaterial).dispose()
       data.line.geometry.dispose()
       ;(data.line.material as THREE.Material).dispose()
       pinData.delete(id)
@@ -910,42 +810,27 @@ export function syncAttractorPins(
     // Sample terrain height at attractor position
     const terrainHeight = sampleTerrainHeight(attractor.coord, terrainMesh)
     const pinZ = terrainHeight + PIN_HEIGHT_OFFSET
-    const scale = getPinScale(attractor.attractivity)
 
     if (!existing) {
-      // Create new pin
-      const sprite = createPinSprite(scale)
-      sprite.position.set(localPos.x, localPos.y, pinZ + (PIN_BASE_SIZE * scale * (32 / 24)) / 2)
-
+      // Create connecting line only (pin is HTML overlay)
       const lineTopZ = pinZ
       const line = createConnectingLine(localPos, lineTopZ, PIN_GROUND_LEVEL)
 
-      group.add(sprite)
       group.add(line)
 
       pinData.set(attractor.id, {
         id: attractor.id,
-        sprite,
+        sprite: null,  // Pin is HTML overlay
         line,
         coord: attractor.coord,
         attractivity: attractor.attractivity
       })
     } else {
-      // Update existing pin position and scale
+      // Update existing pin position
       const coordChanged = existing.coord[0] !== attractor.coord[0] || existing.coord[1] !== attractor.coord[1]
       const attractivityChanged = existing.attractivity !== attractor.attractivity
 
       if (coordChanged || attractivityChanged) {
-        // Update sprite position
-        existing.sprite.position.set(localPos.x, localPos.y, pinZ + (PIN_BASE_SIZE * scale * (32 / 24)) / 2)
-
-        // Update sprite scale if attractivity changed
-        if (attractivityChanged) {
-          const baseWidth = PIN_BASE_SIZE * scale
-          const baseHeight = baseWidth * (32 / 24)
-          existing.sprite.scale.set(baseWidth, baseHeight, 1)
-        }
-
         // Update connecting line
         const lineTopZ = pinZ
         const segments = [{
