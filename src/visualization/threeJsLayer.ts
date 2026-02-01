@@ -171,6 +171,7 @@ export function createThreeJsTerrainLayer(
           3,         // z-offset
           3.5        // line width
         )
+        streetNetworkLines.renderOrder = 10  // Render on top of contours (renderOrder 5)
         scene.add(streetNetworkLines)
 
         if (DEBUG_TERRAIN_LAYER) {

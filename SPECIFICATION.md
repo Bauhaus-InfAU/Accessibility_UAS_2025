@@ -166,11 +166,26 @@ Hard pixel edges              Soft alpha gradient
    - Result: consistent smooth edges at any zoom level or viewing angle
 
 **Applied to**:
-| Component | Color | Width | Opacity | Visibility | Purpose |
-|-----------|-------|-------|---------|------------|---------|
-| Wireframe grid | Black | 1px | 30% | Hidden | Debug mesh structure (disabled by default) |
-| Street network | White | 3px | 90% | Foreground | Shows connectivity, primary navigation reference |
-| Contour lines | Gradient (adaptive) | 1.5px | 90% | Background | Depth perception, accessibility distribution |
+| Component | Color | Width | Opacity | renderOrder | Purpose |
+|-----------|-------|-------|---------|-------------|---------|
+| Terrain mesh | Gradient | - | 100% | 0 | Base surface |
+| Wireframe grid | Black | 1px | 30% | 0 | Debug mesh structure (hidden by default) |
+| Contour lines | Gradient (adaptive) | 1.5px | 90% | 5 | Background: depth perception, accessibility distribution |
+| Street network | White | 3.5px | 100% | 10 | Foreground: shows connectivity, primary navigation reference |
+| Attractor pin lines | Black (dashed) | 3px | 100% | 15 | Always on top: connects pins to ground |
+
+**Layer Rendering Order**:
+
+All SDF line materials disable depth testing (`depthTest: false`, `depthWrite: false`) for consistent rendering with MapLibre's shared WebGL context. Without depth testing, Three.js uses `renderOrder` to control draw order (painter's algorithm):
+
+| renderOrder | Layer | Rationale |
+|-------------|-------|-----------|
+| 0 | Terrain mesh, Wireframe | Base layers, rendered first |
+| 5 | Contour lines | Background visual aid, behind streets |
+| 10 | Street network | Primary navigation reference, on top of contours |
+| 15 | Attractor pin lines | User interaction feedback, always visible |
+
+Lower values render first (behind), higher values render later (on top). This ensures streets always render on top of contours without gaps, and attractor pin connecting lines are always visible regardless of terrain shape.
 
 **Visual Hierarchy Design**:
 

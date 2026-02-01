@@ -542,11 +542,15 @@ const material = new SDFLineMaterial({
 - `updateSDFLineGeometry(geometry, segments)` - Updates segment positions
 
 **Usage in Terrain**:
-| Component | Color | Width | Opacity | Visibility |
-|-----------|-------|-------|---------|------------|
-| Wireframe grid | Black (#000000) | 1px | 30% | Hidden by default |
-| Street network | White (#ffffff) | 3px | 90% | Visible |
-| Contour lines | Gradient (adaptive) | 1.5px | 90% | Visible |
+| Component | Color | Width | Opacity | renderOrder | Visibility |
+|-----------|-------|-------|---------|-------------|------------|
+| Terrain mesh | Gradient | - | 100% | 0 (default) | Base surface |
+| Wireframe grid | Black (#000000) | 1px | 30% | 0 (default) | Hidden by default |
+| Contour lines | Gradient (adaptive) | 1.5px | 90% | 5 | Background layer |
+| Street network | White (#ffffff) | 3.5px | 100% | 10 | Foreground layer |
+| Attractor pin lines | Black (#000000) | 3px | 100% | 15 | Always on top |
+
+**Layer Rendering Order**: Since all SDF line materials use `depthTest: false` and `depthWrite: false`, Three.js's `renderOrder` property controls draw order. Lower values render first (behind), higher values render later (on top). This ensures streets always render on top of contours, and attractor pin lines always render on top of everything.
 
 **Contour Line Coloring**: Each contour level is colored to match the terrain gradient at that height (purple→orange→red), with adaptive lightness reduction to maintain consistent contrast. Darker colors (purple) get minimal reduction (~0%), while brighter colors (orange/red) get more reduction (~15%). This ensures all contours are visible regardless of the underlying terrain brightness.
 

@@ -809,6 +809,7 @@ function createConnectingLine(
 
   const mesh = new THREE.Mesh(geometry, material)
   mesh.frustumCulled = false
+  mesh.renderOrder = 15  // Render on top of everything (streets=10, contours=5)
 
   return mesh
 }
@@ -1302,6 +1303,7 @@ export function createContourLines(
 
     const contourMesh = new THREE.Mesh(sdfGeometry, material)
     contourMesh.frustumCulled = false
+    contourMesh.renderOrder = 5  // Render behind streets (renderOrder 10)
 
     // Store the contour level index for updates
     contourMesh.userData.contourLevel = i
@@ -1399,6 +1401,7 @@ export function updateContourLines(
 
     const contourMesh = new THREE.Mesh(sdfGeometry, material)
     contourMesh.frustumCulled = false
+    contourMesh.renderOrder = 5  // Render behind streets (renderOrder 10)
 
     // Store the contour level index for updates
     contourMesh.userData.contourLevel = i
