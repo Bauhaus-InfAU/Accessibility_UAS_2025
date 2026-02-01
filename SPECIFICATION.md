@@ -98,11 +98,12 @@ Calculates accessibility on a hexagonal grid based on user-placed attractors. Us
 ### Terrain Mesh (Grid Mode - Alternative Visualization)
 A continuous 3D terrain surface rendered using Three.js as a MapLibre custom layer:
 - **Mesh resolution**: 65×65 vertices (4,225 points) on a 64×64 segment grid
-- **Height mapping**: Vertex height = accessibility score × 200 meters + 10m base
+- **Height mapping**: Normalized score × 200 meters + 10m base (terrain always spans 0-200m regardless of attractor weights)
 - **Color gradient**: Same as buildings/hexagons (Purple → Orange → Red)
 - **Wireframe overlay**: Black grid lines at 30% opacity to visualize mesh structure
 - **Street network overlay**: White lines following terrain height to show connectivity
-- **Distance calculation**: Uses Euclidean distance (not network) for real-time performance (~1ms)
+- **Contour lines**: 10 white contour lines at regular height intervals (like topographic maps)
+- **Distance calculation**: Uses network distance via precomputed distance matrix
 - **Bounds**: Covers street network area with 100m padding
 
 **Why Three.js instead of MapLibre alone?**
@@ -169,6 +170,7 @@ Hard pixel edges              Soft alpha gradient
 |-----------|-------|-------|---------|---------|
 | Wireframe grid | Black | 1px | 30% | Shows mesh structure and terrain deformation |
 | Street network | White | 3px | 90% | Shows connectivity following terrain height |
+| Contour lines | White | 1px | 30% | Shows elevation levels like topographic maps |
 
 **Key implementation details**:
 - Uses instanced rendering (one draw call for all line segments)
@@ -363,15 +365,16 @@ Using Weimar city center data from reference project:
 - Accessibility: `Acc_i = Σ(pins) f(d_i_pin)` where d is network distance
 
 ### Terrain Mesh Calculation (Grid Mode)
-Uses Euclidean distance for real-time performance (~1ms for 4,225 vertices):
-- For each mesh vertex at position (lng, lat):
-  - Calculate: `score = Σ(attractors) attractivity × f(euclideanDistance)`
-- Min-max normalize scores to [0, 1]
-- Update vertex heights: `z = rawScore × TERRAIN_HEIGHT_SCALE + 10m`
+Uses network distance via precomputed full network matrix:
+- Each mesh vertex is mapped to its nearest street network node at creation time
+- For each mesh vertex (mapped to node):
+  - Calculate: `score = Σ(attractors) attractivity × f(networkDistance)`
+- Min-max normalize scores to [0, 1] (terrain height always spans 0-200m range)
+- Update vertex heights: `z = normalizedScore × TERRAIN_HEIGHT_SCALE + 10m`
 - Update vertex colors using accessibility gradient
-- Sync wireframe positions with mesh
+- Sync wireframe and contour line positions with mesh
 
-**Key difference from hexagon grid**: Terrain uses straight-line (Euclidean) distance instead of network distance. This enables real-time updates but may not accurately represent travel distances along streets.
+**Network distance benefits**: Terrain now shows organic, street-following accessibility patterns instead of smooth circular patterns. Same distance calculation as hexagon grid.
 
 ## Technical Constraints
 
@@ -384,8 +387,7 @@ Uses Euclidean distance for real-time performance (~1ms for 4,225 vertices):
 
 | Limitation | Description | Workaround |
 |------------|-------------|------------|
-| **Euclidean distance only** | Terrain uses straight-line distance, not street network | Hexagon grid uses network distance for accuracy |
-| **No lighting effects** | Uses `MeshBasicMaterial` (ignores scene lighting) | Wireframe overlay provides depth perception |
+| **No lighting effects** | Uses `MeshBasicMaterial` (ignores scene lighting) | Wireframe overlay and contour lines provide depth perception |
 | **Fixed resolution** | 64×64 grid cannot be changed at runtime | Sufficient for current area size |
 | **Shared WebGL context** | Must reset WebGL state each frame | Handled automatically in render loop |
 | **No terrain interaction** | Cannot click/hover on terrain (MapLibre 2D events only) | Use hexagon grid for interaction |

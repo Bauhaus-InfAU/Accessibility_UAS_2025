@@ -67,7 +67,7 @@ src/
 │   ├── distanceMatrix.ts       # Distance matrix computation (buildings + full network)
 │   ├── accessibilityCalc.ts    # Buildings mode accessibility calculation
 │   ├── gridAccessibilityCalc.ts # Grid mode accessibility calculation
-│   ├── terrainAccessibilityCalc.ts # Terrain mode Euclidean distance calculation
+│   ├── terrainAccessibilityCalc.ts # Terrain mode network distance calculation
 │   └── curveEvaluator.ts       # Distance decay function evaluation
 ├── components/      # React UI (App, CurveEditor, panels, map)
 │   ├── CurveEditor/ # Tabbed curve editor with multiple modes
@@ -343,31 +343,34 @@ The terrain visualization uses Three.js rendered as a MapLibre custom layer. Bot
 | `src/visualization/threeJsLayer.ts` | MapLibre custom layer integration for Three.js |
 | `src/visualization/shaders/sdfLine.ts` | GLSL shaders for SDF anti-aliased line rendering |
 | `src/visualization/SDFLineMaterial.ts` | Custom Three.js material for smooth lines |
-| `src/computation/terrainAccessibilityCalc.ts` | Euclidean distance-based accessibility calculation |
-| `src/config/constants.ts` | `TERRAIN_SEGMENTS` (64) and `TERRAIN_HEIGHT_SCALE` (200m) |
+| `src/computation/terrainAccessibilityCalc.ts` | Network distance-based accessibility calculation |
+| `src/config/constants.ts` | `TERRAIN_SEGMENTS` (64), `TERRAIN_HEIGHT_SCALE` (200m), `TERRAIN_CONTOUR_COUNT` (10) |
 
 ### Key Constants
 
 | Constant | Value | Purpose |
 |----------|-------|---------|
 | `TERRAIN_SEGMENTS` | 64 | Grid resolution (65×65 = 4,225 vertices) |
-| `TERRAIN_HEIGHT_SCALE` | 200 | Meters per unit accessibility score |
+| `TERRAIN_HEIGHT_SCALE` | 200 | Maximum terrain height in meters (normalized score 1.0 = 200m) |
+| `TERRAIN_CONTOUR_COUNT` | 10 | Number of contour lines displayed |
 | Base height | 10m | Offset above ground level |
 
 ### Terrain Mesh Creation (`terrainMesh.ts`)
 
-**`createTerrainMesh(config)`**:
+**`createTerrainMesh(config, graph)`**:
 1. Creates `PlaneGeometry(width, height, 64, 64)` → 65×65 = 4,225 vertices
 2. Vertices stored in **meters**, centered at origin
 3. Stores lng/lat coordinates for each vertex in `mesh.userData.lngLatCoords`
-4. Initial height: 10m (base offset above ground)
-5. Initial color: grey (#cccccc) for unscored
+4. Maps each vertex to nearest network node (stored in `mesh.userData.vertexNodeIds`)
+5. Initial height: 10m (base offset above ground)
+6. Initial color: grey (#cccccc) for unscored
 
-**`updateTerrainFromAttractors(mesh, attractors, decayFn)`**:
-1. Calls `calculateTerrainScores()` to compute accessibility for each vertex
-2. Updates vertex heights: `heightMeters = rawScore * TERRAIN_HEIGHT_SCALE + 10`
-3. Updates vertex colors using gradient: Purple (#4A3AB4) → Orange (#FD681D) → Red (#FD1D1D)
-4. Returns `{ min, max, avg }` statistics for Legend
+**`updateTerrainFromAttractors(mesh, attractors, decayFn, distanceMatrix)`**:
+1. Calls `calculateTerrainScores()` to compute accessibility for each vertex using network distance
+2. Normalizes scores to [0, 1] range based on current min/max
+3. Updates vertex heights: `heightMeters = normalizedScore * TERRAIN_HEIGHT_SCALE + 10`
+4. Updates vertex colors using gradient: Purple (#4A3AB4) → Orange (#FD681D) → Red (#FD1D1D)
+5. Returns `{ min, max, avg }` raw score statistics for Legend
 
 **`createTerrainWireframe(terrainMesh, color, opacity, lineWidth)`**:
 1. Creates `THREE.Mesh` with SDF line material (8,320 line segments)
@@ -384,6 +387,16 @@ The terrain visualization uses Three.js rendered as a MapLibre custom layer. Bot
 
 **`updateStreetNetworkHeights(streetLines, terrainMesh, graph, zOffset)`**:
 - Updates street line heights to follow terrain after height changes
+
+**`createContourLines(terrainMesh, numContours, color, opacity, lineWidth)`**:
+1. Uses marching squares algorithm to extract isolines at regular height intervals
+2. Creates `THREE.Mesh` with SDF line material for smooth anti-aliased contours
+3. Default: 10 contours, white (#ffffff) at 30% opacity, 1px width
+4. Contours have 0.5m Z-offset above terrain to prevent z-fighting
+
+**`updateContourLines(contourMesh, terrainMesh, numContours)`**:
+- Recomputes contour line positions when terrain heights change
+- Recalculates height intervals based on current min/max
 
 **`lngLatToLocalMeters(lngLat, config)`** (exported):
 - Converts geographic coordinates to local model space (meters from center)
@@ -429,6 +442,9 @@ interface ThreeJsTerrainLayerState {
   terrainMesh: THREE.Mesh | null
   wireframeGrid: THREE.Mesh | null       // SDF line mesh
   streetNetworkLines: THREE.Mesh | null  // SDF line mesh
+  contourLines: THREE.Mesh | null        // SDF line mesh for contours
+  attractorPinsGroup: THREE.Group | null
+  attractorPinData: Map<string, AttractorPinData>
   graph: StreetGraph | null
   config: TerrainMeshConfig | null
   map: maplibregl.Map | null
@@ -438,11 +454,12 @@ interface ThreeJsTerrainLayerState {
 
 **Exported Functions**:
 - `createThreeJsTerrainLayer(graph)` - Creates the MapLibre custom layer
-- `updateTerrainLayer(attractors, decayFn)` - Updates terrain and wireframe positions
+- `updateTerrainLayer(attractors, decayFn, distanceMatrix)` - Updates terrain, wireframe, and contour positions
 - `updateAttractorPins(attractors)` - Syncs 3D pin connecting lines with attractors
 - `resetTerrainLayer()` - Resets to flat grey
 - `setTerrainLayerVisibility(visible)` - Shows/hides terrain layer
-- `setWireframeVisibility(visible)` - Shows/hides wireframe overlay (future UI toggle)
+- `setWireframeVisibility(visible)` - Shows/hides wireframe overlay
+- `setContourVisibility(visible)` - Shows/hides contour lines
 - `isTerrainLayerInitialized()` - Check if ready
 - `getTerrainLayerId()` - Returns layer ID for MapLibre
 - `createPinOverlayContainer(el)` - Creates HTML container for pin overlays
@@ -453,14 +470,17 @@ interface ThreeJsTerrainLayerState {
 
 ### Terrain Accessibility Calculation (`terrainAccessibilityCalc.ts`)
 
-Uses **Euclidean distance** (not network distance) for real-time performance (~1ms for 4,225 vertices).
+Uses **network distance** via precomputed distance matrix for accurate street-following accessibility patterns.
 
 ```typescript
-function calculateTerrainScores(vertices, attractors, decayFn) {
-  // For each vertex: score = Σ(attractivity × decayFn(euclideanDistance))
+function calculateTerrainScores(vertexNodeIds, attractors, decayFn, distanceMatrix) {
+  // For each vertex (mapped to network node):
+  //   score = Σ(attractivity × decayFn(networkDistance))
   // Returns { rawScores, normalizedScores, min, max, avg }
 }
 ```
+
+**Note**: Each terrain vertex is mapped to its nearest network node during mesh creation. The distance matrix provides O(1) lookup for network distances between any two nodes.
 
 ### SDF Line Rendering (`shaders/sdfLine.ts`, `SDFLineMaterial.ts`)
 
@@ -510,12 +530,12 @@ const material = new SDFLineMaterial({
 |-----------|-------|-------|---------|
 | Wireframe grid | Black (#000000) | 1px | 30% |
 | Street network | White (#ffffff) | 3px | 90% |
+| Contour lines | White (#ffffff) | 1px | 30% |
 
 ### Limitations
 
 | Limitation | Description |
 |------------|-------------|
-| **Euclidean distance only** | Terrain uses straight-line distance, not street network distance, for performance |
 | **No lighting effects** | Uses `MeshBasicMaterial` (vertex colors only), ignores scene lighting |
 | **Fixed resolution** | 64×64 grid cannot be changed at runtime |
 | **Shared WebGL context** | Must reset WebGL state each frame; attributes re-uploaded every render |
@@ -527,16 +547,20 @@ const material = new SDFLineMaterial({
 ### Visual Result
 
 ```
-BEFORE (flat):                   AFTER (with wireframe):
+TERRAIN OVERLAYS:
+
+Wireframe Grid:                  Contour Lines:
 ┌─────────────────────┐          ┌─────────────────────┐
-│                     │          │ ┼──┼──┼──┼──┼──┼──┼ │
-│   Smooth colored    │          │ │  │  │  │  │  │  │ │
-│   surface - looks   │    →     │ ┼──┼──┼──┼──┼──┼──┼ │
-│   flat despite      │          │ │  │  │  │  │  │  │ │
-│   height variation  │          │ ┼──┼──┼──┼──┼──┼──┼ │
-│                     │          │  Grid lines visible │
+│ ┼──┼──┼──┼──┼──┼──┼ │          │    ╭───────╮        │
+│ │  │  │  │  │  │  │ │          │  ╭─╯  peak ╰─╮      │
+│ ┼──┼──┼──┼──┼──┼──┼ │          │ ╭╯    ●     ╰╮     │
+│ │  │  │  │  │  │  │ │          │ ╰─╮         ╭─╯     │
+│ ┼──┼──┼──┼──┼──┼──┼ │          │   ╰─────────╯       │
+│ Shows mesh structure│          │ Shows height levels │
 └─────────────────────┘          └─────────────────────┘
 ```
+
+**Contour lines** display 10 elevation levels at regular height intervals, forming closed loops around peaks (high accessibility areas) like topographic maps.
 
 ### 3D Projection: Map Coordinates to Screen Coordinates
 

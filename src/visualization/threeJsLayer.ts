@@ -14,6 +14,8 @@ import {
   updateAttractorPinHeights,
   sampleTerrainHeight,
   lngLatToLocalMeters,
+  createContourLines,
+  updateContourLines,
   type TerrainMeshConfig,
   type AttractorPinData
 } from './terrainMesh'
@@ -38,6 +40,7 @@ interface ThreeJsTerrainLayerState {
   terrainMesh: THREE.Mesh | null
   wireframeGrid: THREE.Mesh | null  // Mesh with SDF line material
   streetNetworkLines: THREE.Mesh | null  // Mesh with SDF line material
+  contourLines: THREE.Mesh | null  // Mesh with SDF line material for contours
   attractorPinsGroup: THREE.Group | null  // Group containing all 3D attractor pins
   attractorPinData: Map<string, AttractorPinData>  // Pin data for updates
   graph: StreetGraph | null
@@ -191,6 +194,10 @@ export function createThreeJsTerrainLayer(
         const attractorPinsGroup = new THREE.Group()
         scene.add(attractorPinsGroup)
 
+        // Contour lines will be created when terrain is updated (needs height data)
+        // Initial terrain is flat, so no contours needed yet
+        const contourLines: THREE.Mesh | null = null
+
         // Store state - start visible by default (will be controlled by MapView)
         layerState = {
           scene,
@@ -199,6 +206,7 @@ export function createThreeJsTerrainLayer(
           terrainMesh,
           wireframeGrid,
           streetNetworkLines,
+          contourLines,
           attractorPinsGroup,
           attractorPinData: new Map(),
           graph,
@@ -347,6 +355,10 @@ export function createThreeJsTerrainLayer(
             const material = layerState.wireframeGrid.material as SDFLineMaterial
             material.resolution.set(canvas.width, canvas.height)
           }
+          if (layerState.contourLines) {
+            const material = layerState.contourLines.material as SDFLineMaterial
+            material.resolution.set(canvas.width, canvas.height)
+          }
           // Update resolution for attractor pin connecting lines
           if (layerState.attractorPinData) {
             for (const data of layerState.attractorPinData.values()) {
@@ -427,6 +439,12 @@ export function createThreeJsTerrainLayer(
             layerState.streetNetworkLines.material.dispose()
           }
         }
+        if (layerState.contourLines) {
+          layerState.contourLines.geometry.dispose()
+          if (layerState.contourLines.material instanceof THREE.Material) {
+            layerState.contourLines.material.dispose()
+          }
+        }
         // Clean up attractor pins
         if (layerState.attractorPinData) {
           for (const data of layerState.attractorPinData.values()) {
@@ -490,6 +508,19 @@ export function updateTerrainLayer(
   // Update attractor pin heights to match terrain
   if (layerState.attractorPinsGroup && layerState.attractorPinData.size > 0) {
     updateAttractorPinHeights(layerState.attractorPinData, layerState.terrainMesh)
+  }
+
+  // Update or create contour lines
+  if (layerState.contourLines) {
+    // Update existing contour lines
+    updateContourLines(layerState.contourLines, layerState.terrainMesh)
+  } else {
+    // Create contour lines for the first time
+    const contourMesh = createContourLines(layerState.terrainMesh)
+    if (contourMesh) {
+      layerState.scene.add(contourMesh)
+      layerState.contourLines = contourMesh
+    }
   }
 
   // Trigger map repaint
@@ -577,6 +608,19 @@ export function setWireframeVisibility(visible: boolean): void {
 export function setStreetNetworkVisibility(visible: boolean): void {
   if (!layerState || !layerState.streetNetworkLines) return
   layerState.streetNetworkLines.visible = visible
+
+  // Trigger repaint to update visibility
+  if (layerState.map) {
+    layerState.map.triggerRepaint()
+  }
+}
+
+/**
+ * Set the visibility of the contour lines
+ */
+export function setContourVisibility(visible: boolean): void {
+  if (!layerState || !layerState.contourLines) return
+  layerState.contourLines.visible = visible
 
   // Trigger repaint to update visibility
   if (layerState.map) {

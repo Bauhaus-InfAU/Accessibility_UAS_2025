@@ -95,3 +95,4 @@ export const DEFAULT_EXP_POWER_C = 2        // shape parameter
 // Terrain mesh configuration
 export const TERRAIN_SEGMENTS = 64          // 65x65 = 4225 vertices
 export const TERRAIN_HEIGHT_SCALE = 200     // meters per unit score
+export const TERRAIN_CONTOUR_COUNT = 10     // number of contour lines

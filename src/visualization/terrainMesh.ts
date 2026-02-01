@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import maplibregl from 'maplibre-gl'
 import type { StreetGraph, GridAttractor, DistanceMatrix } from '../config/types'
-import { DEGREES_TO_METERS, TERRAIN_SEGMENTS, TERRAIN_HEIGHT_SCALE } from '../config/constants'
+import { DEGREES_TO_METERS, TERRAIN_SEGMENTS, TERRAIN_HEIGHT_SCALE, TERRAIN_CONTOUR_COUNT } from '../config/constants'
 import { calculateTerrainScores } from '../computation/terrainAccessibilityCalc'
 import { SDFLineMaterial, createSDFLineGeometry, updateSDFLineGeometry } from './SDFLineMaterial'
 import { findNearestNode } from '../data/streetGraph'
@@ -862,4 +862,365 @@ export function syncAttractorPins(
   }
 
   return pinData
+}
+
+// ============================================================================
+// Contour Lines (Marching Squares)
+// ============================================================================
+
+// Contour line visual constants
+const CONTOUR_COLOR = 0xffffff  // white
+const CONTOUR_OPACITY = 0.3    // subtle
+const CONTOUR_LINE_WIDTH = 1   // thin
+const CONTOUR_Z_OFFSET = 0.5   // meters above terrain to prevent z-fighting
+
+/**
+ * Marching squares edge table.
+ *
+ * For each of the 16 possible cell configurations (4 corners, each above or below threshold),
+ * this table defines which edges have contour crossings.
+ *
+ * Cell corners are numbered:
+ *   3---2
+ *   |   |
+ *   0---1
+ *
+ * Edges are numbered:
+ *   +--2--+
+ *   |     |
+ *   3     1
+ *   |     |
+ *   +--0--+
+ *
+ * Each entry is an array of edge pairs: [[edge1, edge2], ...] indicating
+ * which edges the contour line crosses (from edge1 to edge2).
+ *
+ * The cell index is computed as: (bit3 << 3) | (bit2 << 2) | (bit1 << 1) | bit0
+ * where bitN = 1 if corner N is above the threshold, 0 if below.
+ */
+const MARCHING_SQUARES_EDGES: number[][][] = [
+  [],               // 0:  0000 - all below
+  [[0, 3]],         // 1:  0001 - corner 0 above
+  [[0, 1]],         // 2:  0010 - corner 1 above
+  [[1, 3]],         // 3:  0011 - corners 0,1 above
+  [[1, 2]],         // 4:  0100 - corner 2 above
+  [[0, 1], [2, 3]], // 5:  0101 - corners 0,2 above (saddle)
+  [[0, 2]],         // 6:  0110 - corners 1,2 above
+  [[2, 3]],         // 7:  0111 - corners 0,1,2 above
+  [[2, 3]],         // 8:  1000 - corner 3 above
+  [[0, 2]],         // 9:  1001 - corners 0,3 above
+  [[0, 3], [1, 2]], // 10: 1010 - corners 1,3 above (saddle)
+  [[1, 2]],         // 11: 1011 - corners 0,1,3 above
+  [[1, 3]],         // 12: 1100 - corners 2,3 above
+  [[0, 1]],         // 13: 1101 - corners 0,2,3 above
+  [[0, 3]],         // 14: 1110 - corners 1,2,3 above
+  []                // 15: 1111 - all above
+]
+
+/**
+ * Get the height value at a cell corner.
+ *
+ * @param positions - Terrain vertex positions array
+ * @param segmentsX - Number of segments in X direction
+ * @param x - Cell X index (0 to segmentsX-1)
+ * @param y - Cell Y index (0 to segmentsY-1)
+ * @param corner - Corner index (0-3)
+ * @returns Height at that corner
+ */
+function getCellCornerHeight(
+  positions: Float32Array,
+  segmentsX: number,
+  x: number,
+  y: number,
+  corner: number
+): number {
+  const verticesPerRow = segmentsX + 1
+
+  // Corner vertex offsets
+  const cornerOffsets = [
+    [0, 0],   // corner 0: bottom-left
+    [1, 0],   // corner 1: bottom-right
+    [1, 1],   // corner 2: top-right
+    [0, 1]    // corner 3: top-left
+  ]
+
+  const [dx, dy] = cornerOffsets[corner]
+  const vertexIndex = (y + dy) * verticesPerRow + (x + dx)
+  return positions[vertexIndex * 3 + 2]  // Z component is height
+}
+
+/**
+ * Get the XY position at a cell corner.
+ *
+ * @param positions - Terrain vertex positions array
+ * @param segmentsX - Number of segments in X direction
+ * @param x - Cell X index
+ * @param y - Cell Y index
+ * @param corner - Corner index (0-3)
+ * @returns [x, y] position in model space
+ */
+function getCellCornerPosition(
+  positions: Float32Array,
+  segmentsX: number,
+  x: number,
+  y: number,
+  corner: number
+): [number, number] {
+  const verticesPerRow = segmentsX + 1
+
+  const cornerOffsets = [
+    [0, 0],
+    [1, 0],
+    [1, 1],
+    [0, 1]
+  ]
+
+  const [dx, dy] = cornerOffsets[corner]
+  const vertexIndex = (y + dy) * verticesPerRow + (x + dx)
+  return [positions[vertexIndex * 3], positions[vertexIndex * 3 + 1]]
+}
+
+/**
+ * Interpolate the position where a contour line crosses an edge.
+ *
+ * @param positions - Terrain vertex positions array
+ * @param segmentsX - Number of segments in X direction
+ * @param x - Cell X index
+ * @param y - Cell Y index
+ * @param edge - Edge index (0-3)
+ * @param threshold - Height threshold for the contour
+ * @returns [x, y, z] interpolated position
+ */
+function interpolateEdgeCrossing(
+  positions: Float32Array,
+  segmentsX: number,
+  x: number,
+  y: number,
+  edge: number,
+  threshold: number
+): [number, number, number] {
+  // Edge to corner mapping
+  // Edge 0: corner 0 to corner 1 (bottom)
+  // Edge 1: corner 1 to corner 2 (right)
+  // Edge 2: corner 2 to corner 3 (top)
+  // Edge 3: corner 3 to corner 0 (left)
+  const edgeCorners = [
+    [0, 1],  // edge 0
+    [1, 2],  // edge 1
+    [2, 3],  // edge 2
+    [3, 0]   // edge 3
+  ]
+
+  const [c1, c2] = edgeCorners[edge]
+
+  const h1 = getCellCornerHeight(positions, segmentsX, x, y, c1)
+  const h2 = getCellCornerHeight(positions, segmentsX, x, y, c2)
+
+  const p1 = getCellCornerPosition(positions, segmentsX, x, y, c1)
+  const p2 = getCellCornerPosition(positions, segmentsX, x, y, c2)
+
+  // Interpolation factor
+  let t = 0.5  // fallback for edge cases
+  if (Math.abs(h2 - h1) > 0.0001) {
+    t = (threshold - h1) / (h2 - h1)
+  }
+  t = Math.max(0, Math.min(1, t))
+
+  // Interpolated position
+  const px = p1[0] + t * (p2[0] - p1[0])
+  const py = p1[1] + t * (p2[1] - p1[1])
+  const pz = threshold + CONTOUR_Z_OFFSET  // Contour at exact height + offset
+
+  return [px, py, pz]
+}
+
+/**
+ * Extract contour line segments at a given height threshold.
+ *
+ * Uses the marching squares algorithm to find all edges where the
+ * terrain crosses the specified height.
+ *
+ * @param positions - Terrain vertex positions array
+ * @param segmentsX - Number of segments in X direction
+ * @param segmentsY - Number of segments in Y direction
+ * @param threshold - Height threshold for the contour
+ * @returns Array of line segments
+ */
+function extractContourAtHeight(
+  positions: Float32Array,
+  segmentsX: number,
+  segmentsY: number,
+  threshold: number
+): Array<{ start: [number, number, number]; end: [number, number, number] }> {
+  const segments: Array<{ start: [number, number, number]; end: [number, number, number] }> = []
+
+  // Process each cell in the grid
+  for (let y = 0; y < segmentsY; y++) {
+    for (let x = 0; x < segmentsX; x++) {
+      // Get heights at cell corners
+      const h0 = getCellCornerHeight(positions, segmentsX, x, y, 0)
+      const h1 = getCellCornerHeight(positions, segmentsX, x, y, 1)
+      const h2 = getCellCornerHeight(positions, segmentsX, x, y, 2)
+      const h3 = getCellCornerHeight(positions, segmentsX, x, y, 3)
+
+      // Compute cell configuration index
+      const bit0 = h0 >= threshold ? 1 : 0
+      const bit1 = h1 >= threshold ? 2 : 0
+      const bit2 = h2 >= threshold ? 4 : 0
+      const bit3 = h3 >= threshold ? 8 : 0
+      const cellIndex = bit0 | bit1 | bit2 | bit3
+
+      // Get edge crossings for this configuration
+      const edgePairs = MARCHING_SQUARES_EDGES[cellIndex]
+
+      // Generate line segments for each edge pair
+      for (const [edge1, edge2] of edgePairs) {
+        const p1 = interpolateEdgeCrossing(positions, segmentsX, x, y, edge1, threshold)
+        const p2 = interpolateEdgeCrossing(positions, segmentsX, x, y, edge2, threshold)
+
+        segments.push({ start: p1, end: p2 })
+      }
+    }
+  }
+
+  return segments
+}
+
+/**
+ * Create contour lines for the terrain mesh.
+ *
+ * Generates N contour lines at regular height intervals from the minimum
+ * to maximum height of the terrain.
+ *
+ * @param terrainMesh - The terrain mesh to create contours for
+ * @param numContours - Number of contour lines (default: 10)
+ * @param color - Line color (default: white)
+ * @param opacity - Line opacity (default: 0.3)
+ * @param lineWidth - Line width in pixels (default: 1)
+ * @returns Mesh object with SDF line material, or null if no contours
+ */
+export function createContourLines(
+  terrainMesh: THREE.Mesh,
+  numContours: number = TERRAIN_CONTOUR_COUNT,
+  color: number = CONTOUR_COLOR,
+  opacity: number = CONTOUR_OPACITY,
+  lineWidth: number = CONTOUR_LINE_WIDTH
+): THREE.Mesh | null {
+  const geometry = terrainMesh.geometry as THREE.BufferGeometry
+  const positions = geometry.attributes.position.array as Float32Array
+  const config = terrainMesh.userData.terrainConfig as TerrainMeshConfig
+
+  const segmentsX = config.segmentsX
+  const segmentsY = config.segmentsY
+  const vertexCount = (segmentsX + 1) * (segmentsY + 1)
+
+  // Find min and max heights
+  let minHeight = Infinity
+  let maxHeight = -Infinity
+  for (let i = 0; i < vertexCount; i++) {
+    const h = positions[i * 3 + 2]
+    if (h < minHeight) minHeight = h
+    if (h > maxHeight) maxHeight = h
+  }
+
+  // If terrain is flat, no contours needed
+  if (maxHeight - minHeight < 1) {
+    return null
+  }
+
+  // Calculate contour height levels
+  // We want N contours between min and max, so we divide into N+1 intervals
+  const interval = (maxHeight - minHeight) / (numContours + 1)
+  const allSegments: Array<{ start: [number, number, number]; end: [number, number, number] }> = []
+
+  for (let i = 1; i <= numContours; i++) {
+    const threshold = minHeight + i * interval
+    const contourSegments = extractContourAtHeight(positions, segmentsX, segmentsY, threshold)
+    allSegments.push(...contourSegments)
+  }
+
+  // If no segments, return null
+  if (allSegments.length === 0) {
+    return null
+  }
+
+  // Create SDF line geometry
+  const sdfGeometry = createSDFLineGeometry(allSegments)
+
+  // Create SDF line material
+  const material = new SDFLineMaterial({
+    color,
+    opacity,
+    linewidth: lineWidth
+  })
+
+  const contourMesh = new THREE.Mesh(sdfGeometry, material)
+  contourMesh.frustumCulled = false
+
+  // Store config for updates
+  contourMesh.userData.terrainConfig = config
+  contourMesh.userData.numContours = numContours
+
+  return contourMesh
+}
+
+/**
+ * Update contour line positions after terrain heights change.
+ *
+ * @param contourMesh - The contour lines mesh to update
+ * @param terrainMesh - The terrain mesh with updated heights
+ * @param numContours - Number of contour lines (default: 10)
+ */
+export function updateContourLines(
+  contourMesh: THREE.Mesh,
+  terrainMesh: THREE.Mesh,
+  numContours: number = TERRAIN_CONTOUR_COUNT
+): void {
+  const terrainGeometry = terrainMesh.geometry as THREE.BufferGeometry
+  const positions = terrainGeometry.attributes.position.array as Float32Array
+  const config = terrainMesh.userData.terrainConfig as TerrainMeshConfig
+
+  const segmentsX = config.segmentsX
+  const segmentsY = config.segmentsY
+  const vertexCount = (segmentsX + 1) * (segmentsY + 1)
+
+  // Find min and max heights
+  let minHeight = Infinity
+  let maxHeight = -Infinity
+  for (let i = 0; i < vertexCount; i++) {
+    const h = positions[i * 3 + 2]
+    if (h < minHeight) minHeight = h
+    if (h > maxHeight) maxHeight = h
+  }
+
+  // Calculate contour height levels and extract all segments
+  const interval = (maxHeight - minHeight) / (numContours + 1)
+  const allSegments: Array<{ start: [number, number, number]; end: [number, number, number] }> = []
+
+  // Only generate contours if terrain has meaningful height variation
+  if (maxHeight - minHeight >= 1) {
+    for (let i = 1; i <= numContours; i++) {
+      const threshold = minHeight + i * interval
+      const contourSegments = extractContourAtHeight(positions, segmentsX, segmentsY, threshold)
+      allSegments.push(...contourSegments)
+    }
+  }
+
+  // If no segments, create a dummy segment to avoid empty geometry issues
+  if (allSegments.length === 0) {
+    // Create an invisible point segment (zero-length line)
+    allSegments.push({
+      start: [0, 0, -1000],  // Far below visible area
+      end: [0, 0, -1000]
+    })
+  }
+
+  // Rebuild the geometry with new segment count
+  // We need to recreate because segment count may have changed
+  const oldGeometry = contourMesh.geometry as THREE.InstancedBufferGeometry
+  const newGeometry = createSDFLineGeometry(allSegments)
+
+  // Dispose old geometry and assign new
+  oldGeometry.dispose()
+  contourMesh.geometry = newGeometry
 }

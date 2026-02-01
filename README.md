@@ -59,6 +59,8 @@ Where:
 - **3D Visualization**:
   - Buildings colored by accessibility score (purple → orange → red)
   - Hexagonal grid overlay for Grid mode
+  - 3D terrain surface with height = accessibility (Grid mode)
+  - Contour lines showing elevation levels like topographic maps
   - Interactive hover popups showing raw scores
 
 - **Custom Amenities**:
@@ -76,7 +78,8 @@ Where:
 ## Tech Stack
 
 - TypeScript + React + Vite
-- MapLibre GL JS (3D rendering)
+- MapLibre GL JS (3D building rendering)
+- Three.js (terrain mesh visualization)
 - Tailwind CSS
 - Web Worker (Dijkstra shortest path computation)
 
