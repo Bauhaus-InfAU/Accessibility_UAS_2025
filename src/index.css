@@ -35,8 +35,8 @@ body {
   justify-content: center;
   background: #fcdb02;
   border: 1.5px solid #000;
-  border-radius: 10px;
-  padding: 4px 12px;
+  border-radius: 9999px;
+  padding: 4px 14px;
   font-size: 14px;
   margin-top: 2px;
   cursor: pointer;

@@ -778,8 +778,14 @@ export function getPinScale(attractivity: number): number {
   return Math.min(maxScale, Math.max(minScale, sqrtScale))
 }
 
+// Connecting line visual constants
+const CONNECTING_LINE_WIDTH = 3      // pixels
+const CONNECTING_LINE_DASH_SIZE = 8  // meters (dash length)
+const CONNECTING_LINE_GAP_SIZE = 6   // meters (gap length)
+
 /**
  * Create a connecting line from pin to ground using SDF line material.
+ * Line is dashed and thicker for better visibility.
  *
  * @param localPos - Local position in meters {x, y}
  * @param topZ - Top of line (terrain height + pin offset)
@@ -799,8 +805,10 @@ function createConnectingLine(
   const geometry = createSDFLineGeometry(segments)
   const material = new SDFLineMaterial({
     color: 0x000000,
-    linewidth: 2,
-    opacity: 1.0
+    linewidth: CONNECTING_LINE_WIDTH,
+    opacity: 1.0,
+    dashSize: CONNECTING_LINE_DASH_SIZE,
+    gapSize: CONNECTING_LINE_GAP_SIZE
   })
 
   const mesh = new THREE.Mesh(geometry, material)

@@ -41,8 +41,12 @@ export const sdfLineVertexShader = `
 
   // Output to fragment shader
   varying vec2 vUV;
+  varying float vLineLength;  // World-space line length for dashing
 
   void main() {
+    // Calculate world-space line length for dashing
+    vLineLength = length(instanceEnd - instanceStart);
+
     // In MapLibre custom layers, projectionMatrix is the full MVP matrix
     // Transform endpoints to clip space
     vec4 clipStart = projectionMatrix * vec4(instanceStart, 1.0);
@@ -108,11 +112,24 @@ export const sdfLineFragmentShader = `
   // Uniforms
   uniform vec3 diffuse;
   uniform float opacity;
+  uniform float dashSize;   // Length of dash in world units (0 = no dashing)
+  uniform float gapSize;    // Length of gap in world units
 
   // Input from vertex shader
   varying vec2 vUV;
+  varying float vLineLength;
 
   void main() {
+    // Dashing: discard fragments in gap regions
+    if (dashSize > 0.0) {
+      float pattern = dashSize + gapSize;
+      float posAlongLine = vUV.x * vLineLength;
+      float phase = mod(posAlongLine, pattern);
+      if (phase > dashSize) {
+        discard;
+      }
+    }
+
     // Distance from line center (0 at center, 1 at edge)
     float dist = abs(vUV.y);
 

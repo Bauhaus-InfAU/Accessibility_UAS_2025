@@ -26,6 +26,8 @@ export interface SDFLineMaterialParameters {
   linewidth?: number
   opacity?: number
   resolution?: THREE.Vector2
+  dashSize?: number  // Length of dash in world units (0 = no dashing)
+  gapSize?: number   // Length of gap in world units
 }
 
 export class SDFLineMaterial extends THREE.ShaderMaterial {
@@ -34,13 +36,17 @@ export class SDFLineMaterial extends THREE.ShaderMaterial {
     const linewidth = parameters?.linewidth ?? 2.0
     const opacity = parameters?.opacity ?? 1.0
     const resolution = parameters?.resolution ?? new THREE.Vector2(1, 1)
+    const dashSize = parameters?.dashSize ?? 0  // 0 = no dashing
+    const gapSize = parameters?.gapSize ?? 0
 
     super({
       uniforms: {
         diffuse: { value: new THREE.Color(color) },
         linewidth: { value: linewidth },
         opacity: { value: opacity },
-        resolution: { value: resolution.clone() }
+        resolution: { value: resolution.clone() },
+        dashSize: { value: dashSize },
+        gapSize: { value: gapSize }
       },
       vertexShader: sdfLineVertexShader,
       fragmentShader: sdfLineFragmentShader,
