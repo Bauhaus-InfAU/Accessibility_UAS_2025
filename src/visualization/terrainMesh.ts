@@ -254,10 +254,10 @@ export function updateTerrainFromAttractors(
 
   // Update heights and colors
   for (let i = 0; i < vertexCount; i++) {
-    // Set height based on raw score
-    // Use TERRAIN_HEIGHT_SCALE to convert score to meters
-    // The mesh is already in meters, so we just add the height
-    const heightMeters = rawScores[i] * TERRAIN_HEIGHT_SCALE
+    // Set height based on normalized score (0-1 range)
+    // This ensures terrain height is always in [0, TERRAIN_HEIGHT_SCALE] range
+    // regardless of attractor weights, matching how colors are normalized
+    const heightMeters = normalizedScores[i] * TERRAIN_HEIGHT_SCALE
 
     // Position Z is the height in meters
     positions[i * 3 + 2] = heightMeters + 10 // Add 10m base height to stay above ground
