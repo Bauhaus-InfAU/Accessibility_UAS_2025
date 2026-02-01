@@ -100,9 +100,9 @@ A continuous 3D terrain surface rendered using Three.js as a MapLibre custom lay
 - **Mesh resolution**: 65×65 vertices (4,225 points) on a 64×64 segment grid
 - **Height mapping**: Normalized score × 200 meters + 10m base (terrain always spans 0-200m regardless of attractor weights)
 - **Color gradient**: Same as buildings/hexagons (Purple → Orange → Red)
-- **Wireframe overlay**: Black grid lines at 30% opacity to visualize mesh structure
-- **Street network overlay**: White lines following terrain height to show connectivity
-- **Contour lines**: 10 white contour lines at regular height intervals (like topographic maps)
+- **Wireframe overlay**: Black grid lines at 30% opacity (hidden by default, contours provide depth cues)
+- **Street network overlay**: White 3px lines at 90% opacity following terrain height (foreground layer)
+- **Contour lines**: 10 colored contour lines matching terrain gradient with adaptive contrast (background layer)
 - **Distance calculation**: Uses network distance via precomputed distance matrix
 - **Bounds**: Covers street network area with 100m padding
 
@@ -166,11 +166,29 @@ Hard pixel edges              Soft alpha gradient
    - Result: consistent smooth edges at any zoom level or viewing angle
 
 **Applied to**:
-| Component | Color | Width | Opacity | Purpose |
-|-----------|-------|-------|---------|---------|
-| Wireframe grid | Black | 1px | 30% | Shows mesh structure and terrain deformation |
-| Street network | White | 3px | 90% | Shows connectivity following terrain height |
-| Contour lines | White | 1px | 30% | Shows elevation levels like topographic maps |
+| Component | Color | Width | Opacity | Visibility | Purpose |
+|-----------|-------|-------|---------|------------|---------|
+| Wireframe grid | Black | 1px | 30% | Hidden | Debug mesh structure (disabled by default) |
+| Street network | White | 3px | 90% | Foreground | Shows connectivity, primary navigation reference |
+| Contour lines | Gradient (adaptive) | 1.5px | 90% | Background | Depth perception, accessibility distribution |
+
+**Visual Hierarchy Design**:
+
+The terrain visualization uses a deliberate visual hierarchy to serve different purposes:
+
+1. **Street Network (Foreground)**: White 3px lines at 90% opacity stand out prominently against the colored terrain. Streets are the primary navigation reference - users orient themselves by the street layout and understand how accessibility relates to the network connectivity.
+
+2. **Contour Lines (Background)**: Thin 1.5px colored lines that blend with the terrain surface while remaining visible. Contours serve two purposes:
+   - **Depth perception**: Like topographic maps, contours reveal the 3D shape of the terrain without relying on lighting/shadows
+   - **Accessibility distribution**: Colored contours (matching the terrain gradient) help users read the spatial pattern of accessibility scores across the surface
+
+3. **Why Colored Contours?**: Using the terrain gradient colors (purple→orange→red) instead of white ensures contours reinforce rather than obscure the accessibility information. Each contour level shows its height's accessibility score through color.
+
+4. **Adaptive Lightness Reduction**: The terrain gradient has inherently different lightness values (purple ~35%, orange/red ~55%). To maintain consistent contrast against all terrain colors, contour colors use adaptive HSL lightness reduction:
+   - Dark colors (purple): 0% reduction → stays visible against dark terrain
+   - Bright colors (orange/red): up to 15% reduction → darkened for contrast against bright terrain
+
+   This ensures contours are equally visible across all accessibility zones without appearing too dark in low-score areas or too similar in high-score areas.
 
 **Key implementation details**:
 - Uses instanced rendering (one draw call for all line segments)
