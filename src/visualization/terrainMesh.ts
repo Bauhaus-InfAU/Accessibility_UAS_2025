@@ -869,10 +869,28 @@ export function syncAttractorPins(
 // ============================================================================
 
 // Contour line visual constants
-const CONTOUR_COLOR = 0xffffff  // white
-const CONTOUR_OPACITY = 0.3    // subtle
-const CONTOUR_LINE_WIDTH = 1   // thin
+const CONTOUR_OPACITY = 0.9    // high visibility
+const CONTOUR_LINE_WIDTH = 1.5 // moderate thickness
 const CONTOUR_Z_OFFSET = 0.5   // meters above terrain to prevent z-fighting
+const CONTOUR_MIN_REDUCTION = 0.0   // min lightness reduction for dark colors
+const CONTOUR_MAX_REDUCTION = 0.15  // max lightness reduction for bright colors
+
+/**
+ * Get contour color for a normalized score (0-1)
+ * Uses adaptive lightness reduction - darker colors get less reduction,
+ * brighter colors get more reduction, to maintain consistent contrast
+ */
+function getContourColor(score: number): number {
+  const color = getColorForScore(score)
+  // Get HSL values
+  const hsl = { h: 0, s: 0, l: 0 }
+  color.getHSL(hsl)
+  // Adaptive reduction: scale from MIN_REDUCTION (at L=0) to MAX_REDUCTION (at L=1)
+  const reduction = CONTOUR_MIN_REDUCTION + (CONTOUR_MAX_REDUCTION - CONTOUR_MIN_REDUCTION) * hsl.l
+  const newLightness = Math.max(0, hsl.l - reduction)
+  color.setHSL(hsl.h, hsl.s, newLightness)
+  return color.getHex()
+}
 
 /**
  * Marching squares edge table.
@@ -1090,22 +1108,21 @@ function extractContourAtHeight(
  * Create contour lines for the terrain mesh.
  *
  * Generates N contour lines at regular height intervals from the minimum
- * to maximum height of the terrain.
+ * to maximum height of the terrain. Each contour level is colored with a
+ * darkened version of the terrain gradient at that height.
  *
  * @param terrainMesh - The terrain mesh to create contours for
  * @param numContours - Number of contour lines (default: 10)
- * @param color - Line color (default: white)
- * @param opacity - Line opacity (default: 0.3)
+ * @param opacity - Line opacity (default: 0.6)
  * @param lineWidth - Line width in pixels (default: 1)
- * @returns Mesh object with SDF line material, or null if no contours
+ * @returns Group containing colored contour meshes, or null if no contours
  */
 export function createContourLines(
   terrainMesh: THREE.Mesh,
   numContours: number = TERRAIN_CONTOUR_COUNT,
-  color: number = CONTOUR_COLOR,
   opacity: number = CONTOUR_OPACITY,
   lineWidth: number = CONTOUR_LINE_WIDTH
-): THREE.Mesh | null {
+): THREE.Group | null {
   const geometry = terrainMesh.geometry as THREE.BufferGeometry
   const positions = geometry.attributes.position.array as Float32Array
   const config = terrainMesh.userData.terrainConfig as TerrainMeshConfig
@@ -1128,53 +1145,76 @@ export function createContourLines(
     return null
   }
 
+  // Create a group to hold all contour level meshes
+  const contourGroup = new THREE.Group()
+
   // Calculate contour height levels
   // We want N contours between min and max, so we divide into N+1 intervals
   const interval = (maxHeight - minHeight) / (numContours + 1)
-  const allSegments: Array<{ start: [number, number, number]; end: [number, number, number] }> = []
 
   for (let i = 1; i <= numContours; i++) {
     const threshold = minHeight + i * interval
     const contourSegments = extractContourAtHeight(positions, segmentsX, segmentsY, threshold)
-    allSegments.push(...contourSegments)
+
+    // Skip if no segments at this level
+    if (contourSegments.length === 0) continue
+
+    // Calculate normalized score for this height level (0-1)
+    const normalizedScore = (threshold - minHeight) / (maxHeight - minHeight)
+
+    // Get darkened gradient color for this level
+    const color = getContourColor(normalizedScore)
+
+    // Create SDF line geometry for this level
+    const sdfGeometry = createSDFLineGeometry(contourSegments)
+
+    // Create SDF line material with the level's color
+    const material = new SDFLineMaterial({
+      color,
+      opacity,
+      linewidth: lineWidth
+    })
+
+    const contourMesh = new THREE.Mesh(sdfGeometry, material)
+    contourMesh.frustumCulled = false
+
+    // Store the contour level index for updates
+    contourMesh.userData.contourLevel = i
+    contourMesh.userData.normalizedScore = normalizedScore
+
+    contourGroup.add(contourMesh)
   }
 
-  // If no segments, return null
-  if (allSegments.length === 0) {
+  // If no contours were created, return null
+  if (contourGroup.children.length === 0) {
     return null
   }
 
-  // Create SDF line geometry
-  const sdfGeometry = createSDFLineGeometry(allSegments)
-
-  // Create SDF line material
-  const material = new SDFLineMaterial({
-    color,
-    opacity,
-    linewidth: lineWidth
-  })
-
-  const contourMesh = new THREE.Mesh(sdfGeometry, material)
-  contourMesh.frustumCulled = false
-
   // Store config for updates
-  contourMesh.userData.terrainConfig = config
-  contourMesh.userData.numContours = numContours
+  contourGroup.userData.terrainConfig = config
+  contourGroup.userData.numContours = numContours
 
-  return contourMesh
+  return contourGroup
 }
 
 /**
  * Update contour line positions after terrain heights change.
  *
- * @param contourMesh - The contour lines mesh to update
+ * Rebuilds all contour level meshes with new positions and colors
+ * based on the updated terrain heights.
+ *
+ * @param contourGroup - The contour lines group to update
  * @param terrainMesh - The terrain mesh with updated heights
  * @param numContours - Number of contour lines (default: 10)
+ * @param opacity - Line opacity (default: 0.6)
+ * @param lineWidth - Line width in pixels (default: 1)
  */
 export function updateContourLines(
-  contourMesh: THREE.Mesh,
+  contourGroup: THREE.Group,
   terrainMesh: THREE.Mesh,
-  numContours: number = TERRAIN_CONTOUR_COUNT
+  numContours: number = TERRAIN_CONTOUR_COUNT,
+  opacity: number = CONTOUR_OPACITY,
+  lineWidth: number = CONTOUR_LINE_WIDTH
 ): void {
   const terrainGeometry = terrainMesh.geometry as THREE.BufferGeometry
   const positions = terrainGeometry.attributes.position.array as Float32Array
@@ -1193,34 +1233,52 @@ export function updateContourLines(
     if (h > maxHeight) maxHeight = h
   }
 
-  // Calculate contour height levels and extract all segments
+  // Dispose old child meshes
+  while (contourGroup.children.length > 0) {
+    const child = contourGroup.children[0] as THREE.Mesh
+    child.geometry.dispose()
+    ;(child.material as THREE.Material).dispose()
+    contourGroup.remove(child)
+  }
+
+  // If terrain is flat, leave group empty
+  if (maxHeight - minHeight < 1) {
+    return
+  }
+
+  // Calculate contour height levels
   const interval = (maxHeight - minHeight) / (numContours + 1)
-  const allSegments: Array<{ start: [number, number, number]; end: [number, number, number] }> = []
 
-  // Only generate contours if terrain has meaningful height variation
-  if (maxHeight - minHeight >= 1) {
-    for (let i = 1; i <= numContours; i++) {
-      const threshold = minHeight + i * interval
-      const contourSegments = extractContourAtHeight(positions, segmentsX, segmentsY, threshold)
-      allSegments.push(...contourSegments)
-    }
-  }
+  for (let i = 1; i <= numContours; i++) {
+    const threshold = minHeight + i * interval
+    const contourSegments = extractContourAtHeight(positions, segmentsX, segmentsY, threshold)
 
-  // If no segments, create a dummy segment to avoid empty geometry issues
-  if (allSegments.length === 0) {
-    // Create an invisible point segment (zero-length line)
-    allSegments.push({
-      start: [0, 0, -1000],  // Far below visible area
-      end: [0, 0, -1000]
+    // Skip if no segments at this level
+    if (contourSegments.length === 0) continue
+
+    // Calculate normalized score for this height level (0-1)
+    const normalizedScore = (threshold - minHeight) / (maxHeight - minHeight)
+
+    // Get darkened gradient color for this level
+    const color = getContourColor(normalizedScore)
+
+    // Create SDF line geometry for this level
+    const sdfGeometry = createSDFLineGeometry(contourSegments)
+
+    // Create SDF line material with the level's color
+    const material = new SDFLineMaterial({
+      color,
+      opacity,
+      linewidth: lineWidth
     })
+
+    const contourMesh = new THREE.Mesh(sdfGeometry, material)
+    contourMesh.frustumCulled = false
+
+    // Store the contour level index for updates
+    contourMesh.userData.contourLevel = i
+    contourMesh.userData.normalizedScore = normalizedScore
+
+    contourGroup.add(contourMesh)
   }
-
-  // Rebuild the geometry with new segment count
-  // We need to recreate because segment count may have changed
-  const oldGeometry = contourMesh.geometry as THREE.InstancedBufferGeometry
-  const newGeometry = createSDFLineGeometry(allSegments)
-
-  // Dispose old geometry and assign new
-  oldGeometry.dispose()
-  contourMesh.geometry = newGeometry
 }

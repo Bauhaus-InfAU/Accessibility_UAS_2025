@@ -388,15 +388,26 @@ The terrain visualization uses Three.js rendered as a MapLibre custom layer. Bot
 **`updateStreetNetworkHeights(streetLines, terrainMesh, graph, zOffset)`**:
 - Updates street line heights to follow terrain after height changes
 
-**`createContourLines(terrainMesh, numContours, color, opacity, lineWidth)`**:
+**`createContourLines(terrainMesh, numContours, opacity, lineWidth)`**:
 1. Uses marching squares algorithm to extract isolines at regular height intervals
-2. Creates `THREE.Mesh` with SDF line material for smooth anti-aliased contours
-3. Default: 10 contours, white (#ffffff) at 30% opacity, 1px width
-4. Contours have 0.5m Z-offset above terrain to prevent z-fighting
+2. Returns `THREE.Group` containing one mesh per contour level (each with unique color)
+3. Each contour colored to match terrain gradient at that height level
+4. Uses adaptive lightness reduction for consistent contrast:
+   - Dark colors (purple): minimal reduction (~0%)
+   - Bright colors (orange/red): more reduction (~15%)
+   - Formula: `reduction = minReduction + (maxReduction - minReduction) * originalLightness`
+5. Default: 10 contours, 90% opacity, 1.5px width
+6. Contours have 0.5m Z-offset above terrain to prevent z-fighting
 
-**`updateContourLines(contourMesh, terrainMesh, numContours)`**:
-- Recomputes contour line positions when terrain heights change
-- Recalculates height intervals based on current min/max
+**`updateContourLines(contourGroup, terrainMesh, numContours)`**:
+- Disposes old child meshes and rebuilds all contour levels
+- Recomputes height intervals based on current min/max
+- Recalculates colors for each level based on new height range
+
+**`getContourColor(score)`** (internal):
+- Takes normalized score (0-1) and returns hex color
+- Preserves Hue and Saturation from terrain gradient
+- Applies adaptive Lightness reduction for consistent contrast against terrain
 
 **`lngLatToLocalMeters(lngLat, config)`** (exported):
 - Converts geographic coordinates to local model space (meters from center)
@@ -442,7 +453,7 @@ interface ThreeJsTerrainLayerState {
   terrainMesh: THREE.Mesh | null
   wireframeGrid: THREE.Mesh | null       // SDF line mesh
   streetNetworkLines: THREE.Mesh | null  // SDF line mesh
-  contourLines: THREE.Mesh | null        // SDF line mesh for contours
+  contourLines: THREE.Group | null       // Group of colored contour meshes
   attractorPinsGroup: THREE.Group | null
   attractorPinData: Map<string, AttractorPinData>
   graph: StreetGraph | null
@@ -526,11 +537,13 @@ const material = new SDFLineMaterial({
 - `updateSDFLineGeometry(geometry, segments)` - Updates segment positions
 
 **Usage in Terrain**:
-| Component | Color | Width | Opacity |
-|-----------|-------|-------|---------|
-| Wireframe grid | Black (#000000) | 1px | 30% |
-| Street network | White (#ffffff) | 3px | 90% |
-| Contour lines | White (#ffffff) | 1px | 30% |
+| Component | Color | Width | Opacity | Visibility |
+|-----------|-------|-------|---------|------------|
+| Wireframe grid | Black (#000000) | 1px | 30% | Hidden by default |
+| Street network | White (#ffffff) | 3px | 90% | Visible |
+| Contour lines | Gradient (adaptive) | 1.5px | 90% | Visible |
+
+**Contour Line Coloring**: Each contour level is colored to match the terrain gradient at that height (purple→orange→red), with adaptive lightness reduction to maintain consistent contrast. Darker colors (purple) get minimal reduction (~0%), while brighter colors (orange/red) get more reduction (~15%). This ensures all contours are visible regardless of the underlying terrain brightness.
 
 ### Limitations
 
@@ -547,20 +560,22 @@ const material = new SDFLineMaterial({
 ### Visual Result
 
 ```
-TERRAIN OVERLAYS:
+TERRAIN WITH COLORED CONTOURS:
 
-Wireframe Grid:                  Contour Lines:
-┌─────────────────────┐          ┌─────────────────────┐
-│ ┼──┼──┼──┼──┼──┼──┼ │          │    ╭───────╮        │
-│ │  │  │  │  │  │  │ │          │  ╭─╯  peak ╰─╮      │
-│ ┼──┼──┼──┼──┼──┼──┼ │          │ ╭╯    ●     ╰╮     │
-│ │  │  │  │  │  │  │ │          │ ╰─╮         ╭─╯     │
-│ ┼──┼──┼──┼──┼──┼──┼ │          │   ╰─────────╯       │
-│ Shows mesh structure│          │ Shows height levels │
-└─────────────────────┘          └─────────────────────┘
+┌─────────────────────────────────────┐
+│      ╭───purple───╮                 │  <- outer contours (low areas)
+│    ╭─╯   orange    ╰─╮              │  <- mid contours
+│   ╭╯      red       ╰╮              │  <- inner contours (peaks)
+│   │    ●  peak  ●    │              │
+│   ╰╮               ╭─╯              │
+│    ╰─╮           ╭─╯                │
+│      ╰───────────╯                  │
+│  Colors match terrain gradient      │
+│  with adaptive darkening            │
+└─────────────────────────────────────┘
 ```
 
-**Contour lines** display 10 elevation levels at regular height intervals, forming closed loops around peaks (high accessibility areas) like topographic maps.
+**Contour lines** display 10 elevation levels at regular height intervals, forming closed loops around peaks (high accessibility areas) like topographic maps. Each contour is colored to match the terrain gradient at that height level, with adaptive lightness reduction ensuring consistent visibility across all areas.
 
 ### 3D Projection: Map Coordinates to Screen Coordinates
 

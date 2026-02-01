@@ -40,7 +40,7 @@ interface ThreeJsTerrainLayerState {
   terrainMesh: THREE.Mesh | null
   wireframeGrid: THREE.Mesh | null  // Mesh with SDF line material
   streetNetworkLines: THREE.Mesh | null  // Mesh with SDF line material
-  contourLines: THREE.Mesh | null  // Mesh with SDF line material for contours
+  contourLines: THREE.Group | null  // Group containing colored contour meshes
   attractorPinsGroup: THREE.Group | null  // Group containing all 3D attractor pins
   attractorPinData: Map<string, AttractorPinData>  // Pin data for updates
   graph: StreetGraph | null
@@ -154,10 +154,11 @@ export function createThreeJsTerrainLayer(
 
         scene.add(terrainMesh)
 
-        // Create wireframe grid overlay
+        // Create wireframe grid overlay (hidden by default, contours provide depth cues)
         if (DEBUG_TERRAIN_LAYER) console.log('[TerrainLayer] Creating wireframe grid...')
         const wireframeGrid = createTerrainWireframe(terrainMesh, 0x000000, 0.3)
         wireframeGrid.frustumCulled = false
+        wireframeGrid.visible = false  // Hide wireframe, use contours instead
         scene.add(wireframeGrid)
 
         // Create street network lines
@@ -356,8 +357,11 @@ export function createThreeJsTerrainLayer(
             material.resolution.set(canvas.width, canvas.height)
           }
           if (layerState.contourLines) {
-            const material = layerState.contourLines.material as SDFLineMaterial
-            material.resolution.set(canvas.width, canvas.height)
+            // Contour lines is a Group - update resolution for all child meshes
+            for (const child of layerState.contourLines.children) {
+              const material = (child as THREE.Mesh).material as SDFLineMaterial
+              material.resolution.set(canvas.width, canvas.height)
+            }
           }
           // Update resolution for attractor pin connecting lines
           if (layerState.attractorPinData) {
@@ -440,9 +444,11 @@ export function createThreeJsTerrainLayer(
           }
         }
         if (layerState.contourLines) {
-          layerState.contourLines.geometry.dispose()
-          if (layerState.contourLines.material instanceof THREE.Material) {
-            layerState.contourLines.material.dispose()
+          // Contour lines is a Group - dispose all child meshes
+          for (const child of layerState.contourLines.children) {
+            const mesh = child as THREE.Mesh
+            mesh.geometry.dispose()
+            ;(mesh.material as THREE.Material).dispose()
           }
         }
         // Clean up attractor pins

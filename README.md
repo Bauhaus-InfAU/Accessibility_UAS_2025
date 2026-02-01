@@ -60,7 +60,7 @@ Where:
   - Buildings colored by accessibility score (purple → orange → red)
   - Hexagonal grid overlay for Grid mode
   - 3D terrain surface with height = accessibility (Grid mode)
-  - Contour lines showing elevation levels like topographic maps
+  - Colored contour lines matching terrain gradient with adaptive contrast
   - Interactive hover popups showing raw scores
 
 - **Custom Amenities**:
