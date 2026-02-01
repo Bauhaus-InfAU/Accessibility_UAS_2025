@@ -307,6 +307,8 @@ export function MapView() {
     updateGridAttractorAttractivity,
     removeGridAttractor,
     setTerrainStats,
+    // Full network distance matrix for terrain
+    fullNetworkMatrix,
     // Measurement tool state
     isMeasurementActive,
     measurementPointA,
@@ -553,7 +555,7 @@ export function MapView() {
 
   // Update terrain when attractors or curve parameters change
   useEffect(() => {
-    if (!mapLoaded || !isGridMode) return
+    if (!mapLoaded || !isGridMode || !fullNetworkMatrix) return
 
     // Function to perform the terrain update
     const performTerrainUpdate = () => {
@@ -569,8 +571,8 @@ export function MapView() {
         expPowerC
       )
 
-      // Update terrain with current attractors
-      const stats = updateTerrainLayer(gridAttractors, evaluator)
+      // Update terrain with current attractors and full network distance matrix
+      const stats = updateTerrainLayer(gridAttractors, evaluator, fullNetworkMatrix)
       if (stats) {
         setTerrainStats(stats)
       }
@@ -590,7 +592,7 @@ export function MapView() {
 
     // Terrain is already initialized, update immediately
     performTerrainUpdate()
-  }, [mapLoaded, isGridMode, gridAttractors, curveTabMode, customCurveType, polylinePoints, bezierHandles, maxDistance, negExpAlpha, expPowerB, expPowerC, setTerrainStats])
+  }, [mapLoaded, isGridMode, gridAttractors, curveTabMode, customCurveType, polylinePoints, bezierHandles, maxDistance, negExpAlpha, expPowerB, expPowerC, setTerrainStats, fullNetworkMatrix])
 
   // Update layer visibility when analysis mode changes
   useEffect(() => {

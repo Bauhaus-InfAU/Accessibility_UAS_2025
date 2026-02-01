@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import maplibregl from 'maplibre-gl'
-import type { StreetGraph, GridAttractor } from '../config/types'
+import type { StreetGraph, GridAttractor, DistanceMatrix } from '../config/types'
 import {
   createTerrainMesh,
   updateTerrainFromAttractors,
@@ -128,9 +128,9 @@ export function createThreeJsTerrainLayer(
         })
         renderer.autoClear = false
 
-        // Create terrain mesh
+        // Create terrain mesh (pass graph for vertex-to-node mapping)
         if (DEBUG_TERRAIN_LAYER) console.log('[TerrainLayer] Creating terrain mesh...')
-        const terrainMesh = createTerrainMesh(config)
+        const terrainMesh = createTerrainMesh(config, graph)
         terrainMesh.frustumCulled = false
 
         // Mesh vertices are in METERS, centered at origin
@@ -453,10 +453,15 @@ export function createThreeJsTerrainLayer(
 /**
  * Update the terrain mesh with new attractors and decay function
  * Returns statistics for the Legend component
+ *
+ * @param attractors - Array of grid attractors (amenities)
+ * @param decayFn - Distance decay function
+ * @param distanceMatrix - Full network distance matrix (all nodes to all nodes)
  */
 export function updateTerrainLayer(
   attractors: GridAttractor[],
-  decayFn: (distance: number) => number
+  decayFn: (distance: number) => number,
+  distanceMatrix: DistanceMatrix
 ): { min: number; max: number; avg: number } | null {
   if (!layerState || !layerState.terrainMesh) {
     console.warn('[TerrainLayer] Not initialized, cannot update')
@@ -468,7 +473,8 @@ export function updateTerrainLayer(
   const stats = updateTerrainFromAttractors(
     layerState.terrainMesh,
     attractors,
-    decayFn
+    decayFn,
+    distanceMatrix
   )
 
   // Update wireframe positions to match terrain

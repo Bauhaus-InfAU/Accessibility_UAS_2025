@@ -1,9 +1,10 @@
 import * as THREE from 'three'
 import maplibregl from 'maplibre-gl'
-import type { StreetGraph, GridAttractor } from '../config/types'
+import type { StreetGraph, GridAttractor, DistanceMatrix } from '../config/types'
 import { DEGREES_TO_METERS, TERRAIN_SEGMENTS, TERRAIN_HEIGHT_SCALE } from '../config/constants'
 import { calculateTerrainScores } from '../computation/terrainAccessibilityCalc'
 import { SDFLineMaterial, createSDFLineGeometry, updateSDFLineGeometry } from './SDFLineMaterial'
+import { findNearestNode } from '../data/streetGraph'
 
 export { TERRAIN_SEGMENTS }
 
@@ -123,8 +124,11 @@ export function getGraphBounds(graph: StreetGraph): TerrainMeshConfig {
  * We need to rotate it to be horizontal (XY plane for position, Z for height).
  * Actually, for MapLibre custom layers, the plane should be in the XY plane
  * because that's how MapLibre renders 3D content.
+ *
+ * @param config - Terrain mesh configuration with bounds and resolution
+ * @param graph - Street graph for mapping vertices to nearest network nodes
  */
-export function createTerrainMesh(config: TerrainMeshConfig): THREE.Mesh {
+export function createTerrainMesh(config: TerrainMeshConfig, graph: StreetGraph): THREE.Mesh {
   const width = config.mercatorMaxX - config.mercatorMinX
   const height = config.mercatorMaxY - config.mercatorMinY
 
@@ -199,39 +203,49 @@ export function createTerrainMesh(config: TerrainMeshConfig): THREE.Mesh {
   mesh.userData.terrainConfig = config
   mesh.userData.lngLatCoords = lngLatCoords
 
+  // Map each vertex to its nearest network node for network distance lookup
+  const vertexNodeIds: string[] = new Array(lngLatCoords.length)
+  for (let i = 0; i < lngLatCoords.length; i++) {
+    vertexNodeIds[i] = findNearestNode(graph, lngLatCoords[i])
+  }
+  mesh.userData.vertexNodeIds = vertexNodeIds
+
   return mesh
 }
 
 /**
- * Update terrain mesh vertex heights and colors based on attractors using Euclidean distance.
+ * Update terrain mesh vertex heights and colors based on attractors using network distance.
  *
  * This is the main function for updating the terrain visualization in Grid mode.
- * It calculates accessibility scores for each vertex using Euclidean distance to attractors,
+ * It calculates accessibility scores for each vertex using network distance to attractors,
  * then updates vertex heights and colors accordingly.
  *
  * @param mesh - The terrain mesh to update
  * @param attractors - Array of grid attractors (amenities)
  * @param decayFn - Distance decay function
+ * @param distanceMatrix - Full network distance matrix (all nodes to all nodes)
  * @returns Object with min, max, avg statistics for the Legend
  */
 export function updateTerrainFromAttractors(
   mesh: THREE.Mesh,
   attractors: GridAttractor[],
-  decayFn: (distance: number) => number
+  decayFn: (distance: number) => number,
+  distanceMatrix: DistanceMatrix
 ): { min: number; max: number; avg: number } {
   const geometry = mesh.geometry as THREE.BufferGeometry
   const positions = geometry.attributes.position.array as Float32Array
   const colors = geometry.attributes.color.array as Float32Array
   const config = mesh.userData.terrainConfig as TerrainMeshConfig
-  const lngLatCoords = mesh.userData.lngLatCoords as [number, number][]
+  const vertexNodeIds = mesh.userData.vertexNodeIds as string[]
 
   const vertexCount = (config.segmentsX + 1) * (config.segmentsY + 1)
 
-  // Calculate scores for all vertices using Euclidean distance
+  // Calculate scores for all vertices using network distance
   const { rawScores, normalizedScores, min, max, avg } = calculateTerrainScores(
-    lngLatCoords,
+    vertexNodeIds,
     attractors,
-    decayFn
+    decayFn,
+    distanceMatrix
   )
 
 

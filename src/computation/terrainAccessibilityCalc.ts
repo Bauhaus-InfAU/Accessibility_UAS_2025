@@ -1,34 +1,32 @@
-import type { GridAttractor } from '../config/types'
-import { DEGREES_TO_METERS } from '../config/constants'
+import type { GridAttractor, DistanceMatrix } from '../config/types'
+import { getDistance } from './distanceMatrix'
 
 /**
- * Calculate Euclidean distance between two coordinates in meters
- */
-function euclideanDistance(coord1: [number, number], coord2: [number, number]): number {
-  const dx = (coord1[0] - coord2[0]) * DEGREES_TO_METERS
-  const dy = (coord1[1] - coord2[1]) * DEGREES_TO_METERS
-  return Math.sqrt(dx * dx + dy * dy)
-}
-
-/**
- * Calculate accessibility score for a single vertex using Euclidean distance.
+ * Calculate accessibility score for a single vertex using network distance.
  *
  * Formula: score = Σ(attractivity_j × decayFn(dist_j))
  *
- * @param vertexLngLat - [lng, lat] coordinates of the vertex
+ * @param vertexNodeId - ID of the nearest network node for this vertex
  * @param attractors - Array of grid attractors (amenities)
  * @param decayFn - Distance decay function
+ * @param distanceMatrix - Full network distance matrix (all nodes to all nodes)
  * @returns Raw accessibility score for the vertex
  */
 export function calculateVertexScore(
-  vertexLngLat: [number, number],
+  vertexNodeId: string,
   attractors: GridAttractor[],
-  decayFn: (distance: number) => number
+  decayFn: (distance: number) => number,
+  distanceMatrix: DistanceMatrix
 ): number {
   let score = 0
 
   for (const attractor of attractors) {
-    const distance = euclideanDistance(vertexLngLat, attractor.coord)
+    // Look up network distance from vertex's nearest node to attractor's nearest node
+    const distance = getDistance(distanceMatrix, vertexNodeId, attractor.nearestNodeId)
+
+    // Skip if no path exists (unreachable)
+    if (distance === undefined || distance === Infinity) continue
+
     const decay = decayFn(distance)
 
     if (decay <= 0) continue
@@ -43,28 +41,30 @@ export function calculateVertexScore(
 }
 
 /**
- * Calculate accessibility scores for all terrain mesh vertices using Euclidean distance.
+ * Calculate accessibility scores for all terrain mesh vertices using network distance.
  *
- * This is optimized for real-time performance (~1ms for 4225 vertices).
- * Uses Euclidean distance instead of network distance for speed.
+ * Uses network distance lookup via pre-computed distance matrix for accurate
+ * street-following accessibility patterns.
  *
- * @param vertices - Array of [lng, lat] coordinates for each mesh vertex
+ * @param vertexNodeIds - Array of nearest network node IDs for each mesh vertex
  * @param attractors - Array of grid attractors (amenities)
  * @param decayFn - Distance decay function
+ * @param distanceMatrix - Full network distance matrix (all nodes to all nodes)
  * @returns Object containing raw scores, normalized scores, and statistics
  */
 export function calculateTerrainScores(
-  vertices: [number, number][],
+  vertexNodeIds: string[],
   attractors: GridAttractor[],
-  decayFn: (distance: number) => number
+  decayFn: (distance: number) => number,
+  distanceMatrix: DistanceMatrix
 ): { rawScores: number[]; normalizedScores: number[]; min: number; max: number; avg: number } {
-  const rawScores: number[] = new Array(vertices.length)
+  const rawScores: number[] = new Array(vertexNodeIds.length)
 
   // If no attractors, return zeros
   if (attractors.length === 0) {
     return {
-      rawScores: new Array(vertices.length).fill(0),
-      normalizedScores: new Array(vertices.length).fill(0),
+      rawScores: new Array(vertexNodeIds.length).fill(0),
+      normalizedScores: new Array(vertexNodeIds.length).fill(0),
       min: 0,
       max: 0,
       avg: 0
@@ -76,8 +76,8 @@ export function calculateTerrainScores(
   let max = -Infinity
   let sum = 0
 
-  for (let i = 0; i < vertices.length; i++) {
-    const score = calculateVertexScore(vertices[i], attractors, decayFn)
+  for (let i = 0; i < vertexNodeIds.length; i++) {
+    const score = calculateVertexScore(vertexNodeIds[i], attractors, decayFn, distanceMatrix)
     rawScores[i] = score
 
     if (score < min) min = score
@@ -85,19 +85,19 @@ export function calculateTerrainScores(
     sum += score
   }
 
-  const avg = sum / vertices.length
+  const avg = sum / vertexNodeIds.length
   const range = max - min
 
   // Normalize scores to 0-1 range
-  const normalizedScores: number[] = new Array(vertices.length)
+  const normalizedScores: number[] = new Array(vertexNodeIds.length)
 
   if (range === 0) {
     // All values are the same
-    for (let i = 0; i < vertices.length; i++) {
+    for (let i = 0; i < vertexNodeIds.length; i++) {
       normalizedScores[i] = rawScores[i] > 0 ? 1 : 0
     }
   } else {
-    for (let i = 0; i < vertices.length; i++) {
+    for (let i = 0; i < vertexNodeIds.length; i++) {
       normalizedScores[i] = (rawScores[i] - min) / range
     }
   }

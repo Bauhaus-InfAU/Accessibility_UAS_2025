@@ -4,7 +4,7 @@ import { MAX_DISTANCE_DEFAULT, DEFAULT_POLYLINE_POINTS, DEFAULT_BEZIER_HANDLES, 
 import { loadBuildingsGeoJSON, loadStreetsGeoJSON } from '../data/dataLoader'
 import { processBuildings, getBuildingsWithLandUse, getAvailableLandUses } from '../data/buildingStore'
 import { buildStreetGraph, mapBuildingsToNodes, serializeGraph, findNearestNode } from '../data/streetGraph'
-import { computeDistanceMatrix } from '../computation/distanceMatrix'
+import { computeDistanceMatrix, computeFullNetworkMatrix } from '../computation/distanceMatrix'
 import { calculateAccessibility, calculateAccessibilityFromPins, normalizeScores } from '../computation/accessibilityCalc'
 import { findShortestPath } from '../computation/measurementCalc'
 
@@ -21,6 +21,8 @@ interface AppState {
   buildings: Building[]
   graph: StreetGraph | null
   distanceMatrix: DistanceMatrix | null
+  fullNetworkMatrix: DistanceMatrix | null  // Full network matrix for terrain (all nodes to all nodes)
+  isComputingFullMatrix: boolean  // Loading indicator for full network matrix computation
   availableLandUses: LandUse[]
   streetsGeoJSON: StreetsGeoJSON | null
 
@@ -116,6 +118,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [buildings, setBuildings] = useState<Building[]>([])
   const [graph, setGraph] = useState<StreetGraph | null>(null)
   const [distanceMatrix, setDistanceMatrix] = useState<DistanceMatrix | null>(null)
+  const [fullNetworkMatrix, setFullNetworkMatrix] = useState<DistanceMatrix | null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [isComputingFullMatrix, _setIsComputingFullMatrix] = useState(false)
   const [availableLandUses, setAvailableLandUses] = useState<LandUse[]>([])
   const [streetsGeoJSON, setStreetsGeoJSON] = useState<StreetsGeoJSON | null>(null)
 
@@ -183,15 +188,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setLoadingProgress(40)
         mapBuildingsToNodes(processedBuildings, streetGraph)
 
-        setLoadingStatus('Computing shortest paths...')
-        setLoadingProgress(45)
+        setLoadingStatus('Computing shortest paths (buildings)...')
+        setLoadingProgress(40)
         const serialized = serializeGraph(streetGraph)
         const matrix = await computeDistanceMatrix(
           serialized,
           processedBuildings,
           (percent) => {
-            setLoadingProgress(45 + Math.floor(percent * 0.5))
-            setLoadingStatus(`Computing shortest paths... ${percent}%`)
+            setLoadingProgress(40 + Math.floor(percent * 0.25))
+            setLoadingStatus(`Computing shortest paths (buildings)... ${percent}%`)
+          }
+        )
+
+        setLoadingStatus('Computing full network matrix (terrain)...')
+        setLoadingProgress(65)
+        const fullMatrix = await computeFullNetworkMatrix(
+          serialized,
+          (percent) => {
+            setLoadingProgress(65 + Math.floor(percent * 0.30))
+            setLoadingStatus(`Computing full network matrix (terrain)... ${percent}%`)
           }
         )
 
@@ -202,6 +217,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setBuildings(processedBuildings)
         setGraph(streetGraph)
         setDistanceMatrix(matrix)
+        setFullNetworkMatrix(fullMatrix)
         setAvailableLandUses(available)
 
         // Set initial land use to first available
@@ -510,6 +526,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     buildings,
     graph,
     distanceMatrix,
+    fullNetworkMatrix,
+    isComputingFullMatrix,
     availableLandUses,
     streetsGeoJSON,
     analysisMode,
