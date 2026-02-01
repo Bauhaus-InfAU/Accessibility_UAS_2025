@@ -37,10 +37,8 @@ Students define a custom distance decay function f(d) graphically, then see how 
 - **Amenity Selection**: 14 predefined land use types from Weimar data
 - **Custom Pins**: User-placed amenity markers on the map (2 default pins on startup, click to add, drag to move, right-click to delete)
   - Each pin has editable attractivity value (default 1, click box to edit)
-  - Pin size scales proportionally with attractivity (sqrt scale: 1→1.0x, 5→1.5x, 10→1.86x, max 2.0x)
 - **Custom Amenities (Grid mode)**: User-placed amenity points (2 default on startup, same interactions as custom pins)
   - Each amenity has editable attractivity value with visual attractivity box
-  - Amenity size scales proportionally with attractivity (same as custom pins)
 - **Attractivity Modes**: Floor area, volume, or count-based weighting (Buildings mode with predefined amenities)
 - **3D Visualization**: Buildings colored by accessibility score (purple=low, red=high)
 - **Hexagon Grid**: ~15m diameter hexagons colored by accessibility (Grid mode), organic boundary within 100m of network
@@ -284,9 +282,9 @@ Shown during initial data loading:
   - Unscored: Light grey (#cccccc)
   - Thin white outline (0.5px, 50% opacity) for cell boundaries
 - **Custom Pins / Amenities**: Yellow markers with black center dot and attractivity box below
-  - Attractivity box: Yellow (#fcdb02) fill, black outline (1.5px), rounded corners (10px)
+  - Attractivity box: Yellow (#fcdb02) fill, black outline (1.5px), fully rounded (pill shape)
   - Click box to edit attractivity value (input field appears)
-  - Pin size scales with attractivity: sqrt formula (1→1.0x, 5→1.5x, 10→1.86x, max 2.0x, min 0.8x)
+  - Connecting line: Dashed black line from pin to ground
   - CSS classes: `.custom-pin`, `.attractivity-box`, `.att-value`, `.att-input` (in `index.css`)
 - **Hover Popup** (`MapView.tsx`):
   - Shows raw accessibility score on hover over scored buildings (Buildings mode) or hexagons (Grid mode)
@@ -431,8 +429,7 @@ The terrain visualization uses Three.js rendered as a MapLibre custom layer. Bot
 - Note: Pin visuals are HTML overlays (not 3D sprites) for constant screen size
 
 **`getPinScale(attractivity)`** (exported):
-- Calculates pin scale factor based on attractivity value
-- Uses sqrt scaling: 1→1.0x, 5→1.5x, 10→1.86x, clamped to [0.8, 2.0]
+- Returns constant scale factor of 1.0 (pin size no longer varies with attractivity)
 
 ### MapLibre Integration (`threeJsLayer.ts`)
 

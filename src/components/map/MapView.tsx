@@ -38,15 +38,9 @@ function getScoreColor(normalizedScore: number): string {
   return `rgb(${r}, ${g}, ${b})`
 }
 
-// Calculate pin scale based on attractivity (min 0.8, max 2.0)
-function getPinScale(attractivity: number): number {
-  const minScale = 0.8
-  const maxScale = 2.0
-  // Use square root for visible differences at low values
-  // attractivity 1 -> scale 1.0, attractivity 5 -> scale 1.5, attractivity 10 -> scale 1.86
-  if (attractivity <= 0) return minScale
-  const sqrtScale = 0.6 + 0.4 * Math.sqrt(attractivity)
-  return Math.min(maxScale, Math.max(minScale, sqrtScale))
+// Get pin scale (constant size, attractivity no longer affects pin size)
+function getPinScale(_attractivity: number): number {
+  return 1.0
 }
 
 // SVG for custom pin marker with attractivity box

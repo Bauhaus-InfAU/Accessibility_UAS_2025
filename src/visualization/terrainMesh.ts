@@ -768,14 +768,10 @@ const PIN_HEIGHT_OFFSET = 5  // Height above terrain in meters
 const PIN_GROUND_LEVEL = 10  // Ground level (same as terrain base)
 
 /**
- * Calculate pin scale based on attractivity (min 0.8, max 2.0)
+ * Get pin scale (constant size, attractivity no longer affects pin size)
  */
-export function getPinScale(attractivity: number): number {
-  const minScale = 0.8
-  const maxScale = 2.0
-  if (attractivity <= 0) return minScale
-  const sqrtScale = 0.6 + 0.4 * Math.sqrt(attractivity)
-  return Math.min(maxScale, Math.max(minScale, sqrtScale))
+export function getPinScale(_attractivity: number): number {
+  return 1.0
 }
 
 // Connecting line visual constants
