@@ -579,13 +579,17 @@ export function createStreetNetworkLines(
   const geometry = createSDFLineGeometry(segments)
 
   // Create SDF line material with smooth anti-aliased edges
-  // depthTest=false ensures streets always render on top of contours
+  // Use stencil buffer to mask out contours where streets are rendered
   const material = new SDFLineMaterial({
     color,
     opacity,
     linewidth: lineWidth
   })
-  material.depthTest = false  // Always render on top (after contours)
+  // Streets write to stencil buffer so contours can be masked
+  material.stencilWrite = true
+  material.stencilRef = 1
+  material.stencilFunc = THREE.AlwaysStencilFunc
+  material.stencilZPass = THREE.ReplaceStencilOp
 
   const mesh = new THREE.Mesh(geometry, material)
   mesh.frustumCulled = false
@@ -1172,12 +1176,16 @@ export function createContourLines(
 
     // Create SDF line material with the level's color
     // depthWrite=false ensures contours don't occlude street network
+    // Stencil test skips pixels where streets have been rendered
     const material = new SDFLineMaterial({
       color,
       opacity,
       linewidth: lineWidth
     })
     material.depthWrite = false  // Contours render behind streets
+    material.stencilWrite = false
+    material.stencilRef = 1
+    material.stencilFunc = THREE.NotEqualStencilFunc  // Only render where stencil != 1 (no streets)
 
     const contourMesh = new THREE.Mesh(sdfGeometry, material)
     contourMesh.frustumCulled = false
@@ -1271,12 +1279,16 @@ export function updateContourLines(
 
     // Create SDF line material with the level's color
     // depthWrite=false ensures contours don't occlude street network
+    // Stencil test skips pixels where streets have been rendered
     const material = new SDFLineMaterial({
       color,
       opacity,
       linewidth: lineWidth
     })
     material.depthWrite = false  // Contours render behind streets
+    material.stencilWrite = false
+    material.stencilRef = 1
+    material.stencilFunc = THREE.NotEqualStencilFunc  // Only render where stencil != 1 (no streets)
 
     const contourMesh = new THREE.Mesh(sdfGeometry, material)
     contourMesh.frustumCulled = false
