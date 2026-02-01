@@ -4,3 +4,4 @@ dist
 UsersMartinBielikDevDistanceDecayBuilder_reference_repo
 media/
 .playwright-mcp/
+local data/
