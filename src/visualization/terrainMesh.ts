@@ -579,11 +579,13 @@ export function createStreetNetworkLines(
   const geometry = createSDFLineGeometry(segments)
 
   // Create SDF line material with smooth anti-aliased edges
+  // depthTest=false ensures streets always render on top of contours
   const material = new SDFLineMaterial({
     color,
     opacity,
     linewidth: lineWidth
   })
+  material.depthTest = false  // Always render on top (after contours)
 
   const mesh = new THREE.Mesh(geometry, material)
   mesh.frustumCulled = false

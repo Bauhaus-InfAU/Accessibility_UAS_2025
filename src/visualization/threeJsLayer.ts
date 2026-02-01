@@ -162,8 +162,16 @@ export function createThreeJsTerrainLayer(
         scene.add(wireframeGrid)
 
         // Create street network lines (render on top of contours)
+        // Use full opacity (1.0) to completely cover contours
         if (DEBUG_TERRAIN_LAYER) console.log('[TerrainLayer] Creating street network lines...')
-        const streetNetworkLines = createStreetNetworkLines(terrainMesh, graph)
+        const streetNetworkLines = createStreetNetworkLines(
+          terrainMesh,
+          graph,
+          0xffffff,  // white
+          1.0,       // fully opaque to cover contours
+          3,         // z-offset
+          3.5        // line width
+        )
         streetNetworkLines.renderOrder = 10  // Higher = renders later (on top of contours)
         scene.add(streetNetworkLines)
 
