@@ -161,9 +161,10 @@ export function createThreeJsTerrainLayer(
         wireframeGrid.visible = false  // Hide wireframe, use contours instead
         scene.add(wireframeGrid)
 
-        // Create street network lines
+        // Create street network lines (render on top of contours)
         if (DEBUG_TERRAIN_LAYER) console.log('[TerrainLayer] Creating street network lines...')
         const streetNetworkLines = createStreetNetworkLines(terrainMesh, graph)
+        streetNetworkLines.renderOrder = 10  // Higher = renders later (on top of contours)
         scene.add(streetNetworkLines)
 
         if (DEBUG_TERRAIN_LAYER) {
@@ -520,12 +521,21 @@ export function updateTerrainLayer(
   if (layerState.contourLines) {
     // Update existing contour lines
     updateContourLines(layerState.contourLines, layerState.terrainMesh)
+    // Ensure renderOrder is set on new children after update
+    for (const child of layerState.contourLines.children) {
+      child.renderOrder = 5
+    }
   } else {
-    // Create contour lines for the first time
-    const contourMesh = createContourLines(layerState.terrainMesh)
-    if (contourMesh) {
-      layerState.scene.add(contourMesh)
-      layerState.contourLines = contourMesh
+    // Create contour lines for the first time (render below street network)
+    const contourGroup = createContourLines(layerState.terrainMesh)
+    if (contourGroup) {
+      // Set renderOrder on group and all children (Three.js doesn't inherit renderOrder)
+      contourGroup.renderOrder = 5  // Lower than streets (10) = renders first (behind)
+      for (const child of contourGroup.children) {
+        child.renderOrder = 5
+      }
+      layerState.scene.add(contourGroup)
+      layerState.contourLines = contourGroup
     }
   }
 
