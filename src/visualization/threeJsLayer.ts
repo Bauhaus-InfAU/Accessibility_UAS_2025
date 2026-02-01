@@ -161,18 +161,16 @@ export function createThreeJsTerrainLayer(
         wireframeGrid.visible = false  // Hide wireframe, use contours instead
         scene.add(wireframeGrid)
 
-        // Create street network lines (render on top of contours)
-        // Use full opacity (1.0) to completely cover contours
+        // Create street network lines
         if (DEBUG_TERRAIN_LAYER) console.log('[TerrainLayer] Creating street network lines...')
         const streetNetworkLines = createStreetNetworkLines(
           terrainMesh,
           graph,
           0xffffff,  // white
-          1.0,       // fully opaque to cover contours
+          1.0,       // fully opaque
           3,         // z-offset
           3.5        // line width
         )
-        streetNetworkLines.renderOrder = 1  // Render FIRST to write stencil mask
         scene.add(streetNetworkLines)
 
         if (DEBUG_TERRAIN_LAYER) {
@@ -526,23 +524,13 @@ export function updateTerrainLayer(
   }
 
   // Update or create contour lines
-  // Contours render AFTER streets (renderOrder=10 > streets=1) to test stencil mask
   if (layerState.contourLines) {
     // Update existing contour lines
     updateContourLines(layerState.contourLines, layerState.terrainMesh)
-    // Ensure renderOrder is set on new children after update
-    for (const child of layerState.contourLines.children) {
-      child.renderOrder = 10
-    }
   } else {
     // Create contour lines for the first time
     const contourGroup = createContourLines(layerState.terrainMesh)
     if (contourGroup) {
-      // Set renderOrder on group and all children (Three.js doesn't inherit renderOrder)
-      contourGroup.renderOrder = 10  // Higher than streets (1) = renders after, tests stencil
-      for (const child of contourGroup.children) {
-        child.renderOrder = 10
-      }
       layerState.scene.add(contourGroup)
       layerState.contourLines = contourGroup
     }
