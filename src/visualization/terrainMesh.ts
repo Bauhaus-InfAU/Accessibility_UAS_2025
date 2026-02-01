@@ -1169,11 +1169,13 @@ export function createContourLines(
     const sdfGeometry = createSDFLineGeometry(contourSegments)
 
     // Create SDF line material with the level's color
+    // depthWrite=false ensures contours don't occlude street network
     const material = new SDFLineMaterial({
       color,
       opacity,
       linewidth: lineWidth
     })
+    material.depthWrite = false  // Contours render behind streets
 
     const contourMesh = new THREE.Mesh(sdfGeometry, material)
     contourMesh.frustumCulled = false
@@ -1266,11 +1268,13 @@ export function updateContourLines(
     const sdfGeometry = createSDFLineGeometry(contourSegments)
 
     // Create SDF line material with the level's color
+    // depthWrite=false ensures contours don't occlude street network
     const material = new SDFLineMaterial({
       color,
       opacity,
       linewidth: lineWidth
     })
+    material.depthWrite = false  // Contours render behind streets
 
     const contourMesh = new THREE.Mesh(sdfGeometry, material)
     contourMesh.frustumCulled = false
