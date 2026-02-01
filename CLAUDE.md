@@ -344,7 +344,7 @@ The terrain visualization uses Three.js rendered as a MapLibre custom layer. Bot
 | `src/visualization/shaders/sdfLine.ts` | GLSL shaders for SDF anti-aliased line rendering |
 | `src/visualization/SDFLineMaterial.ts` | Custom Three.js material for smooth lines |
 | `src/computation/terrainAccessibilityCalc.ts` | Network distance-based accessibility calculation |
-| `src/config/constants.ts` | `TERRAIN_SEGMENTS` (64), `TERRAIN_HEIGHT_SCALE` (200m), `TERRAIN_CONTOUR_COUNT` (10) |
+| `src/config/constants.ts` | `TERRAIN_SEGMENTS` (64), `TERRAIN_HEIGHT_SCALE` (200m), `TERRAIN_CONTOUR_COUNT` (10), `TERRAIN_SMOOTH_SIGMA` (1.0) |
 
 ### Key Constants
 
@@ -353,6 +353,7 @@ The terrain visualization uses Three.js rendered as a MapLibre custom layer. Bot
 | `TERRAIN_SEGMENTS` | 64 | Grid resolution (65×65 = 4,225 vertices) |
 | `TERRAIN_HEIGHT_SCALE` | 200 | Maximum terrain height in meters (normalized score 1.0 = 200m) |
 | `TERRAIN_CONTOUR_COUNT` | 10 | Number of contour lines displayed |
+| `TERRAIN_SMOOTH_SIGMA` | 1.0 | Gaussian blur radius for score smoothing (0 = disabled) |
 | Base height | 10m | Offset above ground level |
 
 ### Terrain Mesh Creation (`terrainMesh.ts`)
@@ -368,9 +369,16 @@ The terrain visualization uses Three.js rendered as a MapLibre custom layer. Bot
 **`updateTerrainFromAttractors(mesh, attractors, decayFn, distanceMatrix)`**:
 1. Calls `calculateTerrainScores()` to compute accessibility for each vertex using network distance
 2. Normalizes scores to [0, 1] range based on current min/max
-3. Updates vertex heights: `heightMeters = normalizedScore * TERRAIN_HEIGHT_SCALE + 10`
-4. Updates vertex colors using gradient: Purple (#4A3AB4) → Orange (#FD681D) → Red (#FD1D1D)
-5. Returns `{ min, max, avg }` raw score statistics for Legend
+3. Applies Gaussian blur smoothing (sigma = `TERRAIN_SMOOTH_SIGMA`) to reduce sharp transitions
+4. Updates vertex heights: `heightMeters = smoothedScore * TERRAIN_HEIGHT_SCALE + 10`
+5. Updates vertex colors using gradient: Purple (#4A3AB4) → Orange (#FD681D) → Red (#FD1D1D)
+6. Returns `{ min, max, avg }` raw score statistics for Legend
+
+**Terrain Smoothing** (`smoothScores` function):
+- Applies separable Gaussian blur (horizontal then vertical pass) to normalized scores
+- Reduces sharp transitions at network node boundaries where adjacent vertices map to different nodes
+- Uses edge replication for boundary handling
+- Kernel radius = ceil(sigma × 2), so sigma=1.0 gives a 5×5 kernel
 
 **`createTerrainWireframe(terrainMesh, color, opacity, lineWidth)`**:
 1. Creates `THREE.Mesh` with SDF line material (8,320 line segments)

@@ -388,11 +388,16 @@ Uses network distance via precomputed full network matrix:
 - For each mesh vertex (mapped to node):
   - Calculate: `score = Σ(attractors) attractivity × f(networkDistance)`
 - Min-max normalize scores to [0, 1] (terrain height always spans 0-200m range)
-- Update vertex heights: `z = normalizedScore × TERRAIN_HEIGHT_SCALE + 10m`
+- Apply Gaussian smoothing (sigma = 1.0) to reduce sharp transitions
+- Update vertex heights: `z = smoothedScore × TERRAIN_HEIGHT_SCALE + 10m`
 - Update vertex colors using accessibility gradient
 - Sync wireframe and contour line positions with mesh
 
 **Network distance benefits**: Terrain now shows organic, street-following accessibility patterns instead of smooth circular patterns. Same distance calculation as hexagon grid.
+
+**Terrain Smoothing**: A Gaussian blur is applied to normalized scores before height/color assignment. This serves two purposes:
+1. **Improved comprehension**: Creates a smoother, less complex surface that's easier to interpret visually
+2. **Compensates for analysis imperfections**: The discrete nature of the street network (imperfect segmentation, vertex-to-node mapping, grid resolution) can cause abrupt height changes at node boundaries. Smoothing blends these discontinuities into gradual transitions that better represent the underlying accessibility gradient.
 
 ## Technical Constraints
 

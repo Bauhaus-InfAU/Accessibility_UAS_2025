@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import maplibregl from 'maplibre-gl'
 import type { StreetGraph, GridAttractor, DistanceMatrix } from '../config/types'
-import { DEGREES_TO_METERS, TERRAIN_SEGMENTS, TERRAIN_HEIGHT_SCALE, TERRAIN_CONTOUR_COUNT } from '../config/constants'
+import { DEGREES_TO_METERS, TERRAIN_SEGMENTS, TERRAIN_HEIGHT_SCALE, TERRAIN_CONTOUR_COUNT, TERRAIN_SMOOTH_SIGMA } from '../config/constants'
 import { calculateTerrainScores } from '../computation/terrainAccessibilityCalc'
 import { SDFLineMaterial, createSDFLineGeometry, updateSDFLineGeometry } from './SDFLineMaterial'
 import { findNearestNode } from '../data/streetGraph'
@@ -56,6 +56,122 @@ function getColorForScore(score: number): THREE.Color {
     const t2 = (t - 0.5) * 2
     return orange.clone().lerp(red, t2)
   }
+}
+
+// ============================================================================
+// Terrain Smoothing (Gaussian Blur)
+// ============================================================================
+
+/**
+ * Generate a 1D Gaussian kernel for separable convolution.
+ *
+ * @param sigma - Standard deviation of the Gaussian
+ * @param radius - Kernel radius (kernel size = 2*radius + 1)
+ * @returns Normalized kernel values
+ */
+function generateGaussianKernel(sigma: number, radius: number): Float32Array {
+  const size = radius * 2 + 1
+  const kernel = new Float32Array(size)
+  const sigma2 = sigma * sigma
+  let sum = 0
+
+  for (let i = 0; i < size; i++) {
+    const x = i - radius
+    const value = Math.exp(-(x * x) / (2 * sigma2))
+    kernel[i] = value
+    sum += value
+  }
+
+  // Normalize
+  for (let i = 0; i < size; i++) {
+    kernel[i] /= sum
+  }
+
+  return kernel
+}
+
+/**
+ * Apply 1D convolution along a single axis.
+ *
+ * @param input - Input array
+ * @param width - Grid width
+ * @param height - Grid height
+ * @param kernel - 1D kernel values
+ * @param horizontal - True for horizontal pass, false for vertical
+ * @returns Convolved array
+ */
+function convolve1D(
+  input: Float32Array,
+  width: number,
+  height: number,
+  kernel: Float32Array,
+  horizontal: boolean
+): Float32Array {
+  const output = new Float32Array(input.length)
+  const radius = (kernel.length - 1) / 2
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let sum = 0
+      let weightSum = 0
+
+      for (let k = -radius; k <= radius; k++) {
+        let sampleX = x
+        let sampleY = y
+
+        if (horizontal) {
+          sampleX = x + k
+        } else {
+          sampleY = y + k
+        }
+
+        // Clamp to boundaries (replicate edge)
+        sampleX = Math.max(0, Math.min(width - 1, sampleX))
+        sampleY = Math.max(0, Math.min(height - 1, sampleY))
+
+        const idx = sampleY * width + sampleX
+        const weight = kernel[k + radius]
+        sum += input[idx] * weight
+        weightSum += weight
+      }
+
+      output[y * width + x] = sum / weightSum
+    }
+  }
+
+  return output
+}
+
+/**
+ * Apply Gaussian blur to a 2D array of scores using separable convolution.
+ *
+ * This smooths the terrain by reducing sharp transitions between adjacent
+ * vertices that may be mapped to different network nodes.
+ *
+ * @param scores - Float32Array of normalized scores (0-1)
+ * @param width - Grid width (65)
+ * @param height - Grid height (65)
+ * @param sigma - Blur radius in grid cells (default: 1.5)
+ * @returns Smoothed Float32Array
+ */
+function smoothScores(
+  scores: Float32Array,
+  width: number,
+  height: number,
+  sigma: number
+): Float32Array {
+  // Skip smoothing if sigma is 0 or too small
+  if (sigma < 0.1) {
+    return scores
+  }
+
+  // Generate Gaussian kernel (radius = ceil(2*sigma) to capture ~95% of distribution)
+  const radius = Math.ceil(sigma * 2)
+  const kernel = generateGaussianKernel(sigma, radius)
+
+  // Apply separable convolution (horizontal then vertical)
+  const temp = convolve1D(scores, width, height, kernel, true)  // horizontal pass
+  return convolve1D(temp, width, height, kernel, false)         // vertical pass
 }
 
 /**
@@ -248,27 +364,32 @@ export function updateTerrainFromAttractors(
     distanceMatrix
   )
 
+  // Apply Gaussian smoothing to reduce sharp transitions at network node boundaries
+  const gridWidth = config.segmentsX + 1   // 65
+  const gridHeight = config.segmentsY + 1  // 65
+  const normalizedScoresArray = new Float32Array(normalizedScores)
+  const smoothedScores = smoothScores(normalizedScoresArray, gridWidth, gridHeight, TERRAIN_SMOOTH_SIGMA)
 
   // Grey color for areas with no data
   const greyColor = new THREE.Color(0xcccccc)
 
   // Update heights and colors
   for (let i = 0; i < vertexCount; i++) {
-    // Set height based on normalized score (0-1 range)
+    // Set height based on smoothed normalized score (0-1 range)
     // This ensures terrain height is always in [0, TERRAIN_HEIGHT_SCALE] range
     // regardless of attractor weights, matching how colors are normalized
-    const heightMeters = normalizedScores[i] * TERRAIN_HEIGHT_SCALE
+    const heightMeters = smoothedScores[i] * TERRAIN_HEIGHT_SCALE
 
     // Position Z is the height in meters
     positions[i * 3 + 2] = heightMeters + 10 // Add 10m base height to stay above ground
 
-    // Set color based on normalized score
+    // Set color based on smoothed normalized score
     if (attractors.length === 0 || rawScores[i] === 0) {
       colors[i * 3] = greyColor.r
       colors[i * 3 + 1] = greyColor.g
       colors[i * 3 + 2] = greyColor.b
     } else {
-      const color = getColorForScore(normalizedScores[i])
+      const color = getColorForScore(smoothedScores[i])
       colors[i * 3] = color.r
       colors[i * 3 + 1] = color.g
       colors[i * 3 + 2] = color.b
