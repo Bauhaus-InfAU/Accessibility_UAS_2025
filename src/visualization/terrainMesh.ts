@@ -384,7 +384,9 @@ export function updateTerrainFromAttractors(
     positions[i * 3 + 2] = heightMeters + 10 // Add 10m base height to stay above ground
 
     // Set color based on smoothed normalized score
-    if (attractors.length === 0 || rawScores[i] === 0) {
+    // Only show grey when there are no attractors (truly unscored)
+    // Zero accessibility scores should display as purple (low end of gradient)
+    if (attractors.length === 0) {
       colors[i * 3] = greyColor.r
       colors[i * 3 + 1] = greyColor.g
       colors[i * 3 + 2] = greyColor.b
