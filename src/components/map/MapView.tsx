@@ -4,6 +4,8 @@ import { useAppContext } from '../../context/AppContext'
 import { useMapContext } from '../../context/MapContext'
 import { createMap, setStreetLayersVisibility } from '../../visualization/mapLibreSetup'
 import { updateBuildingColors, setBuildingLayersVisibility } from '../../visualization/buildingColorUpdater'
+import { updateHexagonColors, setHexagonLayersVisibility } from '../../visualization/hexagonColorUpdater'
+import { calculateGridAccessibility, normalizeGridScores, getGridScoreStats } from '../../computation/gridAccessibilityCalc'
 import { updateTerrainLayer, setTerrainLayerVisibility, isTerrainLayerInitialized, updateAttractorPins, createPinOverlayContainer, removePinOverlayContainer, getAttractorPinScreenPositions } from '../../visualization/threeJsLayer'
 import { createCurveEvaluatorForMode } from '../../computation/curveEvaluator'
 import { calculateEuclideanDistance, formatDistance, getPathMidpoint, getLineMidpoint } from '../../computation/measurementCalc'
@@ -43,27 +45,40 @@ function getPinScale(_attractivity: number): number {
   return 1.0
 }
 
-// SVG for custom pin marker with attractivity box
-function createPinElement(
+// Unified attractor marker element
+// - showTeardrop=true: teardrop SVG above attractivity box (Grid, Buildings+Custom modes)
+// - showTeardrop=false: box only (Surface mode - 3D pin rendered by HTML overlay)
+function createAttractorMarkerElement(
   attractivity: number,
-  onAttractivityChange: (newValue: number) => void
+  onAttractivityChange: (newValue: number) => void,
+  showTeardrop: boolean = true
 ): HTMLDivElement {
-  const scale = getPinScale(attractivity)
-  const width = Math.round(24 * scale)
-  const height = Math.round(32 * scale)
-
   const el = document.createElement('div')
-  el.className = 'custom-pin'
-  el.setAttribute('data-scale', scale.toString())
-  el.innerHTML = `
-    <svg width="${width}" height="${height}" viewBox="0 0 24 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M12 0C5.373 0 0 5.373 0 12c0 9 12 20 12 20s12-11 12-20c0-6.627-5.373-12-12-12z" fill="#fcdb02" stroke="#000" stroke-width="1.5"/>
-      <circle cx="12" cy="12" r="4" fill="#000"/>
-    </svg>
-    <div class="attractivity-box">
-      <span class="att-value">${attractivity}</span>
-    </div>
-  `
+  el.className = 'attractor-marker'
+
+  if (showTeardrop) {
+    // Teardrop in a zero-height wrapper so it doesn't affect bounding box
+    el.innerHTML = `
+      <div class="teardrop-wrapper">
+        <div class="attractor-teardrop">
+          <svg width="24" height="32" viewBox="0 0 24 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 0C5.373 0 0 5.373 0 12c0 9 12 20 12 20s12-11 12-20c0-6.627-5.373-12-12-12z" fill="#fcdb02" stroke="#000" stroke-width="1.5"/>
+            <circle cx="12" cy="12" r="4" fill="#000"/>
+          </svg>
+        </div>
+      </div>
+      <div class="attractivity-box">
+        <span class="att-value">${attractivity}</span>
+      </div>
+    `
+  } else {
+    // Box only (Surface mode - 3D pin rendered separately by HTML overlay)
+    el.innerHTML = `
+      <div class="attractivity-box">
+        <span class="att-value">${attractivity}</span>
+      </div>
+    `
+  }
 
   const attBox = el.querySelector('.attractivity-box') as HTMLDivElement
   const attValue = attBox.querySelector('.att-value') as HTMLSpanElement
@@ -112,90 +127,12 @@ function createPinElement(
   return el
 }
 
-// Update attractivity value and pin size on existing marker element
-function updatePinAttractivity(el: HTMLElement, attractivity: number): void {
+// Update attractivity value on existing marker element
+function updateAttractorMarkerAttractivity(el: HTMLElement, attractivity: number): void {
   const attValue = el.querySelector('.att-value') as HTMLSpanElement
   if (attValue) {
     attValue.textContent = attractivity.toString()
   }
-
-  // Update pin size (only if it has an SVG - not for box-only markers)
-  const svg = el.querySelector('svg')
-  if (svg) {
-    const scale = getPinScale(attractivity)
-    const width = Math.round(24 * scale)
-    const height = Math.round(32 * scale)
-    svg.setAttribute('width', width.toString())
-    svg.setAttribute('height', height.toString())
-    // Update data-scale on the pin SVG element
-    const pinSvg = el.querySelector('.terrain-pin-svg')
-    if (pinSvg) {
-      pinSvg.setAttribute('data-scale', scale.toString())
-      // Update margin-left for centering based on new width
-      ;(pinSvg as HTMLElement).style.marginLeft = `${-width / 2}px`
-    }
-  }
-}
-
-// Create simple attractivity box element for Grid mode (MapLibre marker at ground level)
-// The 3D pins are rendered by Three.js in the terrain layer
-function createGridAttractorElement(
-  attractivity: number,
-  onAttractivityChange: (newValue: number) => void
-): HTMLDivElement {
-  const el = document.createElement('div')
-  el.className = 'grid-attractor-marker'
-  el.innerHTML = `
-    <div class="attractivity-box">
-      <span class="att-value">${attractivity}</span>
-    </div>
-  `
-
-  const attBox = el.querySelector('.attractivity-box') as HTMLDivElement
-  const attValue = attBox.querySelector('.att-value') as HTMLSpanElement
-
-  // Handle click on attractivity box to edit
-  attBox.addEventListener('click', (e) => {
-    e.stopPropagation()
-
-    // Already editing, don't create another input
-    if (attBox.querySelector('input')) return
-
-    const currentValue = parseFloat(attValue.textContent || '1')
-    attValue.style.display = 'none'
-
-    const input = document.createElement('input')
-    input.type = 'number'
-    input.className = 'att-input'
-    input.value = currentValue.toString()
-    input.min = '0'
-    input.step = '0.1'
-    attBox.appendChild(input)
-    input.focus()
-    input.select()
-
-    const finishEditing = () => {
-      const newValue = parseFloat(input.value)
-      if (!isNaN(newValue) && newValue >= 0) {
-        attValue.textContent = newValue.toString()
-        onAttractivityChange(newValue)
-      }
-      input.remove()
-      attValue.style.display = ''
-    }
-
-    input.addEventListener('blur', finishEditing)
-    input.addEventListener('keydown', (ke) => {
-      if (ke.key === 'Enter') {
-        finishEditing()
-      } else if (ke.key === 'Escape') {
-        input.remove()
-        attValue.style.display = ''
-      }
-    })
-  })
-
-  return el
 }
 
 // Create measurement marker element (purple circle with A/B label)
@@ -263,7 +200,6 @@ export function MapView() {
   const mapRef = useRef<maplibregl.Map | null>(null)
   const mapLoadedRef = useRef(false)
   const [mapLoaded, setMapLoaded] = useState(false) // State for triggering effects
-  const markersRef = useRef<Map<string, maplibregl.Marker>>(new Map())
   const attractorMarkersRef = useRef<Map<string, maplibregl.Marker>>(new Map())
   const measurementMarkersRef = useRef<Map<'A' | 'B', maplibregl.Marker>>(new Map())
   const distanceLabelMarkersRef = useRef<Map<'network' | 'euclidean', maplibregl.Marker>>(new Map())
@@ -279,11 +215,6 @@ export function MapView() {
     rawAccessibilityScores,
     isLoading,
     selectedLandUse,
-    customPins,
-    addCustomPin,
-    updateCustomPin,
-    updateCustomPinAttractivity,
-    removeCustomPin,
     // Curve parameters for terrain
     curveTabMode,
     customCurveType,
@@ -293,14 +224,16 @@ export function MapView() {
     negExpAlpha,
     expPowerB,
     expPowerC,
-    // Grid mode state
+    // Analysis mode and shared attractors
     analysisMode,
+    hexCells,
     gridAttractors,
     addGridAttractor,
     updateGridAttractor,
     updateGridAttractorAttractivity,
     removeGridAttractor,
-    setTerrainStats,
+    setGridStats,
+    setSurfaceStats,
     // Full network distance matrix for terrain
     fullNetworkMatrix,
     // Measurement tool state
@@ -317,6 +250,7 @@ export function MapView() {
 
   const isCustomMode = selectedLandUse === 'Custom'
   const isGridMode = analysisMode === 'grid'
+  const isSurfaceMode = analysisMode === 'surface'
 
   // Memoized color update function for buildings
   const updateColors = useCallback(() => {
@@ -332,28 +266,22 @@ export function MapView() {
   updateColorsRef.current = updateColors
 
   // Refs for event handlers
-  const addCustomPinRef = useRef(addCustomPin)
-  const updateCustomPinRef = useRef(updateCustomPin)
-  const removeCustomPinRef = useRef(removeCustomPin)
   const isCustomModeRef = useRef(isCustomMode)
   const isGridModeRef = useRef(isGridMode)
+  const isSurfaceModeRef = useRef(isSurfaceMode)
   const rawAccessibilityScoresRef = useRef(rawAccessibilityScores)
   const accessibilityScoresRef = useRef(accessibilityScores)
   const addGridAttractorRef = useRef(addGridAttractor)
   const updateGridAttractorRef = useRef(updateGridAttractor)
   const updateGridAttractorAttractivityRef = useRef(updateGridAttractorAttractivity)
   const removeGridAttractorRef = useRef(removeGridAttractor)
-  const updateCustomPinAttractivityRef = useRef(updateCustomPinAttractivity)
   const isMeasurementActiveRef = useRef(isMeasurementActive)
   const addMeasurementPointRef = useRef(addMeasurementPoint)
   const updateMeasurementPointRef = useRef(updateMeasurementPoint)
 
-  addCustomPinRef.current = addCustomPin
-  updateCustomPinRef.current = updateCustomPin
-  updateCustomPinAttractivityRef.current = updateCustomPinAttractivity
-  removeCustomPinRef.current = removeCustomPin
   isCustomModeRef.current = isCustomMode
   isGridModeRef.current = isGridMode
+  isSurfaceModeRef.current = isSurfaceMode
   rawAccessibilityScoresRef.current = rawAccessibilityScores
   accessibilityScoresRef.current = accessibilityScores
   addGridAttractorRef.current = addGridAttractor
@@ -403,10 +331,20 @@ export function MapView() {
 
       // Set initial layer visibility based on current mode
       if (isGridModeRef.current) {
+        // Grid mode: show hexagons, hide terrain & buildings
+        setHexagonLayersVisibility(map, true)
+        setTerrainLayerVisibility(false)
         setBuildingLayersVisibility(map, false)
-        setStreetLayersVisibility(map, false)  // Hide MapLibre streets in Grid mode
+        setStreetLayersVisibility(map, true)  // Show streets with hexagons
+      } else if (isSurfaceModeRef.current) {
+        // Surface mode: show terrain, hide hexagons & buildings
+        setHexagonLayersVisibility(map, false)
         setTerrainLayerVisibility(true)
+        setBuildingLayersVisibility(map, false)
+        setStreetLayersVisibility(map, false)  // 3D streets on terrain
       } else {
+        // Buildings mode: show buildings, hide terrain & hexagons
+        setHexagonLayersVisibility(map, false)
         setTerrainLayerVisibility(false)
         setBuildingLayersVisibility(map, true)
         setStreetLayersVisibility(map, true)
@@ -414,8 +352,8 @@ export function MapView() {
 
       // Building hover handlers for score popup
       map.on('mousemove', 'buildings-fill', (e) => {
-        // Skip if in grid mode
-        if (isGridModeRef.current) return
+        // Skip if not in buildings mode
+        if (isGridModeRef.current || isSurfaceModeRef.current) return
 
         const feature = e.features?.[0]
         if (!feature?.properties) return
@@ -469,7 +407,7 @@ export function MapView() {
           popupRef.current.remove()
           popupRef.current = null
         }
-        if (!isGridModeRef.current) {
+        if (!isGridModeRef.current && !isSurfaceModeRef.current) {
           map.getCanvas().style.cursor = isCustomModeRef.current ? 'crosshair' : ''
         }
       })
@@ -485,15 +423,21 @@ export function MapView() {
         return
       }
 
-      // Grid mode: add attractor
+      // Grid mode: add attractor (shared with surface mode)
       if (isGridModeRef.current) {
         addGridAttractorRef.current([lng, lat])
         return
       }
 
-      // Buildings mode: add custom pin (only in Custom amenity mode)
+      // Surface mode: add attractor (shared with grid mode)
+      if (isSurfaceModeRef.current) {
+        addGridAttractorRef.current([lng, lat])
+        return
+      }
+
+      // Buildings mode with Custom: add shared attractor
       if (isCustomModeRef.current) {
-        addCustomPinRef.current([lng, lat])
+        addGridAttractorRef.current([lng, lat])
       }
     }
 
@@ -503,11 +447,7 @@ export function MapView() {
     return () => {
       map.off('load', onLoad)
       map.off('click', onClick)
-      // Clean up markers
-      for (const marker of markersRef.current.values()) {
-        marker.remove()
-      }
-      markersRef.current.clear()
+      // Clean up attractor markers
       for (const marker of attractorMarkersRef.current.values()) {
         marker.remove()
       }
@@ -547,9 +487,38 @@ export function MapView() {
     updateColors()
   }, [updateColors])
 
-  // Update terrain when attractors or curve parameters change
+  // Update hexagon grid when attractors or curve parameters change (Grid mode)
   useEffect(() => {
-    if (!mapLoaded || !isGridMode || !fullNetworkMatrix) return
+    const map = mapRef.current
+    if (!map || !mapLoaded || !isGridMode || !fullNetworkMatrix || hexCells.length === 0) return
+
+    // Create curve evaluator
+    const evaluator = createCurveEvaluatorForMode(
+      curveTabMode,
+      customCurveType,
+      polylinePoints,
+      bezierHandles,
+      maxDistance,
+      negExpAlpha,
+      expPowerB,
+      expPowerC
+    )
+
+    // Calculate accessibility scores for hexagon cells
+    const rawScores = calculateGridAccessibility(hexCells, gridAttractors, fullNetworkMatrix, evaluator)
+    const normalizedScores = normalizeGridScores(rawScores)
+    const stats = getGridScoreStats(rawScores)
+
+    // Update hexagon colors on the map
+    updateHexagonColors(map, hexCells, normalizedScores)
+
+    // Update grid stats
+    setGridStats(stats)
+  }, [mapLoaded, isGridMode, hexCells, gridAttractors, curveTabMode, customCurveType, polylinePoints, bezierHandles, maxDistance, negExpAlpha, expPowerB, expPowerC, setGridStats, fullNetworkMatrix])
+
+  // Update terrain when attractors or curve parameters change (Surface mode)
+  useEffect(() => {
+    if (!mapLoaded || !isSurfaceMode || !fullNetworkMatrix) return
 
     // Function to perform the terrain update
     const performTerrainUpdate = () => {
@@ -568,7 +537,7 @@ export function MapView() {
       // Update terrain with current attractors and full network distance matrix
       const stats = updateTerrainLayer(gridAttractors, evaluator, fullNetworkMatrix)
       if (stats) {
-        setTerrainStats(stats)
+        setSurfaceStats(stats)
       }
     }
 
@@ -586,7 +555,7 @@ export function MapView() {
 
     // Terrain is already initialized, update immediately
     performTerrainUpdate()
-  }, [mapLoaded, isGridMode, gridAttractors, curveTabMode, customCurveType, polylinePoints, bezierHandles, maxDistance, negExpAlpha, expPowerB, expPowerC, setTerrainStats, fullNetworkMatrix])
+  }, [mapLoaded, isSurfaceMode, gridAttractors, curveTabMode, customCurveType, polylinePoints, bezierHandles, maxDistance, negExpAlpha, expPowerB, expPowerC, setSurfaceStats, fullNetworkMatrix])
 
   // Update layer visibility when analysis mode changes
   useEffect(() => {
@@ -594,98 +563,66 @@ export function MapView() {
     if (!map || !mapLoaded) return
 
     if (isGridMode) {
+      // Grid mode: show hexagons, hide terrain & buildings
+      setHexagonLayersVisibility(map, true)
+      setTerrainLayerVisibility(false)
       setBuildingLayersVisibility(map, false)
-      setStreetLayersVisibility(map, false)  // Hide MapLibre streets in Grid mode
+      setStreetLayersVisibility(map, true)  // Show streets with hexagons
+    } else if (isSurfaceMode) {
+      // Surface mode: show terrain, hide hexagons & buildings
+      setHexagonLayersVisibility(map, false)
       setTerrainLayerVisibility(true)
+      setBuildingLayersVisibility(map, false)
+      setStreetLayersVisibility(map, false)  // 3D streets on terrain
     } else {
+      // Buildings mode: show buildings, hide terrain & hexagons
+      setHexagonLayersVisibility(map, false)
       setTerrainLayerVisibility(false)
       setBuildingLayersVisibility(map, true)
       setStreetLayersVisibility(map, true)
     }
-  }, [mapLoaded, isGridMode])
+  }, [mapLoaded, isGridMode, isSurfaceMode])
 
-  // Sync markers with customPins (only show when in Custom mode AND not in Grid mode)
-  useEffect(() => {
-    const map = mapRef.current
-    if (!map || !mapLoadedRef.current) return
-
-    // Hide markers if not in Custom mode OR if in Grid mode
-    if (!isCustomMode || isGridMode) {
-      for (const marker of markersRef.current.values()) {
-        marker.remove()
-      }
-      markersRef.current.clear()
-      return
-    }
-
-    const existingIds = new Set(markersRef.current.keys())
-    const currentIds = new Set(customPins.map(p => p.id))
-
-    // Remove markers for deleted pins
-    for (const id of existingIds) {
-      if (!currentIds.has(id)) {
-        const marker = markersRef.current.get(id)
-        marker?.remove()
-        markersRef.current.delete(id)
-      }
-    }
-
-    // Add or update markers for current pins
-    for (const pin of customPins) {
-      let marker = markersRef.current.get(pin.id)
-
-      if (!marker) {
-        // Create new marker with attractivity
-        const el = createPinElement(pin.attractivity, (newValue) => {
-          updateCustomPinAttractivityRef.current(pin.id, newValue)
-        })
-        marker = new maplibregl.Marker({
-          element: el,
-          draggable: true,
-          anchor: 'bottom',
-        })
-          .setLngLat(pin.coord)
-          .addTo(map)
-
-        // Handle drag end
-        marker.on('dragend', () => {
-          const lngLat = marker!.getLngLat()
-          updateCustomPinRef.current(pin.id, [lngLat.lng, lngLat.lat])
-        })
-
-        // Handle right-click to delete
-        el.addEventListener('contextmenu', (e) => {
-          e.preventDefault()
-          e.stopPropagation()
-          removeCustomPinRef.current(pin.id)
-        })
-
-        markersRef.current.set(pin.id, marker)
-      } else {
-        // Update existing marker position and attractivity
-        marker.setLngLat(pin.coord)
-        const el = marker.getElement()
-        updatePinAttractivity(el, pin.attractivity)
-      }
-    }
-  }, [customPins, isCustomMode, isGridMode])
-
-  // Sync attractor markers with gridAttractors (only show when in Grid mode)
-  // MapLibre markers show the attractivity box at ground level
-  // Three.js renders the 3D pins at terrain height with connecting lines
+  // Sync attractor markers with gridAttractors (shared across all modes: Grid, Surface, and Buildings+Custom)
+  // - Grid mode: Teardrop + box (anchor: center, box centered at coordinate)
+  // - Buildings+Custom mode: Teardrop + box (anchor: center, box centered at coordinate)
+  // - Surface mode: Box only (anchor: center) + HTML overlay pin at terrain height
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapLoaded) return
 
-    // If not in Grid mode, remove all attractor markers and clear 3D pins
-    if (!isGridMode) {
+    // Determine which modes should show attractor markers
+    const isBuildingsCustomMode = !isGridMode && !isSurfaceMode && isCustomMode
+    const showAttractorMarkers = isGridMode || isSurfaceMode || isBuildingsCustomMode
+
+    // If not in a mode that shows attractors, remove all attractor markers and clear 3D pins
+    if (!showAttractorMarkers) {
       for (const marker of attractorMarkersRef.current.values()) {
         marker.remove()
       }
       attractorMarkersRef.current.clear()
-      // Clear 3D pins when exiting Grid mode
+      // Clear 3D pins when not showing attractors
       updateAttractorPins([])
       return
+    }
+
+    // Determine marker type:
+    // - Surface mode: box-only (3D teardrop rendered by HTML overlay at terrain height)
+    // - Grid / Buildings+Custom: teardrop + box (2D modes, show teardrop in marker)
+    const showTeardrop = !isSurfaceMode
+    const markerType = showTeardrop ? 'teardrop-box' : 'box-only'
+
+    // Check if existing markers need to be recreated due to marker type change
+    const firstMarkerId = attractorMarkersRef.current.keys().next().value
+    const firstMarkerEl = firstMarkerId ? attractorMarkersRef.current.get(firstMarkerId)?.getElement() : null
+    const existingMarkerType = firstMarkerEl?.getAttribute('data-marker-type')
+
+    if (existingMarkerType && existingMarkerType !== markerType) {
+      // Marker type changed - remove all existing markers to recreate with new type
+      for (const marker of attractorMarkersRef.current.values()) {
+        marker.remove()
+      }
+      attractorMarkersRef.current.clear()
     }
 
     const existingIds = new Set(attractorMarkersRef.current.keys())
@@ -700,53 +637,60 @@ export function MapView() {
       }
     }
 
-    // Add or update markers for current amenities
-    for (const amenity of gridAttractors) {
-      let marker = attractorMarkersRef.current.get(amenity.id)
+    // Add or update markers for current attractors
+    for (const attractor of gridAttractors) {
+      let marker = attractorMarkersRef.current.get(attractor.id)
 
       if (!marker) {
-        // Create attractivity box element (pin is rendered in 3D by Three.js)
-        const el = createGridAttractorElement(amenity.attractivity, (newValue) => {
-          updateGridAttractorAttractivityRef.current(amenity.id, newValue)
-        })
+        // Create unified marker element
+        const el = createAttractorMarkerElement(
+          attractor.attractivity,
+          (newValue) => {
+            updateGridAttractorAttractivityRef.current(attractor.id, newValue)
+          },
+          showTeardrop
+        )
 
-        // Create marker anchored at center (box at ground level)
+        // Mark the element with its type for mode change detection
+        el.setAttribute('data-marker-type', markerType)
+
+        // Always use 'center' anchor - box is centered at coordinate
         marker = new maplibregl.Marker({
           element: el,
           draggable: true,
           anchor: 'center',
         })
-          .setLngLat(amenity.coord)
+          .setLngLat(attractor.coord)
           .addTo(map)
 
         // Handle drag end
         marker.on('dragend', () => {
           const lngLat = marker!.getLngLat()
-          updateGridAttractorRef.current(amenity.id, [lngLat.lng, lngLat.lat])
+          updateGridAttractorRef.current(attractor.id, [lngLat.lng, lngLat.lat])
         })
 
         // Handle right-click to delete
         el.addEventListener('contextmenu', (e) => {
           e.preventDefault()
           e.stopPropagation()
-          removeGridAttractorRef.current(amenity.id)
+          removeGridAttractorRef.current(attractor.id)
         })
 
-        attractorMarkersRef.current.set(amenity.id, marker)
+        attractorMarkersRef.current.set(attractor.id, marker)
       } else {
         // Update existing marker position and attractivity
-        marker.setLngLat(amenity.coord)
+        marker.setLngLat(attractor.coord)
         const el = marker.getElement()
-        updatePinAttractivity(el, amenity.attractivity)
+        updateAttractorMarkerAttractivity(el, attractor.attractivity)
       }
     }
 
     // Update 3D attractor pins (connecting lines) in the terrain layer
-    // Wait for terrain layer to be initialized
+    // Only relevant for Surface mode, but safe to call in other modes (will just be empty)
     if (isTerrainLayerInitialized()) {
-      updateAttractorPins(gridAttractors)
-    } else {
-      // Poll for terrain layer initialization
+      updateAttractorPins(isSurfaceMode ? gridAttractors : [])
+    } else if (isSurfaceMode) {
+      // Poll for terrain layer initialization (only in Surface mode)
       const checkInterval = setInterval(() => {
         if (isTerrainLayerInitialized()) {
           clearInterval(checkInterval)
@@ -756,14 +700,15 @@ export function MapView() {
       // Clean up interval after 5 seconds max
       setTimeout(() => clearInterval(checkInterval), 5000)
     }
-  }, [mapLoaded, gridAttractors, isGridMode])
+  }, [mapLoaded, gridAttractors, isGridMode, isSurfaceMode, isCustomMode])
 
   // Manage HTML pin overlay elements (positioned via 3D projection at terrain height)
   // This is separate from the MapLibre attractor markers which show the attractivity box at ground level
+  // Only show in Surface mode (Grid mode uses 2D markers)
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !mapLoaded || !isGridMode) {
-      // Clear pin overlays when not in grid mode
+    if (!map || !mapLoaded || !isSurfaceMode) {
+      // Clear pin overlays when not in surface mode
       for (const el of pinElementsRef.current.values()) {
         el.remove()
       }
@@ -831,7 +776,7 @@ export function MapView() {
     return () => {
       map.off('render', updatePinPositions)
     }
-  }, [mapLoaded, isGridMode, gridAttractors])
+  }, [mapLoaded, isSurfaceMode, gridAttractors])
 
   // Sync measurement markers with measurement points
   useEffect(() => {
@@ -1104,14 +1049,14 @@ export function MapView() {
     const canvas = map.getCanvas()
     if (isMeasurementActive) {
       canvas.style.cursor = 'crosshair'
-    } else if (isGridMode) {
+    } else if (isGridMode || isSurfaceMode) {
       canvas.style.cursor = 'crosshair'
     } else if (isCustomMode) {
       canvas.style.cursor = 'crosshair'
     } else {
       canvas.style.cursor = ''
     }
-  }, [isMeasurementActive, isCustomMode, isGridMode])
+  }, [isMeasurementActive, isCustomMode, isGridMode, isSurfaceMode])
 
   // Reduce building/grid opacity when measurement is active
   useEffect(() => {

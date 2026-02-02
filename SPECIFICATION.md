@@ -81,11 +81,16 @@ Calculates accessibility on a hexagonal grid based on user-placed attractors. Us
   - Non-residential: Light grey (#d8d8d8)
   - Selected amenity: Yellow (#fcdb02) with 3m floating effect and ground halo
 
-### Custom Pins / Attractors
-- Yellow map markers with black center dot
-- Draggable with grab cursor
-- Scale on hover for visual feedback
-- Used for Custom amenity pins (Buildings mode) and attractors (Grid mode)
+### Attractor Markers (Unified Across Modes)
+- **Structure**: Teardrop pin SVG above attractivity box
+- **Attractivity box**: Yellow (#fcdb02) pill-shaped box with editable value
+- **Positioning**: Box always centered at attractor coordinate (consistent across all modes)
+- **Mode-specific behavior**:
+  - **Grid mode**: Teardrop + box (both visible, 2D markers)
+  - **Buildings+Custom mode**: Teardrop + box (both visible, 2D markers)
+  - **Surface mode**: Box only at ground level (3D teardrop rendered separately at terrain height via HTML overlay)
+- **Interactions**: Draggable with grab cursor, click box to edit attractivity, right-click to delete
+- **Implementation**: Zero-height wrapper technique ensures teardrop doesn't affect MapLibre marker bounding box, allowing `anchor: 'center'` to position the box (not the whole element) at the coordinate
 
 ### Hexagon Grid (Grid Mode)
 - ~15m diameter flat-topped hexagons covering the street network area

@@ -11,24 +11,38 @@ body {
   outline: none;
 }
 
-/* Custom pin styles */
-.custom-pin {
+/* Unified attractor marker (teardrop + box or box only) */
+.attractor-marker {
   cursor: grab;
-  transition: transform 0.1s;
   display: flex;
   flex-direction: column;
   align-items: center;
+  pointer-events: auto;
 }
 
-.custom-pin:hover {
-  transform: scale(1.15);
-}
-
-.custom-pin:active {
+.attractor-marker:active {
   cursor: grabbing;
 }
 
-/* Attractivity box below pin (or standalone for Grid mode) */
+/* Zero-height wrapper ensures teardrop doesn't affect marker bounding box */
+.teardrop-wrapper {
+  height: 0;
+  overflow: visible;
+  display: flex;
+  justify-content: center;
+}
+
+/* Teardrop positioned above box via transform - non-interactive visual decoration */
+.attractor-teardrop {
+  transform: translateY(-34px); /* 32px teardrop height + 2px gap */
+  pointer-events: none;
+}
+
+.attractor-marker:hover .attractivity-box {
+  transform: scale(1.1);
+}
+
+/* Attractivity box (the interactive part) */
 .attractivity-box {
   display: flex;
   align-items: center;
@@ -38,44 +52,8 @@ body {
   border-radius: 9999px;
   padding: 4px 14px;
   font-size: 14px;
-  margin-top: 2px;
   cursor: pointer;
   min-width: 20px;
-}
-
-/* Grid attractor marker (attractivity box at ground level) */
-/* The 3D pin is rendered by Three.js in the terrain layer */
-.grid-attractor-marker {
-  cursor: grab;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  pointer-events: auto;
-}
-
-.grid-attractor-marker:hover .attractivity-box {
-  transform: scale(1.1);
-}
-
-.grid-attractor-marker:active {
-  cursor: grabbing;
-}
-
-/* Attractivity marker (box-only, legacy - kept for compatibility) */
-.attractivity-marker {
-  cursor: grab;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  pointer-events: auto;
-}
-
-.attractivity-marker:hover .attractivity-box {
-  transform: scale(1.1);
-}
-
-.attractivity-marker:active {
-  cursor: grabbing;
 }
 
 .attractivity-box:hover {

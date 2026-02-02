@@ -309,11 +309,15 @@ Shown during initial data loading:
   - Scored: Purple→Orange→Red gradient (same as buildings)
   - Unscored: Light grey (#cccccc)
   - Thin white outline (0.5px, 50% opacity) for cell boundaries
-- **Custom Pins / Amenities**: Yellow markers with black center dot and attractivity box below
+- **Attractor Markers** (unified across Grid, Buildings+Custom, and Surface modes):
   - Attractivity box: Yellow (#fcdb02) fill, black outline (1.5px), fully rounded (pill shape)
+  - Box always centered at attractor coordinate (consistent positioning across all modes)
   - Click box to edit attractivity value (input field appears)
-  - Connecting line: Dashed black line from pin to ground
-  - CSS classes: `.custom-pin`, `.attractivity-box`, `.att-value`, `.att-input` (in `index.css`)
+  - Teardrop pin: Yellow SVG with black center dot, positioned above box
+    - Visible in Grid and Buildings+Custom modes (2D visualization)
+    - Hidden in Surface mode (3D teardrop rendered separately at terrain height)
+  - CSS classes: `.attractor-marker`, `.teardrop-wrapper`, `.attractor-teardrop`, `.attractivity-box`, `.att-value`, `.att-input`
+  - Zero-height wrapper technique ensures teardrop doesn't affect MapLibre marker anchor calculation
 - **Hover Popup** (`MapView.tsx`):
   - Shows raw accessibility score on hover over scored buildings (Buildings mode) or hexagons (Grid mode)
   - White rounded box with drop shadow, no visible seam with arrow
