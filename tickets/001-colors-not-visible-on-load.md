@@ -1,5 +1,15 @@
 # Ticket 001: Accessibility colors not visible on initial load
 
+| Field | Value |
+|-------|-------|
+| **Status** | Closed |
+| **Created** | 2025-01-15 |
+| **Created by** | Martin Bielik |
+| **Closed** | 2025-01-15 |
+| **Closed by** | Martin Bielik |
+
+---
+
 ## Problem
 Building accessibility colors (blue-to-red gradient) only appear after clicking one of the preset buttons (Exponential, Linear, Steep, Step). On initial page load, buildings remain gray.
 
@@ -13,9 +23,6 @@ The initial accessibility calculation may run before the MapLibre source is read
 - Preset buttons: `src/components/CurveEditor/CurveEditor.tsx`
 - Color update logic: `src/context/AppContext.tsx` (recalculate effect)
 - Map update: `src/components/map/MapView.tsx`
-
-## Status
-**Resolved**
 
 ## Fix
 Updated `src/components/map/MapView.tsx`:

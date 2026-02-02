@@ -169,7 +169,7 @@ export function createThreeJsTerrainLayer(
           0xffffff,  // white
           1.0,       // fully opaque
           3,         // z-offset
-          3.5        // line width
+          2.5        // line width (reduced for better cross-DPR consistency, see ticket 002)
         )
         streetNetworkLines.renderOrder = 10  // Render on top of contours (renderOrder 5)
         scene.add(streetNetworkLines)

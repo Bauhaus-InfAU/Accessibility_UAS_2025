@@ -88,7 +88,35 @@ src/
 │       └── sdfLine.ts           # GLSL vertex/fragment shaders for SDF lines
 ├── context/         # React Context (AppContext stores scores + avg/min/max + curve state + grid state, MapContext)
 └── lib/             # Utilities
+
+tickets/             # Technical debt and known issues documentation
+├── 001-*.md         # Resolved: Initial color loading issue
+└── 002-*.md         # Open: SDF line width DPR inconsistency
 ```
+
+## Tickets Folder
+
+The `tickets/` folder contains documentation for known issues, technical debt, and deferred fixes.
+
+### Ticket Format
+
+Each ticket has a metadata table at the top:
+
+| Field | Description |
+|-------|-------------|
+| **Status** | `Open` or `Closed` |
+| **Created** | Date ticket was created (YYYY-MM-DD) |
+| **Created by** | Person or agent who created the ticket |
+| **Closed** | Date ticket was closed (or `-` if open) |
+| **Closed by** | Person or agent who closed the ticket (or `-` if open) |
+
+### Ticket Contents
+
+- Problem description
+- Root cause analysis
+- Quick fixes applied (if any)
+- Potential long-term solutions
+- Affected files
 
 ## Responsive Design
 
