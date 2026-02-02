@@ -7,19 +7,23 @@ export function Legend() {
     avgRawScore,
     selectedLandUse,
     analysisMode,
-    terrainMinScore,
-    terrainMaxScore,
-    terrainAvgScore,
+    gridMinScore,
+    gridMaxScore,
+    gridAvgScore,
+    surfaceMinScore,
+    surfaceMaxScore,
+    surfaceAvgScore,
     gridAttractors,
     isPanelCollapsed,
   } = useAppContext()
 
   const isGridMode = analysisMode === 'grid'
+  const isSurfaceMode = analysisMode === 'surface'
 
   // Use appropriate scores based on mode
-  const displayMinScore = isGridMode ? terrainMinScore : minRawScore
-  const displayMaxScore = isGridMode ? terrainMaxScore : maxRawScore
-  const displayAvgScore = isGridMode ? terrainAvgScore : avgRawScore
+  const displayMinScore = isGridMode ? gridMinScore : (isSurfaceMode ? surfaceMinScore : minRawScore)
+  const displayMaxScore = isGridMode ? gridMaxScore : (isSurfaceMode ? surfaceMaxScore : maxRawScore)
+  const displayAvgScore = isGridMode ? gridAvgScore : (isSurfaceMode ? surfaceAvgScore : avgRawScore)
 
   // Calculate average position as percentage
   const range = displayMaxScore - displayMinScore
@@ -34,6 +38,36 @@ export function Legend() {
       {isGridMode ? (
         <>
           {/* Grid Mode: Custom Amenities Indicator */}
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-white invisible">Low</span>
+            <div className="flex items-center gap-2">
+              <div
+                className="w-4 h-4 rounded-full"
+                style={{ backgroundColor: '#fcdb02' }}
+              />
+              <span className="text-sm text-white">
+                Custom Amenities ({gridAttractors.length})
+              </span>
+            </div>
+          </div>
+
+          {/* Hexagon Grid Indicator */}
+          <div className="flex items-center gap-3 mt-2">
+            <span className="text-xs text-white invisible">Low</span>
+            <div className="flex items-center gap-2">
+              <div
+                className="w-4 h-4 rounded-full"
+                style={{
+                  background: 'linear-gradient(135deg, #4A3AB4 0%, #FD681D 50%, #FD1D1D 100%)',
+                }}
+              />
+              <span className="text-sm text-white">Hexagon Grid</span>
+            </div>
+          </div>
+        </>
+      ) : isSurfaceMode ? (
+        <>
+          {/* Surface Mode: Custom Amenities Indicator */}
           <div className="flex items-center gap-3">
             <span className="text-xs text-white invisible">Low</span>
             <div className="flex items-center gap-2">

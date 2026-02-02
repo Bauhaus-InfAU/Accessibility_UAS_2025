@@ -3,7 +3,7 @@ import { LAND_USE_SHORT_NAMES } from '../../config/constants'
 import type { LandUse } from '../../config/types'
 
 export function AmenityDropdown() {
-  const { availableLandUses, selectedLandUse, setSelectedLandUse, customPins, clearCustomPins } = useAppContext()
+  const { availableLandUses, selectedLandUse, setSelectedLandUse, gridAttractors, clearGridAttractors } = useAppContext()
   const isCustomSelected = selectedLandUse === 'Custom'
 
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -25,17 +25,17 @@ export function AmenityDropdown() {
         <option value="Custom">Custom</option>
       </select>
 
-      {/* Custom mode info */}
+      {/* Custom mode info - uses shared attractors */}
       {isCustomSelected && (
         <>
           <p className="text-xs text-gray-500 mt-1">Add amenities by clicking on map</p>
           <div className="flex items-center gap-3 mt-1">
             <span className="text-sm font-semibold" style={{ color: '#d4a800' }}>
-              Total amenities: {customPins.length}
+              Total amenities: {gridAttractors.length}
             </span>
-            {customPins.length > 0 && (
+            {gridAttractors.length > 0 && (
               <button
-                onClick={clearCustomPins}
+                onClick={clearGridAttractors}
                 className="text-red-500 hover:text-red-700 text-sm underline"
               >
                 Clear all

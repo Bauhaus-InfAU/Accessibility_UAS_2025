@@ -8,7 +8,7 @@ const MODES: { value: AttractivityMode; label: string }[] = [
 ]
 
 export function AttractivityDropdown() {
-  const { attractivityMode, setAttractivityMode, selectedLandUse, totalCustomPinAttractivity } = useAppContext()
+  const { attractivityMode, setAttractivityMode, selectedLandUse, totalGridAttractivity } = useAppContext()
   const isCustomMode = selectedLandUse === 'Custom'
 
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -24,7 +24,7 @@ export function AttractivityDropdown() {
       <div className="flex flex-col" style={{ paddingTop: '33px' }}>
         <p className="text-xs text-gray-500 mt-1">Set attractivity on map</p>
         <span className="text-sm font-semibold mt-1" style={{ color: '#d4a800' }}>
-          Total attractivity: {totalCustomPinAttractivity}
+          Total attractivity: {totalGridAttractivity}
         </span>
       </div>
     )

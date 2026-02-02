@@ -357,7 +357,7 @@ export function updateTerrainFromAttractors(
   const vertexCount = (config.segmentsX + 1) * (config.segmentsY + 1)
 
   // Calculate scores for all vertices using network distance
-  const { rawScores, normalizedScores, min, max, avg } = calculateTerrainScores(
+  const { normalizedScores, min, max, avg } = calculateTerrainScores(
     vertexNodeIds,
     attractors,
     decayFn,

@@ -25,11 +25,14 @@ export function createMap(container: HTMLElement, buildings: Building[], graph: 
   })
 
   map.on('load', () => {
-    // Add terrain layer first (below streets)
+    // Add terrain layer first (below everything for Surface mode)
     if (graph) {
       const terrainLayer = createThreeJsTerrainLayer(graph)
       map.addLayer(terrainLayer)
     }
+
+    // Add hexagon layer (for Grid mode)
+    addHexagonLayer(map)
 
     addStreetLayer(map)
     addBuildingLayer(map, buildings)
@@ -37,6 +40,60 @@ export function createMap(container: HTMLElement, buildings: Building[], graph: 
   })
 
   return map
+}
+
+function addHexagonLayer(map: maplibregl.Map) {
+  // Add empty hexagon source (data will be set by MapView)
+  map.addSource('hexagons', {
+    type: 'geojson',
+    data: {
+      type: 'FeatureCollection',
+      features: [],
+    },
+  })
+
+  // Hexagon fill layer with score-based coloring
+  map.addLayer({
+    id: 'hexagons-fill',
+    type: 'fill',
+    source: 'hexagons',
+    layout: {
+      visibility: 'none', // Hidden by default, Grid mode enables it
+    },
+    paint: {
+      'fill-color': [
+        'case',
+        // Scored hexagons: use gradient
+        ['>=', ['get', 'score'], 0],
+        [
+          'interpolate',
+          ['linear'],
+          ['get', 'score'],
+          0, '#4A3AB4',    // Purple (low)
+          0.5, '#FD681D',  // Orange (mid)
+          1, '#FD1D1D',    // Red (high)
+        ],
+        // Unscored hexagons: light grey
+        '#cccccc',
+      ],
+      'fill-opacity': 0.85,
+    },
+  })
+
+  // Hexagon outline layer
+  map.addLayer({
+    id: 'hexagons-outline',
+    type: 'line',
+    source: 'hexagons',
+    layout: {
+      visibility: 'none', // Hidden by default
+    },
+    paint: {
+      'line-color': '#ffffff',
+      'line-width': 0.5,
+      'line-opacity': 0.5,
+    },
+  })
 }
 
 function addStreetLayer(map: maplibregl.Map) {

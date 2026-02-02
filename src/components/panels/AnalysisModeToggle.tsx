@@ -3,8 +3,9 @@ import { TabContainer } from './TabContainer'
 import type { AnalysisMode } from '../../config/types'
 
 const TABS = [
-  { id: 'buildings', label: 'Buildings' },
-  { id: 'grid', label: 'Grid' },
+  { id: 'buildings', label: 'Building Analysis' },
+  { id: 'grid', label: 'Grid Analysis' },
+  { id: 'surface', label: 'Surface Analysis' },
 ]
 
 export function AnalysisModeToggle() {

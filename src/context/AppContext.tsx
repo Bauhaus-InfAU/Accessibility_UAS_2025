@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo, type ReactNode } from 'react'
-import type { Building, ControlPoint, CurveMode, CurveTabMode, AttractivityMode, DistanceMatrix, LandUse, StreetGraph, CustomPin, AnalysisMode, GridAttractor, StreetsGeoJSON, MeasurementPoint } from '../config/types'
+import type { Building, ControlPoint, CurveMode, CurveTabMode, AttractivityMode, DistanceMatrix, LandUse, StreetGraph, AnalysisMode, GridAttractor, StreetsGeoJSON, MeasurementPoint, HexCell } from '../config/types'
 import { MAX_DISTANCE_DEFAULT, DEFAULT_POLYLINE_POINTS, DEFAULT_BEZIER_HANDLES, DEFAULT_NEG_EXP_ALPHA, DEFAULT_EXP_POWER_B, DEFAULT_EXP_POWER_C } from '../config/constants'
 import { loadBuildingsGeoJSON, loadStreetsGeoJSON } from '../data/dataLoader'
 import { processBuildings, getBuildingsWithLandUse, getAvailableLandUses } from '../data/buildingStore'
@@ -7,6 +7,7 @@ import { buildStreetGraph, mapBuildingsToNodes, serializeGraph, findNearestNode 
 import { computeDistanceMatrix, computeFullNetworkMatrix } from '../computation/distanceMatrix'
 import { calculateAccessibility, calculateAccessibilityFromPins, normalizeScores } from '../computation/accessibilityCalc'
 import { findShortestPath } from '../computation/measurementCalc'
+import { generateHexagonGrid } from '../data/hexagonGrid'
 
 interface AppState {
   // Loading
@@ -43,16 +44,18 @@ interface AppState {
   expPowerB: number
   expPowerC: number
 
-  // Custom pins (for buildings mode)
-  customPins: CustomPin[]
-  totalCustomPinAttractivity: number
-
-  // Grid mode state
+  // Grid mode state (hexagon grid)
+  hexCells: HexCell[]
   gridAttractors: GridAttractor[]
-  terrainMinScore: number
-  terrainMaxScore: number
-  terrainAvgScore: number
+  gridMinScore: number
+  gridMaxScore: number
+  gridAvgScore: number
   totalGridAttractivity: number
+
+  // Surface mode state (3D terrain)
+  surfaceMinScore: number
+  surfaceMaxScore: number
+  surfaceAvgScore: number
 
   // Results (for buildings mode)
   accessibilityScores: Map<string, number>
@@ -80,19 +83,15 @@ interface AppContextValue extends AppState {
   setNegExpAlpha: (alpha: number) => void
   setExpPowerB: (b: number) => void
   setExpPowerC: (c: number) => void
-  addCustomPin: (coord: [number, number]) => void
-  updateCustomPin: (id: string, coord: [number, number]) => void
-  updateCustomPinAttractivity: (id: string, attractivity: number) => void
-  removeCustomPin: (id: string) => void
-  clearCustomPins: () => void
-  // Grid mode actions
+  // Shared attractor actions (used by all modes)
   setAnalysisMode: (mode: AnalysisMode) => void
   addGridAttractor: (coord: [number, number]) => void
   updateGridAttractor: (id: string, coord: [number, number]) => void
   updateGridAttractorAttractivity: (id: string, attractivity: number) => void
   removeGridAttractor: (id: string) => void
   clearGridAttractors: () => void
-  setTerrainStats: (stats: { min: number; max: number; avg: number }) => void
+  setGridStats: (stats: { min: number; max: number; avg: number }) => void
+  setSurfaceStats: (stats: { min: number; max: number; avg: number }) => void
   // Measurement tool actions
   setMeasurementActive: (active: boolean) => void
   addMeasurementPoint: (coord: [number, number]) => void
@@ -145,13 +144,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [minRawScore, setMinRawScore] = useState(0)
   const [maxRawScore, setMaxRawScore] = useState(0)
   const [avgRawScore, setAvgRawScore] = useState(0)
-  const [customPins, setCustomPins] = useState<CustomPin[]>([])
 
-  // Grid mode state - terrain stats (calculated by terrain layer)
+  // Hexagon grid state
+  const [hexCells, setHexCells] = useState<HexCell[]>([])
+
+  // Shared attractors (used by Grid, Surface, and Buildings+Custom modes)
   const [gridAttractors, setGridAttractors] = useState<GridAttractor[]>([])
-  const [terrainMinScore, setTerrainMinScore] = useState(0)
-  const [terrainMaxScore, setTerrainMaxScore] = useState(0)
-  const [terrainAvgScore, setTerrainAvgScore] = useState(0)
+
+  // Grid mode stats (hexagon accessibility)
+  const [gridMinScore, setGridMinScore] = useState(0)
+  const [gridMaxScore, setGridMaxScore] = useState(0)
+  const [gridAvgScore, setGridAvgScore] = useState(0)
+
+  // Surface mode stats (3D terrain accessibility)
+  const [surfaceMinScore, setSurfaceMinScore] = useState(0)
+  const [surfaceMaxScore, setSurfaceMaxScore] = useState(0)
+  const [surfaceAvgScore, setSurfaceAvgScore] = useState(0)
 
   // Measurement tool state
   const [isMeasurementActive, setIsMeasurementActive] = useState(false)
@@ -225,7 +233,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
           setSelectedLandUse(available[0])
         }
 
-        // Create default amenities for Grid mode (2 amenities near center)
+        // Generate hexagon grid for Grid mode
+        setLoadingStatus('Generating hexagon grid...')
+        setLoadingProgress(96)
+        const hexGrid = generateHexagonGrid(streetGraph, loadedStreetsGeoJSON)
+        setHexCells(hexGrid)
+
+        // Create default attractors (shared across all modes: Grid, Surface, and Buildings+Custom)
         const defaultAttractorCoords: [number, number][] = [
           [0.006, 0.022],  // slightly left of center
           [0.010, 0.018],  // slightly right and below center
@@ -238,19 +252,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }))
         setGridAttractors(defaultAttractors)
 
-        // Create default custom pins for Buildings mode (2 pins near center)
-        const defaultPinCoords: [number, number][] = [
-          [0.007, 0.021],  // near center
-          [0.009, 0.019],  // slightly offset
-        ]
-        const defaultPins: CustomPin[] = defaultPinCoords.map((coord, i) => ({
-          id: `pin-default-${i}`,
-          coord,
-          nearestNodeId: findNearestNode(streetGraph, coord),
-          attractivity: 1,
-        }))
-        setCustomPins(defaultPins)
-
         setIsLoading(false)
       } catch (error) {
         console.error('Initialization failed:', error)
@@ -261,42 +262,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     init()
   }, [])
 
-  // Custom pin actions
-  const addCustomPin = useCallback((coord: [number, number]) => {
-    if (!graph) return
-    const nearestNodeId = findNearestNode(graph, coord)
-    const newPin: CustomPin = {
-      id: `pin-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-      coord,
-      nearestNodeId,
-      attractivity: 1,
-    }
-    setCustomPins(prev => [...prev, newPin])
-  }, [graph])
-
-  const updateCustomPin = useCallback((id: string, coord: [number, number]) => {
-    if (!graph) return
-    const nearestNodeId = findNearestNode(graph, coord)
-    setCustomPins(prev => prev.map(pin =>
-      pin.id === id ? { ...pin, coord, nearestNodeId } : pin
-    ))
-  }, [graph])
-
-  const updateCustomPinAttractivity = useCallback((id: string, attractivity: number) => {
-    setCustomPins(prev => prev.map(pin =>
-      pin.id === id ? { ...pin, attractivity: Math.max(0, attractivity) } : pin
-    ))
-  }, [])
-
-  const removeCustomPin = useCallback((id: string) => {
-    setCustomPins(prev => prev.filter(pin => pin.id !== id))
-  }, [])
-
-  const clearCustomPins = useCallback(() => {
-    setCustomPins([])
-  }, [])
-
-  // Grid attractor (amenity) actions
+  // Shared attractor actions (used by all modes: Grid, Surface, and Buildings+Custom)
   const addGridAttractor = useCallback((coord: [number, number]) => {
     if (!graph) return
     const nearestNodeId = findNearestNode(graph, coord)
@@ -331,11 +297,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setGridAttractors([])
   }, [])
 
-  // Terrain stats setter (called by MapView when terrain updates)
-  const setTerrainStats = useCallback((stats: { min: number; max: number; avg: number }) => {
-    setTerrainMinScore(stats.min)
-    setTerrainMaxScore(stats.max)
-    setTerrainAvgScore(stats.avg)
+  // Grid stats setter (called by MapView when hexagon grid updates)
+  const setGridStats = useCallback((stats: { min: number; max: number; avg: number }) => {
+    setGridMinScore(stats.min)
+    setGridMaxScore(stats.max)
+    setGridAvgScore(stats.avg)
+  }, [])
+
+  // Surface stats setter (called by MapView when terrain updates)
+  const setSurfaceStats = useCallback((stats: { min: number; max: number; avg: number }) => {
+    setSurfaceMinScore(stats.min)
+    setSurfaceMaxScore(stats.max)
+    setSurfaceAvgScore(stats.avg)
   }, [])
 
   // Measurement tool actions
@@ -453,15 +426,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
         expPowerC
       )
 
-      // Handle Custom mode with pins
+      // Handle Custom mode with shared attractors
       if (selectedLandUse === 'Custom') {
-        if (customPins.length === 0) {
+        if (gridAttractors.length === 0) {
           processScores(new Map())
           return
         }
         const rawScores = calculateAccessibilityFromPins(
           residentialBuildings,
-          customPins,
+          gridAttractors,
           distanceMatrix,
           evaluator
         )
@@ -487,7 +460,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       )
       processScores(rawScores)
     })
-  }, [buildings, distanceMatrix, curveTabMode, customCurveType, polylinePoints, bezierHandles, maxDistance, selectedLandUse, attractivityMode, customPins, negExpAlpha, expPowerB, expPowerC])
+  }, [buildings, distanceMatrix, curveTabMode, customCurveType, polylinePoints, bezierHandles, maxDistance, selectedLandUse, attractivityMode, gridAttractors, negExpAlpha, expPowerB, expPowerC])
 
   // Debounced recalculation for buildings mode
   useEffect(() => {
@@ -513,10 +486,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [gridAttractors]
   )
 
-  const totalCustomPinAttractivity = useMemo(() =>
-    customPins.reduce((sum, p) => sum + (p.attractivity ?? 1), 0),
-    [customPins]
-  )
 
   const value: AppContextValue = {
     isLoading,
@@ -541,13 +510,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     negExpAlpha,
     expPowerB,
     expPowerC,
-    customPins,
-    totalCustomPinAttractivity,
+    hexCells,
     gridAttractors,
-    terrainMinScore,
-    terrainMaxScore,
-    terrainAvgScore,
+    gridMinScore,
+    gridMaxScore,
+    gridAvgScore,
     totalGridAttractivity,
+    surfaceMinScore,
+    surfaceMaxScore,
+    surfaceAvgScore,
     accessibilityScores,
     rawAccessibilityScores,
     minRawScore,
@@ -563,18 +534,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setNegExpAlpha,
     setExpPowerB,
     setExpPowerC,
-    addCustomPin,
-    updateCustomPin,
-    updateCustomPinAttractivity,
-    removeCustomPin,
-    clearCustomPins,
     setAnalysisMode,
     addGridAttractor,
     updateGridAttractor,
     updateGridAttractorAttractivity,
     removeGridAttractor,
     clearGridAttractors,
-    setTerrainStats,
+    setGridStats,
+    setSurfaceStats,
     // Measurement tool
     isMeasurementActive,
     measurementPointA,

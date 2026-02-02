@@ -29,6 +29,10 @@ export function ParametersPanel() {
   if (isLoading) return null
 
   const isGridMode = analysisMode === 'grid'
+  const isSurfaceMode = analysisMode === 'surface'
+  const isBuildingsMode = analysisMode === 'buildings'
+  // Show attractor controls in Grid, Surface mode
+  const showAttractorControls = isGridMode || isSurfaceMode
 
   return (
     <div className="absolute top-0 left-0 right-0 sm:top-3 sm:left-3 sm:right-auto glass-panel floating-panel p-3 sm:p-4 w-full sm:w-[540px] rounded-none sm:rounded-2xl max-h-[calc(100vh-92px)] sm:max-h-[calc(100vh-76px)] flex flex-col overflow-x-hidden">
@@ -70,14 +74,14 @@ export function ParametersPanel() {
             {/* Mode Toggle */}
             <AnalysisModeToggle />
 
-            {/* Section B: Parameters (Buildings mode) or Amenity Info (Grid mode) */}
-            {isGridMode ? (
+            {/* Section B: Parameters - mode-dependent UI */}
+            {showAttractorControls ? (
               <div className="mb-4">
                 <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                  {/* Left column: Amenities */}
+                  {/* Left column: Custom Amenities */}
                   <div className="flex-1">
                     <label className="text-sm font-medium text-gray-600 block mb-1">
-                      Amenities (<span className="math-var">j</span>)
+                      Custom Amenities (<span className="math-var">j</span>)
                     </label>
                     <p className="text-xs text-gray-500">Add amenities by clicking on map</p>
                     <div className="flex items-center gap-2 mt-1">
@@ -107,7 +111,7 @@ export function ParametersPanel() {
                   </div>
                 </div>
               </div>
-            ) : (
+            ) : isBuildingsMode ? (
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-4">
                 <div className="flex-1">
                   <label className="text-sm font-medium text-gray-600 block mb-1">
@@ -122,7 +126,7 @@ export function ParametersPanel() {
                   <AttractivityDropdown />
                 </div>
               </div>
-            )}
+            ) : null}
 
             {/* Section C: Distance Function */}
             <div>

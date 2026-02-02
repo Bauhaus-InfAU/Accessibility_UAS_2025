@@ -75,8 +75,17 @@ export type CurveMode = CustomCurveType
 
 export type AttractivityMode = 'floorArea' | 'volume' | 'count'
 
-// Analysis mode: Buildings (original) or Grid (hexagon-based)
-export type AnalysisMode = 'buildings' | 'grid'
+// Analysis mode: Buildings (original), Grid (hexagon-based), or Surface (3D terrain)
+export type AnalysisMode = 'buildings' | 'grid' | 'surface'
+
+// Hexagon cell for grid mode
+export interface HexCell {
+  id: string
+  center: [number, number]
+  vertices: [number, number][]
+  nearestNodeId: string
+  intersectsStreet: boolean
+}
 
 // Amenity for grid mode (user-placed points that serve as destinations)
 export interface GridAttractor {
