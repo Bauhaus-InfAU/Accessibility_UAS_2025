@@ -13,7 +13,7 @@
 Students define a custom distance decay function f(d) graphically, then see how it affects accessibility scores on a 3D city model.
 
 **Formula**: `Acc_i = Σ(j) Att_j * f(d_ij)`
-- Acc_i = accessibility of residential building i
+- Acc_i = accessibility of building i (residential only, or all buildings based on filter)
 - Att_j = attractivity of amenity j (floor area, volume, or 1)
 - f(d_ij) = user-defined decay function (0 to 1) at distance d_ij
 - d_ij = shortest path distance via street network
@@ -28,8 +28,11 @@ Students define a custom distance decay function f(d) graphically, then see how 
 
 ## Key Features
 - **Analysis Modes**: Toggle between Buildings and Grid modes
-  - Buildings mode: Accessibility for residential buildings based on amenities
+  - Buildings mode: Accessibility for buildings based on amenities
   - Grid mode: Accessibility on hexagonal grid based on user-placed custom amenities
+- **Building Filter**: Toggle which buildings are analyzed (Buildings mode only)
+  - "Residential Only": Calculate accessibility only for residential buildings (default)
+  - "All Buildings": Calculate accessibility for all buildings (excludes amenity buildings when using predefined types)
 - **Distance Decay Curve**: Tabbed editor with three modes:
   - Custom: Polyline editor with draggable points and presets
   - Negative Exponential: f(d_ij) = e^(-α·d_ij) with α coefficient input
@@ -52,7 +55,7 @@ Students define a custom distance decay function f(d) graphically, then see how 
 ## Project Structure
 ```
 src/
-├── config/          # Types (LandUse, CustomPin, Building, CurveTabMode, AnalysisMode, HexCell, GridAttractor with attractivity) + constants
+├── config/          # Types (LandUse, CustomPin, Building, CurveTabMode, AnalysisMode, BuildingFilterMode, HexCell, GridAttractor with attractivity) + constants
 ├── data/            # GeoJSON loading, building/street processing, graph building, hexagon grid
 │   ├── dataLoader.ts      # GeoJSON file loading
 │   ├── buildingStore.ts   # Building processing and land use queries
@@ -198,9 +201,12 @@ Main control panel (top-left on desktop, top full-width on mobile, collapsible):
   - Inactive mode: Grey background, grey text
 - **Section A - Introduction**: Brief explanation + master equation display (context-sensitive)
 - **Section B - Parameters** (mode-dependent):
-  - **Buildings mode**: Two dropdowns (stacked on mobile, side-by-side on desktop)
-    - Amenity Type (j): Land use category selector
-    - Attractivity (Att_j): Floor area / Volume / Count
+  - **Buildings mode**: Two dropdowns + building filter toggle
+    - Amenity Type (j): Land use category selector (includes "Custom" for user-placed pins)
+    - Attractivity (Att_j): Floor area / Volume / Count (hidden when Custom selected)
+    - Analyze Buildings (i): Toggle between "Residential Only" and "All Buildings"
+      - Residential Only: Only residential buildings show accessibility scores
+      - All Buildings: All buildings show scores (amenity buildings excluded for predefined types)
   - **Grid mode**: Custom Amenities count + "Clear all" button
     - Shows loading indicator when computing full network matrix
 - **Section C - Distance Decay Function**: Interactive curve editor (shared across modes)
@@ -298,10 +304,11 @@ Shown during initial data loading:
 - **Background**: Medium grey (#b0b0b0)
 - **Streets**: White lines with grey shadow
 - **Buildings** (visible in Buildings mode):
-  - Residential (scored): Purple→Orange→Red gradient
-  - Residential (unscored): Light grey (#d0d0d0 - BUILDING_UNSCORED_COLOR)
-  - Non-residential: Light grey (#d8d8d8)
+  - Analyzed (scored): Purple→Orange→Red gradient (based on `isAnalyzed` property)
+  - Analyzed (unscored): Light grey (#d0d0d0 - BUILDING_UNSCORED_COLOR)
+  - Not analyzed: Light grey (#d8d8d8)
   - Selected amenity: Yellow (#fcdb02) with floating effect
+  - Note: `isAnalyzed` depends on building filter mode (residential vs all buildings)
 - **Hexagon Grid** (visible in Grid mode):
   - ~15m diameter flat-topped hexagons
   - Street-intersecting hexagons excluded (gaps along streets)

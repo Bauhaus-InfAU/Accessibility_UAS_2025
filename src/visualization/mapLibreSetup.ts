@@ -135,6 +135,7 @@ function addBuildingLayer(map: maplibregl.Map, buildings: Building[]) {
       id: b.id,
       score: -1, // unscored initially
       isResidential: b.isResidential ? 1 : 0,
+      isAnalyzed: b.isResidential ? 1 : 0, // default to residential filter mode
       hasSelectedAmenity: 0, // initially no amenity selected
     },
   }))
@@ -157,8 +158,8 @@ function addBuildingLayer(map: maplibregl.Map, buildings: Building[]) {
         // Selected amenity buildings: bright yellow
         ['==', ['get', 'hasSelectedAmenity'], 1],
         '#fcdb02',
-        // Residential buildings with scores
-        ['all', ['==', ['get', 'isResidential'], 1], ['>=', ['get', 'score'], 0]],
+        // Analyzed buildings with scores (gradient)
+        ['all', ['==', ['get', 'isAnalyzed'], 1], ['>=', ['get', 'score'], 0]],
         [
           'interpolate',
           ['linear'],
@@ -167,10 +168,10 @@ function addBuildingLayer(map: maplibregl.Map, buildings: Building[]) {
           0.5, '#FD681D',  // Orange (mid)
           1, '#FD1D1D',    // Red (high)
         ],
-        // Unscored residential
-        ['==', ['get', 'isResidential'], 1],
+        // Analyzed but unscored
+        ['==', ['get', 'isAnalyzed'], 1],
         BUILDING_UNSCORED_COLOR,
-        // Non-residential - light grey
+        // Not analyzed - light grey
         '#d8d8d8',
       ],
       'fill-extrusion-height': ['to-number', ['get', 'Height'], 3],

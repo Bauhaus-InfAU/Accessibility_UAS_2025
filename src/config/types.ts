@@ -78,6 +78,9 @@ export type AttractivityMode = 'floorArea' | 'volume' | 'count'
 // Analysis mode: Buildings (original), Grid (hexagon-based), or Surface (3D terrain)
 export type AnalysisMode = 'buildings' | 'grid' | 'surface'
 
+// Building filter mode for Buildings analysis
+export type BuildingFilterMode = 'residential' | 'all'
+
 // Hexagon cell for grid mode
 export interface HexCell {
   id: string

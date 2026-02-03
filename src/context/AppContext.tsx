@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo, type ReactNode } from 'react'
-import type { Building, ControlPoint, CurveMode, CurveTabMode, AttractivityMode, DistanceMatrix, LandUse, StreetGraph, AnalysisMode, GridAttractor, StreetsGeoJSON, MeasurementPoint, HexCell } from '../config/types'
+import type { Building, ControlPoint, CurveMode, CurveTabMode, AttractivityMode, DistanceMatrix, LandUse, StreetGraph, AnalysisMode, GridAttractor, StreetsGeoJSON, MeasurementPoint, HexCell, BuildingFilterMode } from '../config/types'
 import { MAX_DISTANCE_DEFAULT, DEFAULT_POLYLINE_POINTS, DEFAULT_BEZIER_HANDLES, DEFAULT_NEG_EXP_ALPHA, DEFAULT_EXP_POWER_B, DEFAULT_EXP_POWER_C } from '../config/constants'
 import { loadBuildingsGeoJSON, loadStreetsGeoJSON } from '../data/dataLoader'
 import { processBuildings, getBuildingsWithLandUse, getAvailableLandUses } from '../data/buildingStore'
@@ -29,6 +29,7 @@ interface AppState {
 
   // Analysis mode
   analysisMode: AnalysisMode
+  buildingFilterMode: BuildingFilterMode
 
   // User controls
   curveTabMode: CurveTabMode
@@ -83,6 +84,7 @@ interface AppContextValue extends AppState {
   setNegExpAlpha: (alpha: number) => void
   setExpPowerB: (b: number) => void
   setExpPowerC: (c: number) => void
+  setBuildingFilterMode: (mode: BuildingFilterMode) => void
   // Shared attractor actions (used by all modes)
   setAnalysisMode: (mode: AnalysisMode) => void
   addGridAttractor: (coord: [number, number]) => void
@@ -123,15 +125,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [availableLandUses, setAvailableLandUses] = useState<LandUse[]>([])
   const [streetsGeoJSON, setStreetsGeoJSON] = useState<StreetsGeoJSON | null>(null)
 
-  // Analysis mode - default to 'grid' for development/testing
-  const [analysisMode, setAnalysisMode] = useState<AnalysisMode>('grid')
+  // Analysis mode - default to 'buildings' with custom pins
+  const [analysisMode, setAnalysisMode] = useState<AnalysisMode>('buildings')
+  const [buildingFilterMode, setBuildingFilterMode] = useState<BuildingFilterMode>('residential')
 
   const [curveTabMode, setCurveTabMode] = useState<CurveTabMode>('custom')
   const [customCurveType, setCustomCurveType] = useState<CurveMode>('polyline')
   const [polylinePoints, setPolylinePoints] = useState<ControlPoint[]>([...DEFAULT_POLYLINE_POINTS])
   const [bezierHandles, setBezierHandles] = useState<[[number, number], [number, number]]>([...DEFAULT_BEZIER_HANDLES])
   const maxDistance = MAX_DISTANCE_DEFAULT
-  const [selectedLandUse, setSelectedLandUse] = useState<LandUse>('Generic Retail')
+  const [selectedLandUse, setSelectedLandUse] = useState<LandUse>('Custom')
   const [attractivityMode, setAttractivityMode] = useState<AttractivityMode>('floorArea')
 
   // Mathematical function coefficients
@@ -228,8 +231,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setFullNetworkMatrix(fullMatrix)
         setAvailableLandUses(available)
 
-        // Set initial land use to first available
-        if (available.length > 0 && !available.includes(selectedLandUse)) {
+        // Set initial land use to first available (but don't override 'Custom' which is always valid)
+        if (available.length > 0 && selectedLandUse !== 'Custom' && !available.includes(selectedLandUse)) {
           setSelectedLandUse(available[0])
         }
 
@@ -390,8 +393,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Recalculate accessibility when inputs change (buildings mode only)
   const recalculate = useCallback(() => {
     if (!distanceMatrix || buildings.length === 0) return
+    // For "All Buildings" mode, we need the full network matrix since distanceMatrix
+    // only has entries for residential buildings
+    if (buildingFilterMode === 'all' && !fullNetworkMatrix) return
 
-    const residentialBuildings = buildings.filter(b => b.isResidential)
+    // Choose the appropriate distance matrix based on filter mode
+    const activeMatrix = buildingFilterMode === 'all' ? fullNetworkMatrix! : distanceMatrix
+
+    // Determine which buildings to analyze based on filter mode
+    let targetBuildings: Building[]
+    if (buildingFilterMode === 'residential') {
+      targetBuildings = buildings.filter(b => b.isResidential)
+    } else {
+      // All buildings mode
+      if (selectedLandUse === 'Custom') {
+        // Custom mode: all buildings (custom pins aren't buildings)
+        targetBuildings = buildings
+      } else {
+        // Predefined amenity: exclude buildings that ARE the selected amenity
+        targetBuildings = buildings.filter(b => !((b.landUseAreas[selectedLandUse] || 0) > 0))
+      }
+    }
 
     // Helper to compute min/max/avg and update state
     const processScores = (rawScores: Map<string, number>) => {
@@ -433,9 +455,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
           return
         }
         const rawScores = calculateAccessibilityFromPins(
-          residentialBuildings,
+          targetBuildings,
           gridAttractors,
-          distanceMatrix,
+          activeMatrix,
           evaluator
         )
         processScores(rawScores)
@@ -451,16 +473,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
 
       const rawScores = calculateAccessibility(
-        residentialBuildings,
+        targetBuildings,
         amenityBuildings,
         selectedLandUse,
-        distanceMatrix,
+        activeMatrix,
         evaluator,
         attractivityMode
       )
       processScores(rawScores)
     })
-  }, [buildings, distanceMatrix, curveTabMode, customCurveType, polylinePoints, bezierHandles, maxDistance, selectedLandUse, attractivityMode, gridAttractors, negExpAlpha, expPowerB, expPowerC])
+  }, [buildings, distanceMatrix, fullNetworkMatrix, curveTabMode, customCurveType, polylinePoints, bezierHandles, maxDistance, selectedLandUse, attractivityMode, gridAttractors, negExpAlpha, expPowerB, expPowerC, buildingFilterMode])
 
   // Debounced recalculation for buildings mode
   useEffect(() => {
@@ -500,6 +522,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     availableLandUses,
     streetsGeoJSON,
     analysisMode,
+    buildingFilterMode,
     curveTabMode,
     customCurveType,
     polylinePoints,
@@ -534,6 +557,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setNegExpAlpha,
     setExpPowerB,
     setExpPowerC,
+    setBuildingFilterMode,
     setAnalysisMode,
     addGridAttractor,
     updateGridAttractor,

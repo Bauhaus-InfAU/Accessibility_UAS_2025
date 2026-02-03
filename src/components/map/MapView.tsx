@@ -215,6 +215,7 @@ export function MapView() {
     rawAccessibilityScores,
     isLoading,
     selectedLandUse,
+    buildingFilterMode,
     // Curve parameters for terrain
     curveTabMode,
     customCurveType,
@@ -257,9 +258,9 @@ export function MapView() {
     const map = mapRef.current
     if (!map || !mapLoadedRef.current || buildings.length === 0) return
     if (map.getSource('buildings')) {
-      updateBuildingColors(map, buildings, accessibilityScores, selectedLandUse)
+      updateBuildingColors(map, buildings, accessibilityScores, selectedLandUse, buildingFilterMode)
     }
-  }, [buildings, accessibilityScores, selectedLandUse])
+  }, [buildings, accessibilityScores, selectedLandUse, buildingFilterMode])
 
   // Ref to always access latest updateColors in onLoad handler
   const updateColorsRef = useRef(updateColors)

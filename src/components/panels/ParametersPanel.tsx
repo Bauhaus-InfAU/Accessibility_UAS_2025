@@ -9,6 +9,8 @@ export function ParametersPanel() {
     isPanelCollapsed,
     setIsPanelCollapsed,
     analysisMode,
+    buildingFilterMode,
+    setBuildingFilterMode,
     curveTabMode,
     polylinePoints,
     maxDistance,
@@ -112,18 +114,47 @@ export function ParametersPanel() {
                 </div>
               </div>
             ) : isBuildingsMode ? (
-              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-4">
-                <div className="flex-1">
-                  <label className="text-sm font-medium text-gray-600 block mb-1">
-                    Amenity Type (<span className="math-var">j</span>)
-                  </label>
-                  <AmenityDropdown />
+              <div className="mb-4">
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-3">
+                  <div className="flex-1">
+                    <label className="text-sm font-medium text-gray-600 block mb-1">
+                      Amenity Type (<span className="math-var">j</span>)
+                    </label>
+                    <AmenityDropdown />
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-sm font-medium text-gray-600 block mb-1">
+                      Attractivity (<span className="math-var">Att<sub>j</sub></span>)
+                    </label>
+                    <AttractivityDropdown />
+                  </div>
                 </div>
-                <div className="flex-1">
+                <div>
                   <label className="text-sm font-medium text-gray-600 block mb-1">
-                    Attractivity (<span className="math-var">Att<sub>j</sub></span>)
+                    Analyze Buildings (<span className="math-var">i</span>)
                   </label>
-                  <AttractivityDropdown />
+                  <div className="flex gap-2">
+                    <button
+                      className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
+                        buildingFilterMode === 'residential'
+                          ? 'bg-purple-600 text-white border-purple-600'
+                          : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
+                      }`}
+                      onClick={() => setBuildingFilterMode('residential')}
+                    >
+                      Residential Only
+                    </button>
+                    <button
+                      className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
+                        buildingFilterMode === 'all'
+                          ? 'bg-purple-600 text-white border-purple-600'
+                          : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
+                      }`}
+                      onClick={() => setBuildingFilterMode('all')}
+                    >
+                      All Buildings
+                    </button>
+                  </div>
                 </div>
               </div>
             ) : null}
