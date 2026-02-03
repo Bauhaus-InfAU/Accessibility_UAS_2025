@@ -5,6 +5,7 @@ import { AmenityDropdown } from './AmenityDropdown'
 import { AttractivityDropdown } from './AttractivityDropdown'
 import { AnalysisModeToggle } from './AnalysisModeToggle'
 import { PillToggle } from './PillToggle'
+import { HexSizeSlider } from './HexSizeSlider'
 import type { BuildingFilterMode } from '../../config/types'
 
 // Minimum panel height in pixels
@@ -34,6 +35,9 @@ export function ParametersPanel() {
     gridAttractors,
     clearGridAttractors,
     totalGridAttractivity,
+    hexDiameter,
+    setHexDiameter,
+    isRegeneratingGrid,
   } = useAppContext()
 
   // Resize drag state
@@ -160,6 +164,18 @@ export function ParametersPanel() {
               {isGridMode && "Visualize accessibility on a hexagonal grid, independent of buildings."}
               {isSurfaceMode && "Display accessibility as a 3D terrain with height representing scores."}
             </p>
+
+            {/* Hexagon Size - Grid mode only */}
+            {isGridMode && (
+              <div className="mb-4">
+                <HexSizeSlider
+                  value={hexDiameter}
+                  onChange={setHexDiameter}
+                  disabled={isRegeneratingGrid}
+                  label={isRegeneratingGrid ? "Hexagon Size (updating...)" : "Hexagon Size"}
+                />
+              </div>
+            )}
 
             {/* Analysis Scope - Buildings mode only, placed before amenity selection */}
             {isBuildingsMode && (

@@ -97,3 +97,9 @@ export const TERRAIN_SEGMENTS = 64          // 65x65 = 4225 vertices
 export const TERRAIN_HEIGHT_SCALE = 200     // meters per unit score
 export const TERRAIN_CONTOUR_COUNT = 10     // number of contour lines
 export const TERRAIN_SMOOTH_SIGMA = 1.0     // Gaussian blur radius (0 = no smoothing)
+
+// Hexagon grid size configuration
+export const HEX_DIAMETER_MIN = 10          // Minimum hexagon diameter in meters
+export const HEX_DIAMETER_MAX = 100         // Maximum hexagon diameter in meters
+export const HEX_DIAMETER_DEFAULT = 15      // Default hexagon diameter in meters
+export const HEX_DIAMETER_STEP = 5          // Slider step in meters

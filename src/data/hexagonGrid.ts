@@ -1,5 +1,5 @@
 import type { HexCell, StreetGraph, StreetsGeoJSON } from '../config/types'
-import { DEGREES_TO_METERS } from '../config/constants'
+import { DEGREES_TO_METERS, HEX_DIAMETER_DEFAULT } from '../config/constants'
 
 /**
  * Find the nearest node and return both ID and distance in meters
@@ -20,10 +20,6 @@ function findNearestNodeWithDistance(graph: StreetGraph, coord: [number, number]
 
   return { nodeId: nearestId, distance: nearestDist }
 }
-
-// Hexagon geometry constants
-const HEX_RADIUS_METERS = 7.5 // ~15m diameter
-const HEX_RADIUS_DEGREES = HEX_RADIUS_METERS / DEGREES_TO_METERS
 
 // Maximum distance from network to include a hexagon (in meters)
 // Also used for bounding box padding to create organic shape around network
@@ -192,14 +188,23 @@ function hexagonIntersectsStreets(
 
 /**
  * Generate hexagonal grid covering the street network area
+ * @param graph - The street graph for network distance calculations
+ * @param streetsGeoJSON - Street GeoJSON for intersection detection
+ * @param hexDiameterMeters - Diameter of each hexagon in meters (default: 15m)
+ * @param onProgress - Optional progress callback (0-100)
  */
 export function generateHexagonGrid(
   graph: StreetGraph,
   streetsGeoJSON: StreetsGeoJSON,
+  hexDiameterMeters: number = HEX_DIAMETER_DEFAULT,
   onProgress?: (percent: number) => void
 ): HexCell[] {
   const bounds = getStreetBounds(graph)
   const streetSegments = extractStreetSegments(streetsGeoJSON)
+
+  // Calculate hexagon radius from diameter
+  const hexRadiusMeters = hexDiameterMeters / 2
+  const hexRadiusDegrees = hexRadiusMeters / DEGREES_TO_METERS
 
   // Padding around the bounds (same as max distance filter for organic shape)
   const paddingMeters = MAX_DISTANCE_FROM_NETWORK
@@ -210,8 +215,8 @@ export function generateHexagonGrid(
   const maxLat = bounds.maxLat + paddingDegrees
 
   // Flat-topped hexagon dimensions
-  const hexWidth = HEX_RADIUS_DEGREES * 2 // Width of hexagon
-  const hexHeight = HEX_RADIUS_DEGREES * Math.sqrt(3) // Height of hexagon
+  const hexWidth = hexRadiusDegrees * 2 // Width of hexagon
+  const hexHeight = hexRadiusDegrees * Math.sqrt(3) // Height of hexagon
   const colOffset = hexWidth * 0.75 // Horizontal offset between columns
   const rowOffset = hexHeight // Vertical offset between rows
 
@@ -233,14 +238,14 @@ export function generateHexagonGrid(
       // Offset every other column by half the row height
       const cy = minLat + row * rowOffset + (col % 2 === 1 ? rowOffset / 2 : 0)
 
-      const vertices = hexVertices(cx, cy, HEX_RADIUS_DEGREES)
+      const vertices = hexVertices(cx, cy, hexRadiusDegrees)
 
       // Calculate hexagon bounding box for optimization
       const hexBounds = {
-        minLng: cx - HEX_RADIUS_DEGREES,
-        maxLng: cx + HEX_RADIUS_DEGREES,
-        minLat: cy - HEX_RADIUS_DEGREES * Math.sqrt(3) / 2,
-        maxLat: cy + HEX_RADIUS_DEGREES * Math.sqrt(3) / 2
+        minLng: cx - hexRadiusDegrees,
+        maxLng: cx + hexRadiusDegrees,
+        minLat: cy - hexRadiusDegrees * Math.sqrt(3) / 2,
+        maxLat: cy + hexRadiusDegrees * Math.sqrt(3) / 2
       }
 
       // Check street intersection

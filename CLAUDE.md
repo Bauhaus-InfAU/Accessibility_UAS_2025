@@ -44,7 +44,9 @@ Students define a custom distance decay function f(d) graphically, then see how 
   - Each amenity has editable attractivity value with visual attractivity box
 - **Attractivity Modes**: Floor area, volume, or count-based weighting (Buildings mode with predefined amenities)
 - **3D Visualization**: Buildings colored by accessibility score (purple=low, red=high)
-- **Hexagon Grid**: ~15m diameter hexagons colored by accessibility (Grid mode), organic boundary within 100m of network
+- **Hexagon Grid**: Configurable diameter hexagons (10-100m, default 15m) colored by accessibility (Grid mode), organic boundary within 100m of network
+  - Hexagon Size slider in Grid mode to adjust grid resolution
+  - Smaller hexagons = more detail, larger hexagons = faster computation
 - **Hover Popups**: Show raw accessibility score on hover (buildings or hexagons)
 - **Distance Measurement Tool**: Compare network vs euclidean distances between two points
   - Ruler toggle button below navigation widget
@@ -78,7 +80,7 @@ src/
 │   │   ├── PolylineEditor.tsx   # Custom mode - draggable points
 │   │   ├── MathCurveDisplay.tsx # Mathematical function curve renderer
 │   │   └── CoefficientInputs.tsx # Parameter inputs for math functions
-│   ├── panels/      # ParametersPanel, NavigationWidget, Legend, AppInfo, MeasurementWidget, dropdowns, AnalysisModeToggle
+│   ├── panels/      # ParametersPanel, NavigationWidget, Legend, AppInfo, MeasurementWidget, HexSizeSlider, dropdowns, AnalysisModeToggle
 │   └── map/         # MapView (includes custom pin/attractor marker management)
 ├── visualization/   # MapLibre setup + color updates + Three.js terrain
 │   ├── mapLibreSetup.ts         # Map initialization, layers (buildings, hexagons, streets)
@@ -405,7 +407,7 @@ The terrain visualization uses Three.js rendered as a MapLibre custom layer. Bot
 | `src/visualization/shaders/sdfLine.ts` | GLSL shaders for SDF anti-aliased line rendering |
 | `src/visualization/SDFLineMaterial.ts` | Custom Three.js material for smooth lines |
 | `src/computation/terrainAccessibilityCalc.ts` | Network distance-based accessibility calculation |
-| `src/config/constants.ts` | `TERRAIN_SEGMENTS` (64), `TERRAIN_HEIGHT_SCALE` (200m), `TERRAIN_CONTOUR_COUNT` (10), `TERRAIN_SMOOTH_SIGMA` (1.0) |
+| `src/config/constants.ts` | `TERRAIN_SEGMENTS` (64), `TERRAIN_HEIGHT_SCALE` (200m), `TERRAIN_CONTOUR_COUNT` (10), `TERRAIN_SMOOTH_SIGMA` (1.0), `HEX_DIAMETER_*` constants |
 
 ### Key Constants
 
@@ -415,6 +417,10 @@ The terrain visualization uses Three.js rendered as a MapLibre custom layer. Bot
 | `TERRAIN_HEIGHT_SCALE` | 200 | Maximum terrain height in meters (normalized score 1.0 = 200m) |
 | `TERRAIN_CONTOUR_COUNT` | 10 | Number of contour lines displayed |
 | `TERRAIN_SMOOTH_SIGMA` | 1.0 | Gaussian blur radius for score smoothing (0 = disabled) |
+| `HEX_DIAMETER_MIN` | 10 | Minimum hexagon diameter in meters |
+| `HEX_DIAMETER_MAX` | 100 | Maximum hexagon diameter in meters |
+| `HEX_DIAMETER_DEFAULT` | 15 | Default hexagon diameter in meters |
+| `HEX_DIAMETER_STEP` | 5 | Slider step increment in meters |
 | Base height | 10m | Offset above ground level |
 
 ### Terrain Mesh Creation (`terrainMesh.ts`)

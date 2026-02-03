@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo, type ReactNode } from 'react'
 import type { Building, ControlPoint, CurveMode, CurveTabMode, AttractivityMode, DistanceMatrix, LandUse, StreetGraph, AnalysisMode, GridAttractor, StreetsGeoJSON, MeasurementPoint, HexCell, BuildingFilterMode } from '../config/types'
-import { MAX_DISTANCE_DEFAULT, DEFAULT_POLYLINE_POINTS, DEFAULT_BEZIER_HANDLES, DEFAULT_NEG_EXP_ALPHA, DEFAULT_EXP_POWER_B, DEFAULT_EXP_POWER_C } from '../config/constants'
+import { MAX_DISTANCE_DEFAULT, DEFAULT_POLYLINE_POINTS, DEFAULT_BEZIER_HANDLES, DEFAULT_NEG_EXP_ALPHA, DEFAULT_EXP_POWER_B, DEFAULT_EXP_POWER_C, HEX_DIAMETER_DEFAULT } from '../config/constants'
 import { loadBuildingsGeoJSON, loadStreetsGeoJSON } from '../data/dataLoader'
 import { processBuildings, getBuildingsWithLandUse, getAvailableLandUses } from '../data/buildingStore'
 import { buildStreetGraph, mapBuildingsToNodes, serializeGraph, findNearestNode } from '../data/streetGraph'
@@ -48,6 +48,8 @@ interface AppState {
 
   // Grid mode state (hexagon grid)
   hexCells: HexCell[]
+  hexDiameter: number               // Current hexagon diameter in meters
+  isRegeneratingGrid: boolean       // Loading state during grid regeneration
   gridAttractors: GridAttractor[]
   gridMinScore: number
   gridMaxScore: number
@@ -96,6 +98,7 @@ interface AppContextValue extends AppState {
   clearGridAttractors: () => void
   setGridStats: (stats: { min: number; max: number; avg: number }) => void
   setSurfaceStats: (stats: { min: number; max: number; avg: number }) => void
+  setHexDiameter: (diameter: number) => void
   // Measurement tool actions
   setMeasurementActive: (active: boolean) => void
   addMeasurementPoint: (coord: [number, number]) => void
@@ -153,6 +156,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Hexagon grid state
   const [hexCells, setHexCells] = useState<HexCell[]>([])
+  const [hexDiameter, setHexDiameterState] = useState(HEX_DIAMETER_DEFAULT)
+  const [isRegeneratingGrid, setIsRegeneratingGrid] = useState(false)
 
   // Shared attractors (used by Grid, Surface, and Buildings+Custom modes)
   const [gridAttractors, setGridAttractors] = useState<GridAttractor[]>([])
@@ -176,6 +181,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Recalculation refs to debounce
   const recalcTimeoutRef = useRef<number | null>(null)
+  const hexRegenTimeoutRef = useRef<number | null>(null)
 
   // Startup: load data and precompute distances
   useEffect(() => {
@@ -316,6 +322,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setSurfaceMaxScore(stats.max)
     setSurfaceAvgScore(stats.avg)
   }, [])
+
+  // Hexagon diameter setter with debounced grid regeneration
+  const setHexDiameter = useCallback((diameter: number) => {
+    setHexDiameterState(diameter)
+
+    // Clear any pending regeneration
+    if (hexRegenTimeoutRef.current !== null) {
+      clearTimeout(hexRegenTimeoutRef.current)
+    }
+
+    // Debounce grid regeneration by 400ms
+    hexRegenTimeoutRef.current = window.setTimeout(() => {
+      if (!graph || !streetsGeoJSON) return
+
+      setIsRegeneratingGrid(true)
+
+      // Use requestAnimationFrame to allow UI to update before heavy computation
+      requestAnimationFrame(() => {
+        const newHexCells = generateHexagonGrid(graph, streetsGeoJSON, diameter)
+        setHexCells(newHexCells)
+        setIsRegeneratingGrid(false)
+      })
+    }, 400)
+  }, [graph, streetsGeoJSON])
 
   // Measurement tool actions
   const setMeasurementActive = useCallback((active: boolean) => {
@@ -538,6 +568,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     expPowerB,
     expPowerC,
     hexCells,
+    hexDiameter,
+    isRegeneratingGrid,
     gridAttractors,
     gridMinScore,
     gridMaxScore,
@@ -571,6 +603,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     clearGridAttractors,
     setGridStats,
     setSurfaceStats,
+    setHexDiameter,
     // Measurement tool
     isMeasurementActive,
     measurementPointA,
