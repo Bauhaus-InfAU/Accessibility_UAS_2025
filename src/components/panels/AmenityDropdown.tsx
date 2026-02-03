@@ -1,34 +1,33 @@
 import { useAppContext } from '../../context/AppContext'
 import { LAND_USE_SHORT_NAMES } from '../../config/constants'
 import type { LandUse } from '../../config/types'
+import { PillDropdown } from './PillDropdown'
 
 export function AmenityDropdown() {
   const { availableLandUses, selectedLandUse, setSelectedLandUse, gridAttractors, clearGridAttractors } = useAppContext()
   const isCustomSelected = selectedLandUse === 'Custom'
 
-  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedLandUse(e.target.value as LandUse)
-  }
+  // Build options array from available land uses plus Custom
+  const options = [
+    ...availableLandUses.map(lu => ({
+      value: lu,
+      label: LAND_USE_SHORT_NAMES[lu],
+    })),
+    { value: 'Custom', label: 'Custom' },
+  ]
 
   return (
     <div className="flex flex-col">
-      <select
+      <PillDropdown
+        options={options}
         value={selectedLandUse}
-        onChange={handleChange}
-        className="param-dropdown"
-      >
-        {availableLandUses.map(lu => (
-          <option key={lu} value={lu}>
-            {LAND_USE_SHORT_NAMES[lu]}
-          </option>
-        ))}
-        <option value="Custom">Custom</option>
-      </select>
+        onChange={(value) => setSelectedLandUse(value as LandUse)}
+      />
 
       {/* Custom mode info - uses shared attractors */}
       {isCustomSelected && (
         <>
-          <p className="text-xs text-gray-500 mt-1">Add amenities by clicking on map</p>
+          <p className="instruction-text">Add amenities by clicking on map</p>
           <div className="flex items-center gap-3 mt-1">
             <span className="text-sm font-semibold" style={{ color: '#d4a800' }}>
               Total amenities: {gridAttractors.length}

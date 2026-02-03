@@ -77,6 +77,9 @@ export function CurveEditor({
   // Hover state for curve explorer
   const [hoverPlotX, setHoverPlotX] = useState<number | null>(null)
 
+  // Track active preset (shows which preset was last clicked)
+  const [activePreset, setActivePreset] = useState<string | null>('exponential')
+
   const handlePlotHover = useCallback((position: PlotHoverPosition | null) => {
     setHoverPlotX(position?.plotX ?? null)
   }, [])
@@ -105,9 +108,14 @@ export function CurveEditor({
   }, [curveTabMode, negExpEvaluator, expPowerEvaluator, polylinePoints])
 
   // Preset functions for custom mode
+  const applyPreset = (presetName: string, points: ControlPoint[]) => {
+    setActivePreset(presetName)
+    onPolylineChange(points)
+  }
+
   // Approximates negative exponential f(d) = e^(-0.003*d)
   const setExponential = () => {
-    onPolylineChange([
+    applyPreset('exponential', [
       { x: 0, y: 1 },
       { x: 250, y: 0.472 },
       { x: 500, y: 0.223 },
@@ -120,7 +128,7 @@ export function CurveEditor({
 
   // Approximates exponential power f(d) = e^(-(d/700)^2)
   const setPower = () => {
-    onPolylineChange([
+    applyPreset('power', [
       { x: 0, y: 1 },
       { x: 250, y: 0.880 },
       { x: 500, y: 0.600 },
@@ -132,14 +140,14 @@ export function CurveEditor({
   }
 
   const setLinear = () => {
-    onPolylineChange([
+    applyPreset('linear', [
       { x: 0, y: 1 },
       { x: maxDistance, y: 0 },
     ])
   }
 
   const setStep = () => {
-    onPolylineChange([
+    applyPreset('step', [
       { x: 0, y: 1 },
       { x: 499, y: 1 },
       { x: 500, y: 0 },
@@ -148,10 +156,32 @@ export function CurveEditor({
   }
 
   const setConstant = () => {
-    onPolylineChange([
+    applyPreset('constant', [
       { x: 0, y: 1 },
       { x: maxDistance, y: 1 },
     ])
+  }
+
+  // Preset button component with pill styling
+  const PresetButton = ({ name, label, onClick }: { name: string; label: string; onClick: () => void }) => {
+    const isActive = activePreset === name
+    return (
+      <button
+        className={`flex items-center gap-1.5 px-3 py-1 text-sm rounded-full transition-colors ${
+          isActive
+            ? 'bg-white text-purple-700 shadow-sm'
+            : 'bg-gray-200 text-gray-600 hover:text-gray-800 hover:bg-gray-300'
+        }`}
+        onClick={onClick}
+      >
+        {isActive && (
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+        )}
+        {label}
+      </button>
+    )
   }
 
   return (
@@ -220,25 +250,15 @@ export function CurveEditor({
           {/* Presets */}
           <p className="text-sm text-gray-500 mt-4 mb-2">Presets:</p>
           <div className="flex flex-wrap gap-2">
-            <button className="px-3 py-1.5 text-sm bg-gray-100 rounded-lg hover:bg-gray-200" onClick={setExponential}>
-              Exponential
-            </button>
-            <button className="px-3 py-1.5 text-sm bg-gray-100 rounded-lg hover:bg-gray-200" onClick={setPower}>
-              Power
-            </button>
-            <button className="px-3 py-1.5 text-sm bg-gray-100 rounded-lg hover:bg-gray-200" onClick={setLinear}>
-              Linear
-            </button>
-            <button className="px-3 py-1.5 text-sm bg-gray-100 rounded-lg hover:bg-gray-200" onClick={setStep}>
-              Step
-            </button>
-            <button className="px-3 py-1.5 text-sm bg-gray-100 rounded-lg hover:bg-gray-200" onClick={setConstant}>
-              Constant
-            </button>
+            <PresetButton name="exponential" label="Exponential" onClick={setExponential} />
+            <PresetButton name="power" label="Power" onClick={setPower} />
+            <PresetButton name="linear" label="Linear" onClick={setLinear} />
+            <PresetButton name="step" label="Step" onClick={setStep} />
+            <PresetButton name="constant" label="Constant" onClick={setConstant} />
           </div>
 
           {/* Instructions */}
-          <p className="text-sm text-gray-400 mt-3">
+          <p className="instruction-text mt-3">
             Double-click to add point. Right-click to remove.
           </p>
         </>

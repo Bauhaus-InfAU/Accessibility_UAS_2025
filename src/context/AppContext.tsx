@@ -127,7 +127,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Analysis mode - default to 'buildings' with custom pins
   const [analysisMode, setAnalysisMode] = useState<AnalysisMode>('buildings')
-  const [buildingFilterMode, setBuildingFilterMode] = useState<BuildingFilterMode>('residential')
+  const [buildingFilterMode, setBuildingFilterMode] = useState<BuildingFilterMode>('all')
 
   const [curveTabMode, setCurveTabMode] = useState<CurveTabMode>('custom')
   const [customCurveType, setCustomCurveType] = useState<CurveMode>('polyline')

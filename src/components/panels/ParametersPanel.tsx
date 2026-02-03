@@ -3,6 +3,8 @@ import { CurveEditor } from '../CurveEditor/CurveEditor'
 import { AmenityDropdown } from './AmenityDropdown'
 import { AttractivityDropdown } from './AttractivityDropdown'
 import { AnalysisModeToggle } from './AnalysisModeToggle'
+import { PillToggle } from './PillToggle'
+import type { BuildingFilterMode } from '../../config/types'
 
 export function ParametersPanel() {
   const {
@@ -76,6 +78,30 @@ export function ParametersPanel() {
             {/* Mode Toggle */}
             <AnalysisModeToggle />
 
+            {/* Mode Description */}
+            <p className="text-xs text-gray-500 mb-3">
+              {isBuildingsMode && "Calculate accessibility for buildings based on proximity to amenities."}
+              {isGridMode && "Visualize accessibility on a hexagonal grid, independent of buildings."}
+              {isSurfaceMode && "Display accessibility as a 3D terrain with height representing scores."}
+            </p>
+
+            {/* Analysis Scope - Buildings mode only, placed before amenity selection */}
+            {isBuildingsMode && (
+              <div className="mb-4">
+                <label className="text-sm font-medium text-gray-600 block mb-1.5">
+                  Analysis Scope (<span className="math-var">i</span>)
+                </label>
+                <PillToggle
+                  options={[
+                    { value: 'residential', label: 'Residential' },
+                    { value: 'all', label: 'All Buildings' },
+                  ]}
+                  value={buildingFilterMode}
+                  onChange={(v) => setBuildingFilterMode(v as BuildingFilterMode)}
+                />
+              </div>
+            )}
+
             {/* Section B: Parameters - mode-dependent UI */}
             {showAttractorControls ? (
               <div className="mb-4">
@@ -85,7 +111,7 @@ export function ParametersPanel() {
                     <label className="text-sm font-medium text-gray-600 block mb-1">
                       Custom Amenities (<span className="math-var">j</span>)
                     </label>
-                    <p className="text-xs text-gray-500">Add amenities by clicking on map</p>
+                    <p className="instruction-text">Add amenities by clicking on map</p>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-sm font-semibold" style={{ color: '#d4a800' }}>
                         Total: {gridAttractors.length}
@@ -106,7 +132,7 @@ export function ParametersPanel() {
                     <label className="text-sm font-medium text-gray-600 block mb-1">
                       Attractivity (<span className="math-var">Att<sub>j</sub></span>)
                     </label>
-                    <p className="text-xs text-gray-500">Set attractivity on map</p>
+                    <p className="instruction-text">Set attractivity on map</p>
                     <span className="text-sm font-semibold mt-1 block" style={{ color: '#d4a800' }}>
                       Total: {totalGridAttractivity}
                     </span>
@@ -115,7 +141,7 @@ export function ParametersPanel() {
               </div>
             ) : isBuildingsMode ? (
               <div className="mb-4">
-                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-3">
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                   <div className="flex-1">
                     <label className="text-sm font-medium text-gray-600 block mb-1">
                       Amenity Type (<span className="math-var">j</span>)
@@ -127,33 +153,6 @@ export function ParametersPanel() {
                       Attractivity (<span className="math-var">Att<sub>j</sub></span>)
                     </label>
                     <AttractivityDropdown />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-600 block mb-1">
-                    Analyze Buildings (<span className="math-var">i</span>)
-                  </label>
-                  <div className="flex gap-2">
-                    <button
-                      className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
-                        buildingFilterMode === 'residential'
-                          ? 'bg-purple-600 text-white border-purple-600'
-                          : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
-                      }`}
-                      onClick={() => setBuildingFilterMode('residential')}
-                    >
-                      Residential Only
-                    </button>
-                    <button
-                      className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
-                        buildingFilterMode === 'all'
-                          ? 'bg-purple-600 text-white border-purple-600'
-                          : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
-                      }`}
-                      onClick={() => setBuildingFilterMode('all')}
-                    >
-                      All Buildings
-                    </button>
                   </div>
                 </div>
               </div>

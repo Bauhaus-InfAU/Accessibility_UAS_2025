@@ -267,15 +267,23 @@ Glassmorphism panel with collapsible content:
 
 Content:
 1. **Title**: "Accessibility Analysis" (text-xl mobile, text-2xl desktop, clickable to collapse/expand)
-2. **Mode Toggle**: Buildings | Grid buttons (purple highlight for active mode)
-3. **Introduction**: Brief explanation (context-sensitive based on mode)
-4. **Master Equation**: Styled formula display (18px mobile, 24px desktop)
-5. **Parameters** (mode-dependent):
-   - **Buildings mode**: Two dropdowns (stacked on mobile, side-by-side on desktop)
-     - Amenity Type (j): Land use category selector
-     - Attractivity (Att_j): Floor area / Volume / Count
+2. **Introduction**: Brief explanation (context-sensitive based on mode)
+3. **Master Equation**: Styled formula display (18px mobile, 24px desktop)
+4. **Mode Toggle**: Buildings | Grid | Surface buttons (purple highlight for active mode)
+5. **Mode Description**: Dynamic 1-sentence description based on selected mode
+   - Buildings: "Calculate accessibility for buildings based on proximity to amenities."
+   - Grid: "Visualize accessibility on a hexagonal grid, independent of buildings."
+   - Surface: "Display accessibility as a 3D terrain with height representing scores."
+6. **Analysis Scope** (Buildings mode only): Pill-style toggle
+   - Options: Residential | All Buildings (default: All Buildings)
+   - Selected state: White background, purple text, checkmark icon
+   - Inactive state: Grey text, no background
+7. **Parameters** (mode-dependent):
+   - **Buildings mode**: Two pill-style dropdowns (stacked on mobile, side-by-side on desktop)
+     - Amenity Type (j): Land use category selector with checkmark on selected option
+     - Attractivity (Att_j): Floor area / Volume / Count with checkmark on selected option
    - **Grid mode**: Attractor count display + "Clear all" button
-6. **Distance Decay Function f(d_ij)** (tabbed SVG curve editor, shared across modes):
+8. **Distance Decay Function f(d_ij)** (tabbed SVG curve editor, shared across modes):
    - **Tab bar**: Custom | Negative Exponential | Exponential Power (compact on mobile)
    - **Graph area** (490×260px desktop, responsive on mobile):
      - Grid: White lines on transparent background
@@ -290,9 +298,12 @@ Content:
        - Purple rounded label on Y-axis showing f(d_ij) value (2 decimals)
    - **Custom tab**:
      - Control points: White fill, purple outline, strokeWidth 3
-     - Preset buttons: Exponential, Power, Linear, Step, Constant (wrap on mobile)
-       - Exponential: approximates negative exponential f(d) = e^(-0.003·d)
+     - Preset buttons: Pill-style with checkmark on active preset (wrap on mobile)
+       - Exponential (default): approximates negative exponential f(d) = e^(-0.003·d)
        - Power: approximates exponential power f(d) = e^(-(d/700)^2)
+       - Linear, Step, Constant
+       - Selected state: White background, purple text, checkmark icon
+       - Inactive state: Grey background, grey text
      - Instructions: "Double-click to add point. Right-click to remove."
    - **Negative Exponential tab**:
      - Equation: f(d_ij) = e^(-α·d_ij) (Times New Roman, 24px desktop/20px mobile, italic)

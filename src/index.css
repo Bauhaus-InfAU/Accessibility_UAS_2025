@@ -171,6 +171,13 @@ body {
   color: #5633ac;
 }
 
+/* Instruction text for user hints (e.g., "Add amenities by clicking on map") */
+.instruction-text {
+  font-size: 12px;
+  color: #6b7280; /* gray-500 */
+  margin-top: 4px;
+}
+
 /* Unified tab styling */
 .tab-container {
   display: flex;

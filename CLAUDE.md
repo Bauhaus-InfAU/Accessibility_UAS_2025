@@ -31,8 +31,8 @@ Students define a custom distance decay function f(d) graphically, then see how 
   - Buildings mode: Accessibility for buildings based on amenities
   - Grid mode: Accessibility on hexagonal grid based on user-placed custom amenities
 - **Building Filter**: Toggle which buildings are analyzed (Buildings mode only)
-  - "Residential Only": Calculate accessibility only for residential buildings (default)
-  - "All Buildings": Calculate accessibility for all buildings (excludes amenity buildings when using predefined types)
+  - "Residential Only": Calculate accessibility only for residential buildings
+  - "All Buildings": Calculate accessibility for all buildings (default, excludes amenity buildings when using predefined types)
 - **Distance Decay Curve**: Tabbed editor with three modes:
   - Custom: Polyline editor with draggable points and presets
   - Negative Exponential: f(d_ij) = e^(-α·d_ij) with α coefficient input
@@ -196,17 +196,22 @@ The app adapts to different screen sizes using Tailwind CSS breakpoints.
 Main control panel (top-left on desktop, top full-width on mobile, collapsible):
 - **Container**: Glass panel with backdrop blur, max-height with internal scroll
 - **Title**: "Accessibility Analysis" (text-xl on mobile, text-2xl on desktop, clickable to collapse)
-- **Mode Toggle** (`AnalysisModeToggle.tsx`): Buildings | Grid buttons
+- **Section A - Introduction**: Brief explanation + master equation display (context-sensitive)
+- **Mode Toggle** (`AnalysisModeToggle.tsx`): Buildings | Grid | Surface buttons
   - Active mode: Purple background (#7c3aed), white text
   - Inactive mode: Grey background, grey text
-- **Section A - Introduction**: Brief explanation + master equation display (context-sensitive)
+- **Mode Description**: Dynamic 1-sentence description below mode toggle
+  - Buildings: "Calculate accessibility for buildings based on proximity to amenities."
+  - Grid: "Visualize accessibility on a hexagonal grid, independent of buildings."
+  - Surface: "Display accessibility as a 3D terrain with height representing scores."
+- **Analysis Scope** (`PillToggle.tsx`): Buildings mode only, pill-style toggle
+  - Options: Residential | All Buildings (default: All Buildings)
+  - Selected: White background, purple text (#7c3aed), checkmark icon
+  - Inactive: Grey text, no background
 - **Section B - Parameters** (mode-dependent):
-  - **Buildings mode**: Two dropdowns + building filter toggle
-    - Amenity Type (j): Land use category selector (includes "Custom" for user-placed pins)
-    - Attractivity (Att_j): Floor area / Volume / Count (hidden when Custom selected)
-    - Analyze Buildings (i): Toggle between "Residential Only" and "All Buildings"
-      - Residential Only: Only residential buildings show accessibility scores
-      - All Buildings: All buildings show scores (amenity buildings excluded for predefined types)
+  - **Buildings mode**: Two pill-style dropdowns (`PillDropdown.tsx`)
+    - Amenity Type (j): Land use category selector with checkmark on selected
+    - Attractivity (Att_j): Floor area / Volume / Count with checkmark on selected (hidden when Custom)
   - **Grid mode**: Custom Amenities count + "Clear all" button
     - Shows loading indicator when computing full network matrix
 - **Section C - Distance Decay Function**: Interactive curve editor (shared across modes)
@@ -230,9 +235,12 @@ Tabbed SVG-based curve editor (responsive: 490×260px desktop, scales on mobile)
 
 **Custom Tab**:
 - Draggable control points: White fill, purple outline
-- **Presets**: Exponential (default), Power, Linear, Step, Constant (with "Presets:" label above)
-  - Exponential: approximates negative exponential f(d) = e^(-0.003·d) - **default on startup**
+- **Presets**: Pill-style buttons with checkmark on active (with "Presets:" label above)
+  - Exponential (default): approximates negative exponential f(d) = e^(-0.003·d)
   - Power: approximates exponential power f(d) = e^(-(d/700)^2)
+  - Linear, Step, Constant
+  - Selected: White background, purple text, checkmark icon
+  - Inactive: Grey background, grey text
 - **Interactions**: Double-click to add point, right-click to remove, drag to move
 
 **Negative Exponential Tab**:
