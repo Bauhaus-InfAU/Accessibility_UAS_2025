@@ -186,8 +186,21 @@ The app adapts to different screen sizes using Tailwind CSS breakpoints.
 - Internal content scrolls when exceeding max height
 - Custom purple-themed scrollbar (6px wide)
 
+### Panel Resize
+- Draggable bottom edge allows vertical resizing
+- **Resize Handle**: Horizontal grip bar at panel bottom (hidden when collapsed)
+  - 12px drag target area with 4px visual grip indicator
+  - Cursor changes to `ns-resize` on hover
+  - Visual feedback: grip darkens on hover/active
+- **Constraints**:
+  - Minimum height: 150px (shows title + some content)
+  - Maximum height: `calc(100vh - 92px)` mobile, `calc(100vh - 76px)` desktop
+- **Touch Support**: Works on mobile via touch events
+- **State**: `panelHeight` in AppContext (null = auto/default, resets on page reload)
+
 ### State Management
 - `isPanelCollapsed` state in AppContext controls panel expand/collapse
+- `panelHeight` state in AppContext tracks custom panel height (null = auto)
 - NavigationWidget and Legend read this state to show/hide on mobile
 
 ## UI Components
@@ -358,6 +371,9 @@ Key responsive styles:
 - **Math Styling**:
   - `.equation`: Times New Roman, 24px, italic, purple (#5633ac) - for main equation display
   - `.math-var`: Times New Roman, italic, purple (#5633ac) - for inline math variable references (i, j, d_ij, f(d_ij), Att_j, etc.)
+- **Resize Handle**:
+  - `.resize-handle`: 12px height, `cursor: ns-resize`, centered flex container
+  - `.resize-handle-grip`: 40×4px rounded bar, grey background with purple hover/active states
 - **Mobile Media Query** (`max-width: 639px`):
   - `.glass-panel`: Square corners (`border-radius: 0`)
   - `.param-dropdown`: Smaller font (13px) and padding

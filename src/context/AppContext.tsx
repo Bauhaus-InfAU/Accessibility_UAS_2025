@@ -17,6 +17,7 @@ interface AppState {
 
   // UI State
   isPanelCollapsed: boolean
+  panelHeight: number | null  // Custom panel height in pixels (null = auto/default)
 
   // Data
   buildings: Building[]
@@ -75,6 +76,7 @@ interface AppState {
 
 interface AppContextValue extends AppState {
   setIsPanelCollapsed: (collapsed: boolean) => void
+  setPanelHeight: (height: number | null) => void
   setCurveTabMode: (mode: CurveTabMode) => void
   setCustomCurveType: (type: CurveMode) => void
   setPolylinePoints: (points: ControlPoint[]) => void
@@ -115,6 +117,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // UI State
   const [isPanelCollapsed, setIsPanelCollapsed] = useState(false)
+  const [panelHeight, setPanelHeight] = useState<number | null>(null)
 
   const [buildings, setBuildings] = useState<Building[]>([])
   const [graph, setGraph] = useState<StreetGraph | null>(null)
@@ -514,6 +517,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     loadingStatus,
     loadingProgress,
     isPanelCollapsed,
+    panelHeight,
     buildings,
     graph,
     distanceMatrix,
@@ -548,6 +552,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     maxRawScore,
     avgRawScore,
     setIsPanelCollapsed,
+    setPanelHeight,
     setCurveTabMode,
     setCustomCurveType,
     setPolylinePoints,

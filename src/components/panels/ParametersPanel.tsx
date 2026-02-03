@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from 'react'
 import { useAppContext } from '../../context/AppContext'
 import { CurveEditor } from '../CurveEditor/CurveEditor'
 import { AmenityDropdown } from './AmenityDropdown'
@@ -6,10 +7,15 @@ import { AnalysisModeToggle } from './AnalysisModeToggle'
 import { PillToggle } from './PillToggle'
 import type { BuildingFilterMode } from '../../config/types'
 
+// Minimum panel height in pixels
+const MIN_PANEL_HEIGHT = 150
+
 export function ParametersPanel() {
   const {
     isPanelCollapsed,
     setIsPanelCollapsed,
+    panelHeight,
+    setPanelHeight,
     analysisMode,
     buildingFilterMode,
     setBuildingFilterMode,
@@ -30,6 +36,70 @@ export function ParametersPanel() {
     totalGridAttractivity,
   } = useAppContext()
 
+  // Resize drag state
+  const [isDragging, setIsDragging] = useState(false)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const startYRef = useRef<number>(0)
+  const startHeightRef = useRef<number>(0)
+
+  // Handle resize drag with window-level event listeners
+  useEffect(() => {
+    if (!isDragging) return
+
+    const handleMouseMove = (e: MouseEvent) => {
+      e.preventDefault()
+      const deltaY = e.clientY - startYRef.current
+      // Calculate max height based on viewport (same as CSS max-height)
+      const isMobile = window.innerWidth < 640
+      const maxHeight = window.innerHeight - (isMobile ? 92 : 76)
+      const newHeight = Math.max(MIN_PANEL_HEIGHT, Math.min(maxHeight, startHeightRef.current + deltaY))
+      setPanelHeight(newHeight)
+    }
+
+    const handleMouseUp = () => {
+      setIsDragging(false)
+    }
+
+    // Touch support
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 1) {
+        const touch = e.touches[0]
+        const deltaY = touch.clientY - startYRef.current
+        const isMobile = window.innerWidth < 640
+        const maxHeight = window.innerHeight - (isMobile ? 92 : 76)
+        const newHeight = Math.max(MIN_PANEL_HEIGHT, Math.min(maxHeight, startHeightRef.current + deltaY))
+        setPanelHeight(newHeight)
+      }
+    }
+
+    const handleTouchEnd = () => {
+      setIsDragging(false)
+    }
+
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', handleMouseUp)
+    window.addEventListener('touchmove', handleTouchMove, { passive: false })
+    window.addEventListener('touchend', handleTouchEnd)
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+      window.removeEventListener('touchmove', handleTouchMove)
+      window.removeEventListener('touchend', handleTouchEnd)
+    }
+  }, [isDragging, setPanelHeight])
+
+  const handleResizeStart = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault()
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
+    startYRef.current = clientY
+    // Get current panel height
+    if (panelRef.current) {
+      startHeightRef.current = panelRef.current.getBoundingClientRect().height
+    }
+    setIsDragging(true)
+  }
+
   if (isLoading) return null
 
   const isGridMode = analysisMode === 'grid'
@@ -39,7 +109,13 @@ export function ParametersPanel() {
   const showAttractorControls = isGridMode || isSurfaceMode
 
   return (
-    <div className="absolute top-0 left-0 right-0 sm:top-3 sm:left-3 sm:right-auto glass-panel floating-panel p-3 sm:p-4 w-full sm:w-[540px] rounded-none sm:rounded-2xl max-h-[calc(100vh-92px)] sm:max-h-[calc(100vh-76px)] flex flex-col overflow-x-hidden">
+    <div
+      ref={panelRef}
+      className="absolute top-0 left-0 right-0 sm:top-3 sm:left-3 sm:right-auto glass-panel floating-panel p-3 sm:p-4 w-full sm:w-[540px] rounded-none sm:rounded-2xl max-h-[calc(100vh-92px)] sm:max-h-[calc(100vh-76px)] flex flex-col overflow-x-hidden"
+      style={{
+        height: panelHeight && !isPanelCollapsed ? `${panelHeight}px` : undefined,
+      }}
+    >
       {/* Title - clickable to collapse/expand */}
       <button
         className="w-full flex items-center justify-between text-left flex-shrink-0"
@@ -180,6 +256,17 @@ export function ParametersPanel() {
           </div>
         )}
       </div>
+
+      {/* Resize handle at bottom - only shown when not collapsed */}
+      {!isPanelCollapsed && (
+        <div
+          className="resize-handle flex-shrink-0"
+          onMouseDown={handleResizeStart}
+          onTouchStart={handleResizeStart}
+        >
+          <div className="resize-handle-grip" />
+        </div>
+      )}
     </div>
   )
 }
