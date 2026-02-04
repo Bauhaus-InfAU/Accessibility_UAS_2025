@@ -89,7 +89,7 @@ function addHexagonLayer(map: maplibregl.Map) {
       visibility: 'none', // Hidden by default
     },
     paint: {
-      'line-color': '#ffffff',
+      'line-color': '#000000',
       'line-width': 0.5,
       'line-opacity': 0.5,
     },

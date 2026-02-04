@@ -135,6 +135,9 @@ export function ParametersPanel() {
 
       {/* Scrollable content area */}
       <div className="overflow-y-auto flex-1 min-h-0">
+        {/* Collapsible content */}
+        {!isPanelCollapsed && (
+          <>
         {/* Introduction and Master Equation */}
         <p className="text-xs sm:text-sm text-gray-600 mt-2 sm:mt-3 mb-2">
           Accessibility measures how well a location is served by nearby amenities.
@@ -151,9 +154,6 @@ export function ParametersPanel() {
           </span>
           <span>[Att<sub>j</sub> × f(d<sub>ij</sub>)]</span>
         </div>
-
-        {/* Collapsible content */}
-        {!isPanelCollapsed && (
           <div className="mt-1">
             {/* Mode Toggle */}
             <AnalysisModeToggle />
@@ -270,6 +270,7 @@ export function ParametersPanel() {
             />
           </div>
           </div>
+          </>
         )}
       </div>
 

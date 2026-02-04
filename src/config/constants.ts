@@ -101,5 +101,5 @@ export const TERRAIN_SMOOTH_SIGMA = 1.0     // Gaussian blur radius (0 = no smoo
 // Hexagon grid size configuration
 export const HEX_DIAMETER_MIN = 10          // Minimum hexagon diameter in meters
 export const HEX_DIAMETER_MAX = 100         // Maximum hexagon diameter in meters
-export const HEX_DIAMETER_DEFAULT = 15      // Default hexagon diameter in meters
+export const HEX_DIAMETER_DEFAULT = 25      // Default hexagon diameter in meters
 export const HEX_DIAMETER_STEP = 5          // Slider step in meters
