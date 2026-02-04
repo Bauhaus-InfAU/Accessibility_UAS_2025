@@ -248,7 +248,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // Generate hexagon grid for Grid mode
         setLoadingStatus('Generating hexagon grid...')
         setLoadingProgress(96)
-        const hexGrid = generateHexagonGrid(streetGraph, loadedStreetsGeoJSON)
+        const hexGrid = generateHexagonGrid(streetGraph)
         setHexCells(hexGrid)
 
         // Create default attractors (shared across all modes: Grid, Surface, and Buildings+Custom)
@@ -334,18 +334,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     // Debounce grid regeneration by 400ms
     hexRegenTimeoutRef.current = window.setTimeout(() => {
-      if (!graph || !streetsGeoJSON) return
+      if (!graph) return
 
       setIsRegeneratingGrid(true)
 
       // Use requestAnimationFrame to allow UI to update before heavy computation
       requestAnimationFrame(() => {
-        const newHexCells = generateHexagonGrid(graph, streetsGeoJSON, diameter)
+        const newHexCells = generateHexagonGrid(graph, diameter)
         setHexCells(newHexCells)
         setIsRegeneratingGrid(false)
       })
     }, 400)
-  }, [graph, streetsGeoJSON])
+  }, [graph])
 
   // Measurement tool actions
   const setMeasurementActive = useCallback((active: boolean) => {

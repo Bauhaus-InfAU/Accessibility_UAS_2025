@@ -62,7 +62,7 @@ src/
 │   ├── dataLoader.ts      # GeoJSON file loading
 │   ├── buildingStore.ts   # Building processing and land use queries
 │   ├── streetGraph.ts     # Street network graph construction
-│   └── hexagonGrid.ts     # Hexagon grid generation and street intersection detection
+│   └── hexagonGrid.ts     # Hexagon grid generation
 ├── computation/     # Dijkstra worker, distance matrix, accessibility calc, curve eval
 │   ├── dijkstra.worker.ts      # Web Worker for shortest path computation
 │   ├── dijkstraAlgorithm.ts    # Dijkstra implementation (includes dijkstraWithPath for measurement)
@@ -334,7 +334,7 @@ Shown during initial data loading:
   - Note: `isAnalyzed` depends on building filter mode (residential vs all buildings)
 - **Hexagon Grid** (visible in Grid mode):
   - ~15m diameter flat-topped hexagons
-  - Street-intersecting hexagons excluded (gaps along streets)
+  - Hexagons cover entire area continuously (streets rendered on top)
   - Hexagons >100m from nearest network node excluded (organic boundary shape)
   - Scored: Purple→Orange→Red gradient (same as buildings)
   - Unscored: Light grey (#cccccc)

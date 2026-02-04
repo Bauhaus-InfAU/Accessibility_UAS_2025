@@ -87,7 +87,6 @@ export interface HexCell {
   center: [number, number]
   vertices: [number, number][]
   nearestNodeId: string
-  intersectsStreet: boolean
 }
 
 // Amenity for grid mode (user-placed points that serve as destinations)
