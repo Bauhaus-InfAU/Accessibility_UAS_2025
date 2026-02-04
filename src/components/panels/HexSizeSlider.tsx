@@ -21,7 +21,7 @@ export function HexSizeSlider({ value, onChange, disabled = false, label = "Hexa
         <div className="hex-slider-value-track">
           <span
             className="hex-slider-value"
-            style={{ left: `${positionPercent}%` }}
+            style={{ left: `calc(7px + ${positionPercent / 100} * (100% - 14px))` }}
           >
             {value}m
           </span>
