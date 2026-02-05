@@ -14,7 +14,7 @@ export function createMap(container: HTMLElement, buildings: Building[], graph: 
         {
           id: 'background',
           type: 'background',
-          paint: { 'background-color': '#707070' },
+          paint: { 'background-color': '#909090' },
         },
       ],
     },
