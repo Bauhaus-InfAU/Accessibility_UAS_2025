@@ -11,6 +11,9 @@ import { createCurveEvaluatorForMode } from '../../computation/curveEvaluator'
 import { calculateEuclideanDistance, formatDistance, getPathMidpoint, getLineMidpoint } from '../../computation/measurementCalc'
 import { ACCENT_COLOR, ACCENT_COLOR_2 } from '../../config/constants'
 
+// Flag to track if attractivity editing just finished (prevents map click from adding pin)
+let justFinishedEditingAttractivity = false
+
 // Calculate color from normalized score (0-1) using the accessibility gradient
 // Purple (#4A3AB4) → Orange (#FD681D) → Red (#FD1D1D)
 function getScoreColor(normalizedScore: number): string {
@@ -103,7 +106,10 @@ function createAttractorMarkerElement(
     input.focus()
     input.select()
 
+    let isFinished = false
     const finishEditing = () => {
+      if (isFinished) return
+      isFinished = true
       const newValue = parseFloat(input.value)
       if (!isNaN(newValue) && newValue >= 0) {
         attValue.textContent = newValue.toString()
@@ -111,7 +117,15 @@ function createAttractorMarkerElement(
       }
       input.remove()
       attValue.style.display = ''
+      // Prevent map click from adding pin right after closing input
+      justFinishedEditingAttractivity = true
+      setTimeout(() => { justFinishedEditingAttractivity = false }, 100)
     }
+
+    // Stop propagation on input clicks to prevent interference with spinner
+    input.addEventListener('click', (e) => e.stopPropagation())
+    input.addEventListener('mousedown', (e) => e.stopPropagation())
+    input.addEventListener('mouseup', (e) => e.stopPropagation())
 
     input.addEventListener('blur', finishEditing)
     input.addEventListener('keydown', (ke) => {
@@ -419,6 +433,17 @@ export function MapView() {
 
     // Handle map click for adding pins, attractors, or measurement points
     const onClick = (e: maplibregl.MapMouseEvent) => {
+      // Ignore clicks that originated from attractivity input editing
+      const target = e.originalEvent.target as HTMLElement
+      if (target.closest('.attractivity-box') || target.classList.contains('att-input')) {
+        return
+      }
+
+      // Ignore clicks right after closing attractivity input (prevents accidental pin creation)
+      if (justFinishedEditingAttractivity) {
+        return
+      }
+
       const { lng, lat } = e.lngLat
 
       // Measurement mode takes priority over other click handlers
