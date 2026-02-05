@@ -28,7 +28,7 @@ export function AmenityDropdown() {
       {isCustomSelected && (
         <>
           <div className="flex items-center gap-3 mt-1">
-            <span className="text-sm" style={{ color: '#000000' }}>
+            <span className="text-sm" style={{ color: '#4b5563' }}>
               Total amenities: {gridAttractors.length}
             </span>
             {gridAttractors.length > 0 && (

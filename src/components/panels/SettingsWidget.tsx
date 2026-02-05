@@ -184,7 +184,7 @@ export function SettingsWidget() {
                 </label>
                 <div className="settings-content">
                   <div className="flex items-center gap-2 mt-1">
-                    <span className="text-sm" style={{ color: '#000000' }}>
+                    <span className="text-sm" style={{ color: '#4b5563' }}>
                       Total: {gridAttractors.length}
                     </span>
                     {gridAttractors.length > 0 && (
@@ -197,7 +197,7 @@ export function SettingsWidget() {
                     )}
                   </div>
                   <div className="mt-2">
-                    <span className="text-sm" style={{ color: '#000000' }}>
+                    <span className="text-sm" style={{ color: '#4b5563' }}>
                       Attractivity: {totalGridAttractivity}
                     </span>
                   </div>
@@ -242,7 +242,7 @@ export function SettingsWidget() {
                 </label>
                 <div className="settings-content">
                   <div className="flex items-center gap-2 mt-1">
-                    <span className="text-sm" style={{ color: '#000000' }}>
+                    <span className="text-sm" style={{ color: '#4b5563' }}>
                       Total: {gridAttractors.length}
                     </span>
                     {gridAttractors.length > 0 && (
@@ -255,7 +255,7 @@ export function SettingsWidget() {
                     )}
                   </div>
                   <div className="mt-2">
-                    <span className="text-sm" style={{ color: '#000000' }}>
+                    <span className="text-sm" style={{ color: '#4b5563' }}>
                       Attractivity: {totalGridAttractivity}
                     </span>
                   </div>
