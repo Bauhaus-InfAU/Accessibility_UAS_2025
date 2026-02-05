@@ -252,7 +252,6 @@ body {
 /* Accent colored text in equation (e.g., f(d_ij)) */
 .equation-accent {
   color: #5631ad;
-  font-weight: 600;
 }
 
 /* Inline math variable references (same style as equation, inherits size) */
