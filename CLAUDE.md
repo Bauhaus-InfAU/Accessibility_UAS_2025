@@ -938,6 +938,7 @@ When implementing new features or fixing bugs, use the Playwright MCP tools for 
 1. Start dev server: `npm run dev`
 2. Use `mcp__playwright__browser_navigate` to open the app URL
 3. Use `mcp__playwright__browser_snapshot` to capture accessibility tree (preferred over screenshots)
+4. **IMPORTANT**: Save all screenshots to the `playwright/` folder (e.g., `playwright/my-test.png`)
 
 ### Common Testing Patterns
 
@@ -954,7 +955,7 @@ mcp__playwright__browser_click({ ref: "button_ref", element: "Grid mode button" 
 
 **Verify visual changes:**
 ```
-mcp__playwright__browser_take_screenshot({ type: "png", filename: "terrain-test.png" })
+mcp__playwright__browser_take_screenshot({ type: "png", filename: "playwright/terrain-test.png" })
 ```
 
 **Wait for async operations:**
