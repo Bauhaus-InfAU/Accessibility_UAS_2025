@@ -50,13 +50,17 @@ export function calculateVertexScore(
  * @param attractors - Array of grid attractors (amenities)
  * @param decayFn - Distance decay function
  * @param distanceMatrix - Full network distance matrix (all nodes to all nodes)
+ * @param fixedRange - Optional fixed range for normalization. If provided, scores are
+ *                     normalized to this range and clamped to [0, 1]. If not provided,
+ *                     scores are normalized to their own min/max (adaptive mode).
  * @returns Object containing raw scores, normalized scores, and statistics
  */
 export function calculateTerrainScores(
   vertexNodeIds: string[],
   attractors: GridAttractor[],
   decayFn: (distance: number) => number,
-  distanceMatrix: DistanceMatrix
+  distanceMatrix: DistanceMatrix,
+  fixedRange?: { min: number; max: number }
 ): { rawScores: number[]; normalizedScores: number[]; min: number; max: number; avg: number } {
   const rawScores: number[] = new Array(vertexNodeIds.length)
 
@@ -72,35 +76,42 @@ export function calculateTerrainScores(
   }
 
   // Calculate raw scores for all vertices
-  let min = Infinity
-  let max = -Infinity
+  let dataMin = Infinity
+  let dataMax = -Infinity
   let sum = 0
 
   for (let i = 0; i < vertexNodeIds.length; i++) {
     const score = calculateVertexScore(vertexNodeIds[i], attractors, decayFn, distanceMatrix)
     rawScores[i] = score
 
-    if (score < min) min = score
-    if (score > max) max = score
+    if (score < dataMin) dataMin = score
+    if (score > dataMax) dataMax = score
     sum += score
   }
 
   const avg = sum / vertexNodeIds.length
+
+  // Use fixed range if provided, otherwise use data range (adaptive mode)
+  const min = fixedRange ? fixedRange.min : dataMin
+  const max = fixedRange ? fixedRange.max : dataMax
   const range = max - min
 
   // Normalize scores to 0-1 range
   const normalizedScores: number[] = new Array(vertexNodeIds.length)
 
   if (range === 0) {
-    // All values are the same
+    // All values are the same (or fixed range has min === max)
     for (let i = 0; i < vertexNodeIds.length; i++) {
       normalizedScores[i] = rawScores[i] > 0 ? 1 : 0
     }
   } else {
     for (let i = 0; i < vertexNodeIds.length; i++) {
-      normalizedScores[i] = (rawScores[i] - min) / range
+      // Normalize and clamp to [0, 1] (important for fixed mode where values may be outside range)
+      const normalizedValue = (rawScores[i] - min) / range
+      normalizedScores[i] = Math.max(0, Math.min(1, normalizedValue))
     }
   }
 
-  return { rawScores, normalizedScores, min, max, avg }
+  // Return data min/max/avg (not fixed range values) for display in Legend
+  return { rawScores, normalizedScores, min: dataMin, max: dataMax, avg }
 }

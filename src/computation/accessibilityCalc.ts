@@ -82,27 +82,50 @@ export function calculateAccessibilityFromPins(
   return rawScores
 }
 
-export function normalizeScores(scores: Map<string, number>): Map<string, number> {
+/**
+ * Normalize scores to 0-1 range.
+ *
+ * @param scores - Raw accessibility scores
+ * @param fixedRange - Optional fixed range for normalization. If provided, scores are
+ *                     normalized to this range and clamped to [0, 1]. If not provided,
+ *                     scores are normalized to their own min/max (adaptive mode).
+ */
+export function normalizeScores(
+  scores: Map<string, number>,
+  fixedRange?: { min: number; max: number }
+): Map<string, number> {
   if (scores.size === 0) return new Map()
 
-  let min = Infinity
-  let max = -Infinity
-  for (const value of scores.values()) {
-    if (value < min) min = value
-    if (value > max) max = value
+  let min: number
+  let max: number
+
+  if (fixedRange) {
+    // Use fixed range provided by user
+    min = fixedRange.min
+    max = fixedRange.max
+  } else {
+    // Adaptive mode: calculate min/max from data
+    min = Infinity
+    max = -Infinity
+    for (const value of scores.values()) {
+      if (value < min) min = value
+      if (value > max) max = value
+    }
   }
 
   const range = max - min
   const normalized = new Map<string, number>()
 
   if (range === 0) {
-    // All values are the same
+    // All values are the same (or fixed range has min === max)
     for (const [id] of scores) {
       normalized.set(id, scores.get(id)! > 0 ? 1 : 0)
     }
   } else {
     for (const [id, value] of scores) {
-      normalized.set(id, (value - min) / range)
+      // Normalize and clamp to [0, 1] (important for fixed mode where values may be outside range)
+      const normalizedValue = (value - min) / range
+      normalized.set(id, Math.max(0, Math.min(1, normalizedValue)))
     }
   }
 

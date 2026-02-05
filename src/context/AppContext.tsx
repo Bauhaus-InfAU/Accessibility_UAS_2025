@@ -64,6 +64,11 @@ interface AppState {
   terrainSmoothing: number      // Gaussian blur sigma for terrain smoothing (0-2)
   terrainHeightScale: number    // Max terrain height in meters (0-300)
 
+  // Gradient range mode (shared across all modes)
+  gradientRangeMode: 'adaptive' | 'fixed'  // adaptive: auto min/max from data, fixed: user-defined
+  fixedGradientMin: number                  // User-defined minimum for fixed mode (default: 0)
+  fixedGradientMax: number                  // User-defined maximum for fixed mode (default: 100)
+
   // Results (for buildings mode)
   accessibilityScores: Map<string, number>
   rawAccessibilityScores: Map<string, number>
@@ -105,6 +110,10 @@ interface AppContextValue extends AppState {
   setHexDiameter: (diameter: number) => void
   setTerrainSmoothing: (value: number) => void
   setTerrainHeightScale: (value: number) => void
+  // Gradient range actions
+  setGradientRangeMode: (mode: 'adaptive' | 'fixed') => void
+  setFixedGradientMin: (value: number) => void
+  setFixedGradientMax: (value: number) => void
   // Measurement tool actions
   setMeasurementActive: (active: boolean) => void
   addMeasurementPoint: (coord: [number, number]) => void
@@ -182,6 +191,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Terrain slider values
   const [terrainSmoothing, setTerrainSmoothing] = useState(TERRAIN_SMOOTH_DEFAULT)
   const [terrainHeightScale, setTerrainHeightScale] = useState(TERRAIN_HEIGHT_DEFAULT)
+
+  // Gradient range mode (shared across all modes)
+  const [gradientRangeMode, setGradientRangeMode] = useState<'adaptive' | 'fixed'>('adaptive')
+  const [fixedGradientMin, setFixedGradientMin] = useState(0)
+  const [fixedGradientMax, setFixedGradientMax] = useState(100)
 
   // Measurement tool state
   const [isMeasurementActive, setIsMeasurementActive] = useState(false)
@@ -459,6 +473,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     }
 
+    // Determine fixed range if in fixed mode
+    const fixedRange = gradientRangeMode === 'fixed'
+      ? { min: fixedGradientMin, max: fixedGradientMax }
+      : undefined
+
     // Helper to compute min/max/avg and update state
     const processScores = (rawScores: Map<string, number>) => {
       if (rawScores.size === 0) {
@@ -475,7 +494,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setMaxRawScore(Math.max(...values))
       setAvgRawScore(avg)
       setRawAccessibilityScores(new Map(rawScores))
-      setAccessibilityScores(normalizeScores(rawScores))
+      setAccessibilityScores(normalizeScores(rawScores, fixedRange))
     }
 
     // Import curve evaluator dynamically to avoid circular deps
@@ -526,7 +545,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       )
       processScores(rawScores)
     })
-  }, [buildings, distanceMatrix, fullNetworkMatrix, curveTabMode, customCurveType, polylinePoints, bezierHandles, maxDistance, selectedLandUse, attractivityMode, gridAttractors, negExpAlpha, expPowerB, expPowerC, buildingFilterMode])
+  }, [buildings, distanceMatrix, fullNetworkMatrix, curveTabMode, customCurveType, polylinePoints, bezierHandles, maxDistance, selectedLandUse, attractivityMode, gridAttractors, negExpAlpha, expPowerB, expPowerC, buildingFilterMode, gradientRangeMode, fixedGradientMin, fixedGradientMax])
 
   // Debounced recalculation for buildings mode
   useEffect(() => {
@@ -592,6 +611,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     surfaceAvgScore,
     terrainSmoothing,
     terrainHeightScale,
+    gradientRangeMode,
+    fixedGradientMin,
+    fixedGradientMax,
     accessibilityScores,
     rawAccessibilityScores,
     minRawScore,
@@ -621,6 +643,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setHexDiameter,
     setTerrainSmoothing,
     setTerrainHeightScale,
+    // Gradient range
+    setGradientRangeMode,
+    setFixedGradientMin,
+    setFixedGradientMax,
     // Measurement tool
     isMeasurementActive,
     measurementPointA,

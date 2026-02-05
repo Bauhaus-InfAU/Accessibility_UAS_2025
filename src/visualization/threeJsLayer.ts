@@ -491,13 +491,15 @@ export function createThreeJsTerrainLayer(
  * @param distanceMatrix - Full network distance matrix (all nodes to all nodes)
  * @param smoothingSigma - Optional Gaussian blur sigma for terrain smoothing
  * @param heightScale - Optional maximum terrain height in meters
+ * @param fixedRange - Optional fixed range for color normalization
  */
 export function updateTerrainLayer(
   attractors: GridAttractor[],
   decayFn: (distance: number) => number,
   distanceMatrix: DistanceMatrix,
   smoothingSigma?: number,
-  heightScale?: number
+  heightScale?: number,
+  fixedRange?: { min: number; max: number }
 ): { min: number; max: number; avg: number } | null {
   if (!layerState || !layerState.terrainMesh) {
     console.warn('[TerrainLayer] Not initialized, cannot update')
@@ -512,7 +514,8 @@ export function updateTerrainLayer(
     decayFn,
     distanceMatrix,
     smoothingSigma,
-    heightScale
+    heightScale,
+    fixedRange
   )
 
   // Update wireframe positions to match terrain

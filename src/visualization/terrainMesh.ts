@@ -342,6 +342,7 @@ export function createTerrainMesh(config: TerrainMeshConfig, graph: StreetGraph)
  * @param distanceMatrix - Full network distance matrix (all nodes to all nodes)
  * @param smoothingSigma - Gaussian blur sigma for terrain smoothing (default: TERRAIN_SMOOTH_SIGMA)
  * @param heightScale - Maximum terrain height in meters (default: TERRAIN_HEIGHT_SCALE)
+ * @param fixedRange - Optional fixed range for color normalization
  * @returns Object with min, max, avg statistics for the Legend
  */
 export function updateTerrainFromAttractors(
@@ -350,7 +351,8 @@ export function updateTerrainFromAttractors(
   decayFn: (distance: number) => number,
   distanceMatrix: DistanceMatrix,
   smoothingSigma: number = TERRAIN_SMOOTH_SIGMA,
-  heightScale: number = TERRAIN_HEIGHT_SCALE
+  heightScale: number = TERRAIN_HEIGHT_SCALE,
+  fixedRange?: { min: number; max: number }
 ): { min: number; max: number; avg: number } {
   const geometry = mesh.geometry as THREE.BufferGeometry
   const positions = geometry.attributes.position.array as Float32Array
@@ -365,7 +367,8 @@ export function updateTerrainFromAttractors(
     vertexNodeIds,
     attractors,
     decayFn,
-    distanceMatrix
+    distanceMatrix,
+    fixedRange
   )
 
   // Apply Gaussian smoothing to reduce sharp transitions at network node boundaries

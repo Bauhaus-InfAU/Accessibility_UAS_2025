@@ -254,6 +254,10 @@ export function MapView() {
     // Terrain slider parameters (Surface mode)
     terrainSmoothing,
     terrainHeightScale,
+    // Gradient range mode
+    gradientRangeMode,
+    fixedGradientMin,
+    fixedGradientMax,
     // Measurement tool state
     isMeasurementActive,
     measurementPointA,
@@ -533,9 +537,14 @@ export function MapView() {
       expPowerC
     )
 
+    // Determine fixed range if in fixed mode
+    const fixedRange = gradientRangeMode === 'fixed'
+      ? { min: fixedGradientMin, max: fixedGradientMax }
+      : undefined
+
     // Calculate accessibility scores for hexagon cells
     const rawScores = calculateGridAccessibility(hexCells, gridAttractors, fullNetworkMatrix, evaluator)
-    const normalizedScores = normalizeGridScores(rawScores)
+    const normalizedScores = normalizeGridScores(rawScores, fixedRange)
     const stats = getGridScoreStats(rawScores)
 
     // Update hexagon colors on the map
@@ -543,7 +552,7 @@ export function MapView() {
 
     // Update grid stats
     setGridStats(stats)
-  }, [mapLoaded, isGridMode, hexCells, gridAttractors, curveTabMode, customCurveType, polylinePoints, bezierHandles, maxDistance, negExpAlpha, expPowerB, expPowerC, setGridStats, fullNetworkMatrix])
+  }, [mapLoaded, isGridMode, hexCells, gridAttractors, curveTabMode, customCurveType, polylinePoints, bezierHandles, maxDistance, negExpAlpha, expPowerB, expPowerC, setGridStats, fullNetworkMatrix, gradientRangeMode, fixedGradientMin, fixedGradientMax])
 
   // Update terrain when attractors or curve parameters change (Surface mode)
   useEffect(() => {
@@ -563,8 +572,13 @@ export function MapView() {
         expPowerC
       )
 
+      // Determine fixed range if in fixed mode
+      const fixedRange = gradientRangeMode === 'fixed'
+        ? { min: fixedGradientMin, max: fixedGradientMax }
+        : undefined
+
       // Update terrain with current attractors and full network distance matrix
-      const stats = updateTerrainLayer(gridAttractors, evaluator, fullNetworkMatrix, terrainSmoothing, terrainHeightScale)
+      const stats = updateTerrainLayer(gridAttractors, evaluator, fullNetworkMatrix, terrainSmoothing, terrainHeightScale, fixedRange)
       if (stats) {
         setSurfaceStats(stats)
       }
@@ -584,7 +598,7 @@ export function MapView() {
 
     // Terrain is already initialized, update immediately
     performTerrainUpdate()
-  }, [mapLoaded, isSurfaceMode, gridAttractors, curveTabMode, customCurveType, polylinePoints, bezierHandles, maxDistance, negExpAlpha, expPowerB, expPowerC, setSurfaceStats, fullNetworkMatrix, terrainSmoothing, terrainHeightScale])
+  }, [mapLoaded, isSurfaceMode, gridAttractors, curveTabMode, customCurveType, polylinePoints, bezierHandles, maxDistance, negExpAlpha, expPowerB, expPowerC, setSurfaceStats, fullNetworkMatrix, terrainSmoothing, terrainHeightScale, gradientRangeMode, fixedGradientMin, fixedGradientMax])
 
   // Update layer visibility when analysis mode changes
   useEffect(() => {
