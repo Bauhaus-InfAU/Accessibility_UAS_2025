@@ -152,7 +152,7 @@ export function ParametersPanel() {
           </span>
           <span>Accessibility Analysis</span>
         </h2>
-        <span className={`w-6 h-6 flex items-center justify-center ${isPanelCollapsed ? 'text-white' : 'text-gray-500'}`}>
+        <span className={`w-6 h-6 flex items-center justify-center ${isPanelCollapsed ? 'panel-chevron-collapsed' : 'text-gray-500'}`}>
           {isPanelCollapsed ? <PanelExpandIcon /> : <PanelCollapseIcon />}
         </span>
       </button>

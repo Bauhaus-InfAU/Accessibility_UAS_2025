@@ -131,8 +131,17 @@ body {
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   border: none;
-  box-shadow: 0 0 40px 10px rgba(255, 255, 255, 0.3);
   padding-right: 10px !important;
+  animation: pulse-glow 4s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px 5px rgba(255, 255, 255, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 40px 12px rgba(255, 255, 255, 0.4);
+  }
 }
 
 /* Increase gap between title and chevron when collapsed */
@@ -145,9 +154,15 @@ body {
   color: white;
 }
 
-/* Collapsed icon - transparent background */
+/* Collapsed icon - transparent background, white color */
 .panel-title-icon-collapsed {
   background: transparent;
+  color: white;
+}
+
+/* Collapsed chevron - white color */
+.panel-chevron-collapsed {
+  color: white;
 }
 
 /* Panel content - aligned with heading text */
