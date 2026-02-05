@@ -263,21 +263,39 @@ export function SettingsWidget() {
         <ModeButton
           mode="buildings"
           currentMode={analysisMode}
-          onClick={() => setAnalysisMode('buildings')}
+          onClick={() => {
+            if (analysisMode === 'buildings') {
+              setIsExpanded(!isExpanded)
+            } else {
+              setAnalysisMode('buildings')
+            }
+          }}
           icon={<BuildingsIcon />}
           title="Building Analysis"
         />
         <ModeButton
           mode="grid"
           currentMode={analysisMode}
-          onClick={() => setAnalysisMode('grid')}
+          onClick={() => {
+            if (analysisMode === 'grid') {
+              setIsExpanded(!isExpanded)
+            } else {
+              setAnalysisMode('grid')
+            }
+          }}
           icon={<GridIcon />}
           title="Grid Analysis"
         />
         <ModeButton
           mode="surface"
           currentMode={analysisMode}
-          onClick={() => setAnalysisMode('surface')}
+          onClick={() => {
+            if (analysisMode === 'surface') {
+              setIsExpanded(!isExpanded)
+            } else {
+              setAnalysisMode('surface')
+            }
+          }}
           icon={<SurfaceIcon />}
           title="Surface Analysis"
         />
