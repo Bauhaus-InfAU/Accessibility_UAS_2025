@@ -39,11 +39,8 @@ export function PillDropdown({ options, value, onChange, className = '' }: PillD
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-1.5 px-3 py-1 text-sm rounded-full bg-white text-purple-700 shadow-sm transition-colors"
+        className="flex items-center gap-1.5 px-3 py-1 text-sm rounded-full bg-white text-gray-700 shadow-sm transition-colors"
       >
-        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-        </svg>
         <span>{selectedOption?.label}</span>
         <svg
           className={`w-3.5 h-3.5 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
@@ -66,19 +63,12 @@ export function PillDropdown({ options, value, onChange, className = '' }: PillD
                 onChange(option.value)
                 setIsOpen(false)
               }}
-              className={`flex items-center gap-2 w-full px-3 py-1.5 text-sm text-left transition-colors whitespace-nowrap ${
+              className={`w-full px-3 py-1.5 text-sm text-left transition-colors whitespace-nowrap ${
                 option.value === value
-                  ? 'bg-purple-50 text-purple-700'
+                  ? 'bg-gray-100 text-gray-700'
                   : 'text-gray-600 hover:bg-gray-50'
               }`}
             >
-              {option.value === value ? (
-                <svg className="w-3.5 h-3.5 text-purple-700 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              ) : (
-                <span className="w-3.5 h-3.5 flex-shrink-0" />
-              )}
               {option.label}
             </button>
           ))}
