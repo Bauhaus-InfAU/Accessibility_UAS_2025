@@ -596,6 +596,36 @@ export function setTerrainLayerVisibility(visible: boolean): void {
 }
 
 /**
+ * Set the opacity of the terrain mesh material
+ */
+export function setTerrainMeshOpacity(opacity: number): void {
+  if (!layerState || !layerState.terrainMesh) return
+
+  const material = layerState.terrainMesh.material as THREE.MeshBasicMaterial
+  material.transparent = opacity < 1
+  material.opacity = opacity
+  material.needsUpdate = true
+
+  // Trigger repaint
+  if (layerState.map) {
+    layerState.map.triggerRepaint()
+  }
+}
+
+/**
+ * Set the visibility of the 3D street network on terrain
+ */
+export function setTerrainStreetNetworkVisibility(visible: boolean): void {
+  if (!layerState || !layerState.streetNetworkLines) return
+  layerState.streetNetworkLines.visible = visible
+
+  // Trigger repaint
+  if (layerState.map) {
+    layerState.map.triggerRepaint()
+  }
+}
+
+/**
  * Check if the terrain layer is initialized
  */
 export function isTerrainLayerInitialized(): boolean {

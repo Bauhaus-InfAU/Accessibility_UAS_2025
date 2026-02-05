@@ -396,6 +396,7 @@ Shown during initial data loading:
   - Distance labels: At path midpoints, network (purple bg) on top, euclidean (yellow bg) below
   - Hover on labels brings to foreground
   - Buildings/grid fade to 30% opacity when measurement active
+  - **Terrain (Surface mode)**: Opacity reduced to 50%, 3D street network hidden, MapLibre 2D streets shown
   - CSS classes: `.measurement-marker`, `.measurement-marker-circle`, `.measurement-distance-label`
 - **Terrain Pin Overlay** (HTML pins positioned via 3D projection):
   - Container: `.terrain-pin-overlay` - absolute positioned, pointer-events none
@@ -597,6 +598,8 @@ interface ThreeJsTerrainLayerState {
 - `setTerrainLayerVisibility(visible)` - Shows/hides terrain layer
 - `setWireframeVisibility(visible)` - Shows/hides wireframe overlay
 - `setContourVisibility(visible)` - Shows/hides contour lines
+- `setTerrainMeshOpacity(opacity)` - Sets terrain mesh material opacity (0-1)
+- `setTerrainStreetNetworkVisibility(visible)` - Shows/hides 3D street network on terrain
 - `isTerrainLayerInitialized()` - Check if ready
 - `getTerrainLayerId()` - Returns layer ID for MapLibre
 - `createPinOverlayContainer(el)` - Creates HTML container for pin overlays

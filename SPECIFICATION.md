@@ -226,7 +226,9 @@ The terrain visualization uses a deliberate visual hierarchy to serve different 
   - Network label: Accent background (#5631ad), white text
   - Euclidean label: Accent2 background (#fcdb02), black text
   - Hover brings label to foreground with slight scale effect
-- **Visual feedback**: Buildings/grid opacity reduced to 30% when measurement active
+- **Visual feedback**:
+  - Buildings/grid opacity reduced to 30% when measurement active
+  - Terrain (Surface mode): Opacity reduced to 50%, 3D street network hidden, MapLibre 2D streets shown
 
 ## UI Layout
 

@@ -6,7 +6,7 @@ import { createMap, setStreetLayersVisibility } from '../../visualization/mapLib
 import { updateBuildingColors, setBuildingLayersVisibility } from '../../visualization/buildingColorUpdater'
 import { updateHexagonColors, setHexagonLayersVisibility } from '../../visualization/hexagonColorUpdater'
 import { calculateGridAccessibility, normalizeGridScores, getGridScoreStats } from '../../computation/gridAccessibilityCalc'
-import { updateTerrainLayer, setTerrainLayerVisibility, isTerrainLayerInitialized, updateAttractorPins, createPinOverlayContainer, removePinOverlayContainer, getAttractorPinScreenPositions } from '../../visualization/threeJsLayer'
+import { updateTerrainLayer, setTerrainLayerVisibility, isTerrainLayerInitialized, updateAttractorPins, createPinOverlayContainer, removePinOverlayContainer, getAttractorPinScreenPositions, setTerrainMeshOpacity, setTerrainStreetNetworkVisibility } from '../../visualization/threeJsLayer'
 import { createCurveEvaluatorForMode } from '../../computation/curveEvaluator'
 import { calculateEuclideanDistance, formatDistance, getPathMidpoint, getLineMidpoint } from '../../computation/measurementCalc'
 import { ACCENT_COLOR, ACCENT_COLOR_2 } from '../../config/constants'
@@ -1087,7 +1087,7 @@ export function MapView() {
     }
   }, [isMeasurementActive, isCustomMode, isGridMode, isSurfaceMode])
 
-  // Reduce building/grid opacity when measurement is active
+  // Reduce building/grid/terrain opacity when measurement is active
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapLoadedRef.current) return
@@ -1098,7 +1098,22 @@ export function MapView() {
     if (map.getLayer('buildings-fill')) {
       map.setPaintProperty('buildings-fill', 'fill-extrusion-opacity', opacity)
     }
-  }, [isMeasurementActive])
+
+    // Update hexagon grid opacity (both fill and outline)
+    if (map.getLayer('hexagons-fill')) {
+      map.setPaintProperty('hexagons-fill', 'fill-opacity', isMeasurementActive ? 0.4 : 0.85)
+    }
+    if (map.getLayer('hexagons-outline')) {
+      map.setPaintProperty('hexagons-outline', 'line-opacity', isMeasurementActive ? 0.2 : 0.5)
+    }
+
+    // Update terrain (Surface mode): reduce opacity, hide 3D streets, show 2D streets
+    if (isSurfaceMode && isTerrainLayerInitialized()) {
+      setTerrainMeshOpacity(isMeasurementActive ? 0.5 : 1)
+      setTerrainStreetNetworkVisibility(!isMeasurementActive)
+      setStreetLayersVisibility(map, isMeasurementActive)
+    }
+  }, [isMeasurementActive, isSurfaceMode])
 
   // Exit measurement mode on Escape key
   useEffect(() => {
