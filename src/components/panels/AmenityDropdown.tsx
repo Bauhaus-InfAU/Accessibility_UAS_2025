@@ -27,7 +27,6 @@ export function AmenityDropdown() {
       {/* Custom mode info - uses shared attractors */}
       {isCustomSelected && (
         <>
-          <p className="instruction-text">Add amenities by clicking on map</p>
           <div className="flex items-center gap-3 mt-1">
             <span className="text-sm" style={{ color: '#5631ad' }}>
               Total amenities: {gridAttractors.length}

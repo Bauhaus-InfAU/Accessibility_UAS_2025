@@ -15,6 +15,7 @@ export function Legend() {
     surfaceAvgScore,
     gridAttractors,
     isPanelCollapsed,
+    buildingFilterMode,
   } = useAppContext()
 
   const isGridMode = analysisMode === 'grid'
@@ -106,22 +107,26 @@ export function Legend() {
                 style={{ backgroundColor: '#fcdb02' }}
               />
               <span className="text-sm text-white">
-                {selectedLandUse === 'Custom' ? 'Custom Pins' : selectedLandUse}
+                {selectedLandUse === 'Custom'
+                  ? `Custom Amenities (${gridAttractors.length})`
+                  : selectedLandUse}
               </span>
             </div>
           </div>
 
-          {/* Other Buildings Indicator */}
-          <div className="flex items-center gap-3 mt-2">
-            <span className="text-xs text-white invisible">Low</span>
-            <div className="flex items-center gap-2">
-              <div
-                className="w-4 h-4 rounded-full"
-                style={{ backgroundColor: '#a0a0a0' }}
-              />
-              <span className="text-sm text-white">Other Amenities</span>
+          {/* Other Buildings Indicator - hidden when Custom + All Buildings */}
+          {!(selectedLandUse === 'Custom' && buildingFilterMode === 'all') && (
+            <div className="flex items-center gap-3 mt-2">
+              <span className="text-xs text-white invisible">Low</span>
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-4 h-4 rounded-full"
+                  style={{ backgroundColor: '#a0a0a0' }}
+                />
+                <span className="text-sm text-white">Other Amenities</span>
+              </div>
             </div>
-          </div>
+          )}
         </>
       )}
 

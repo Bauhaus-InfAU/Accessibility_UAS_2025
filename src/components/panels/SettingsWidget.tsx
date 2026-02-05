@@ -130,14 +130,16 @@ export function SettingsWidget() {
                 <label className="settings-label">
                   Analysis Scope (<span className="math-var">i</span>)
                 </label>
-                <PillToggle
-                  options={[
-                    { value: 'residential', label: 'Residential' },
-                    { value: 'all', label: 'All Buildings' },
-                  ]}
-                  value={buildingFilterMode}
-                  onChange={(v) => setBuildingFilterMode(v as BuildingFilterMode)}
-                />
+                <div className="settings-content">
+                  <PillToggle
+                    options={[
+                      { value: 'residential', label: 'Residential' },
+                      { value: 'all', label: 'All Buildings' },
+                    ]}
+                    value={buildingFilterMode}
+                    onChange={(v) => setBuildingFilterMode(v as BuildingFilterMode)}
+                  />
+                </div>
               </div>
 
               {/* Amenity Type */}
@@ -145,7 +147,9 @@ export function SettingsWidget() {
                 <label className="settings-label">
                   Amenity Type (<span className="math-var">j</span>)
                 </label>
-                <AmenityDropdown />
+                <div className="settings-content">
+                  <AmenityDropdown />
+                </div>
               </div>
 
               {/* Attractivity */}
@@ -153,7 +157,9 @@ export function SettingsWidget() {
                 <label className="settings-label">
                   Attractivity (<span className="math-var">Att<sub>j</sub></span>)
                 </label>
-                <AttractivityDropdown />
+                <div className="settings-content">
+                  <AttractivityDropdown />
+                </div>
               </div>
             </div>
           )}
@@ -176,24 +182,25 @@ export function SettingsWidget() {
                 <label className="settings-label">
                   Custom Amenities (<span className="math-var">j</span>)
                 </label>
-                <p className="instruction-text">Add amenities by clicking on map</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-sm" style={{ color: '#5631ad' }}>
-                    Total: {gridAttractors.length}
-                  </span>
-                  {gridAttractors.length > 0 && (
-                    <button
-                      className="text-black hover:text-gray-700 text-xs underline"
-                      onClick={clearGridAttractors}
-                    >
-                      Clear all
-                    </button>
-                  )}
-                </div>
-                <div className="mt-2">
-                  <span className="text-sm" style={{ color: '#5631ad' }}>
-                    Attractivity: {totalGridAttractivity}
-                  </span>
+                <div className="settings-content">
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-sm" style={{ color: '#5631ad' }}>
+                      Total: {gridAttractors.length}
+                    </span>
+                    {gridAttractors.length > 0 && (
+                      <button
+                        className="text-black hover:text-gray-700 text-xs underline"
+                        onClick={clearGridAttractors}
+                      >
+                        Clear all
+                      </button>
+                    )}
+                  </div>
+                  <div className="mt-2">
+                    <span className="text-sm" style={{ color: '#5631ad' }}>
+                      Attractivity: {totalGridAttractivity}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -233,24 +240,25 @@ export function SettingsWidget() {
                 <label className="settings-label">
                   Custom Amenities (<span className="math-var">j</span>)
                 </label>
-                <p className="instruction-text">Add amenities by clicking on map</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-sm" style={{ color: '#5631ad' }}>
-                    Total: {gridAttractors.length}
-                  </span>
-                  {gridAttractors.length > 0 && (
-                    <button
-                      className="text-black hover:text-gray-700 text-xs underline"
-                      onClick={clearGridAttractors}
-                    >
-                      Clear all
-                    </button>
-                  )}
-                </div>
-                <div className="mt-2">
-                  <span className="text-sm" style={{ color: '#5631ad' }}>
-                    Attractivity: {totalGridAttractivity}
-                  </span>
+                <div className="settings-content">
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-sm" style={{ color: '#5631ad' }}>
+                      Total: {gridAttractors.length}
+                    </span>
+                    {gridAttractors.length > 0 && (
+                      <button
+                        className="text-black hover:text-gray-700 text-xs underline"
+                        onClick={clearGridAttractors}
+                      >
+                        Clear all
+                      </button>
+                    )}
+                  </div>
+                  <div className="mt-2">
+                    <span className="text-sm" style={{ color: '#5631ad' }}>
+                      Attractivity: {totalGridAttractivity}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>

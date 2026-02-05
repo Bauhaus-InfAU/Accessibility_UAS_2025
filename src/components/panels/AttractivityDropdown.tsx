@@ -12,12 +12,11 @@ export function AttractivityDropdown() {
   const { attractivityMode, setAttractivityMode, selectedLandUse, totalGridAttractivity } = useAppContext()
   const isCustomMode = selectedLandUse === 'Custom'
 
-  // In custom mode, show instruction and total instead of dropdown
+  // In custom mode, show total instead of dropdown
   if (isCustomMode) {
     return (
       <div className="flex flex-col">
-        <p className="instruction-text">Set attractivity on map</p>
-        <span className="text-sm mt-1" style={{ color: '#5631ad' }}>
+        <span className="text-sm" style={{ color: '#5631ad' }}>
           Total attractivity: {totalGridAttractivity}
         </span>
       </div>

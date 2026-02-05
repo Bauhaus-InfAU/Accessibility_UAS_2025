@@ -439,8 +439,8 @@ body {
 /* Hexagon size slider */
 .hex-slider-row {
   display: flex;
-  align-items: flex-end;
-  gap: 12px;
+  flex-direction: column;
+  gap: 2px;
   transition: opacity 0.15s ease;
 }
 
@@ -448,20 +448,17 @@ body {
   font-size: 14px;
   font-weight: 500;
   color: #4b5563;
-  width: 120px;
-  flex-shrink: 0;
-  padding-bottom: 10px;
 }
 
 .hex-slider-container {
-  flex: 1;
   max-width: 310px;
   position: relative;
+  padding-left: 16px;
 }
 
 .hex-slider-value-track {
   position: relative;
-  height: 12px;
+  height: 10px;
   margin-bottom: 0;
 }
 
@@ -532,10 +529,10 @@ body {
 /* Parameter slider (reusable component) */
 .param-slider-row {
   display: flex;
-  align-items: flex-end;
-  gap: 6px;
+  flex-direction: column;
+  gap: 2px;
   transition: opacity 0.15s ease;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .param-slider-row:last-child {
@@ -546,20 +543,17 @@ body {
   font-size: 14px;
   font-weight: 500;
   color: #4b5563;
-  width: 120px;
-  flex-shrink: 0;
-  padding-bottom: 13px;
 }
 
 .param-slider-container {
-  flex: 1;
   max-width: 310px;
   position: relative;
+  padding-left: 16px;
 }
 
 .param-slider-value-track {
   position: relative;
-  height: 12px;
+  height: 10px;
   margin-bottom: 0;
 }
 
@@ -763,6 +757,11 @@ body {
 
 .settings-section {
   /* Container for mode-specific content */
+}
+
+/* Indent content below labels in settings panel */
+.settings-content {
+  padding-left: 16px;
 }
 
 .settings-title {
