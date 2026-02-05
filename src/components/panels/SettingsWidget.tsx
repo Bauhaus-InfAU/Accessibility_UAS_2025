@@ -18,12 +18,7 @@ import {
 // SVG Icons for mode buttons
 const BuildingsIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <rect x="4" y="2" width="16" height="20" rx="1" />
-    <line x1="9" y1="6" x2="9" y2="6" strokeWidth="3" strokeLinecap="round" />
-    <line x1="15" y1="6" x2="15" y2="6" strokeWidth="3" strokeLinecap="round" />
-    <line x1="9" y1="11" x2="9" y2="11" strokeWidth="3" strokeLinecap="round" />
-    <line x1="15" y1="11" x2="15" y2="11" strokeWidth="3" strokeLinecap="round" />
-    <rect x="9" y="16" width="6" height="6" />
+    <path d="M4 12 L12 4 L20 12 V21 H4 Z" />
   </svg>
 )
 
@@ -118,11 +113,14 @@ export function SettingsWidget() {
       {isExpanded && (
         <div className="settings-properties">
           {/* Title */}
-          <h3 className="settings-title">
-            {isBuildingsMode && "Building Analysis"}
-            {isGridMode && "Grid Analysis"}
-            {isSurfaceMode && "Surface Analysis"}
+          <h3 className="panel-title">
+            {isBuildingsMode && "Buildings"}
+            {isGridMode && "Grid"}
+            {isSurfaceMode && "Surface"}
           </h3>
+
+          {/* Divider */}
+          <div className="settings-divider" />
 
           {/* Buildings mode properties */}
           {isBuildingsMode && (
@@ -180,12 +178,12 @@ export function SettingsWidget() {
                 </label>
                 <p className="instruction-text">Add amenities by clicking on map</p>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className="text-sm font-semibold" style={{ color: '#d4a800' }}>
+                  <span className="text-sm" style={{ color: '#5631ad' }}>
                     Total: {gridAttractors.length}
                   </span>
                   {gridAttractors.length > 0 && (
                     <button
-                      className="text-red-500 hover:text-red-700 text-xs underline"
+                      className="text-black hover:text-gray-700 text-xs underline"
                       onClick={clearGridAttractors}
                     >
                       Clear all
@@ -193,7 +191,7 @@ export function SettingsWidget() {
                   )}
                 </div>
                 <div className="mt-2">
-                  <span className="text-sm font-semibold" style={{ color: '#d4a800' }}>
+                  <span className="text-sm" style={{ color: '#5631ad' }}>
                     Attractivity: {totalGridAttractivity}
                   </span>
                 </div>
@@ -237,12 +235,12 @@ export function SettingsWidget() {
                 </label>
                 <p className="instruction-text">Add amenities by clicking on map</p>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className="text-sm font-semibold" style={{ color: '#d4a800' }}>
+                  <span className="text-sm" style={{ color: '#5631ad' }}>
                     Total: {gridAttractors.length}
                   </span>
                   {gridAttractors.length > 0 && (
                     <button
-                      className="text-red-500 hover:text-red-700 text-xs underline"
+                      className="text-black hover:text-gray-700 text-xs underline"
                       onClick={clearGridAttractors}
                     >
                       Clear all
@@ -250,7 +248,7 @@ export function SettingsWidget() {
                   )}
                 </div>
                 <div className="mt-2">
-                  <span className="text-sm font-semibold" style={{ color: '#d4a800' }}>
+                  <span className="text-sm" style={{ color: '#5631ad' }}>
                     Attractivity: {totalGridAttractivity}
                   </span>
                 </div>

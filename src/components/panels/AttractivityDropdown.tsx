@@ -13,12 +13,11 @@ export function AttractivityDropdown() {
   const isCustomMode = selectedLandUse === 'Custom'
 
   // In custom mode, show instruction and total instead of dropdown
-  // Add top padding to align with the dropdown height on the left column
   if (isCustomMode) {
     return (
-      <div className="flex flex-col" style={{ paddingTop: '33px' }}>
+      <div className="flex flex-col">
         <p className="instruction-text">Set attractivity on map</p>
-        <span className="text-sm font-semibold mt-1" style={{ color: '#d4a800' }}>
+        <span className="text-sm mt-1" style={{ color: '#5631ad' }}>
           Total attractivity: {totalGridAttractivity}
         </span>
       </div>

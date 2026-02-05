@@ -15,6 +15,23 @@ const PanelCollapseIcon = () => (
   </svg>
 )
 
+// Decay curve icon (matches favicon style)
+const DecayCurveIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+    {/* Decay curve - exponential power style */}
+    <path
+      d="M2,2 C12,2 8,22 22,22"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      fill="none"
+    />
+    {/* Small axis indicators */}
+    <circle cx="2" cy="2" r="1.5" fill="currentColor" />
+    <circle cx="22" cy="22" r="1.5" fill="currentColor" />
+  </svg>
+)
+
 // Minimum panel height in pixels
 const MIN_PANEL_HEIGHT = 150
 
@@ -110,10 +127,13 @@ export function ParametersPanel() {
 
   if (isLoading) return null
 
+  // Dynamic width: auto when collapsed, fixed when expanded
+  const panelWidth = isPanelCollapsed ? 'sm:w-auto' : 'sm:w-[580px]'
+
   return (
     <div
       ref={panelRef}
-      className="absolute top-0 left-0 right-0 sm:top-3 sm:left-3 sm:right-auto glass-panel floating-panel py-3 px-6 sm:py-4 sm:px-6 w-full sm:w-[540px] rounded-none sm:rounded-2xl max-h-[calc(100vh-92px)] sm:max-h-[calc(100vh-76px)] flex flex-col overflow-x-hidden"
+      className={`absolute top-0 left-0 right-0 sm:top-5 sm:left-5 sm:right-auto glass-panel floating-panel py-2 px-2 sm:py-2 sm:px-2 w-full ${panelWidth} rounded-none sm:rounded-2xl max-h-[calc(100vh-92px)] sm:max-h-[calc(100vh-76px)] flex flex-col overflow-x-hidden`}
       style={{
         height: panelHeight && !isPanelCollapsed ? `${panelHeight}px` : undefined,
       }}
@@ -123,16 +143,24 @@ export function ParametersPanel() {
         className="w-full flex items-center justify-between text-left flex-shrink-0"
         onClick={() => setIsPanelCollapsed(!isPanelCollapsed)}
       >
-        <h2 className="text-xl sm:text-2xl font-semibold" style={{ color: '#5633ac' }}>
-          Accessibility Analysis
+        <h2 className="panel-title">
+          <span className="panel-title-icon">
+            <DecayCurveIcon />
+          </span>
+          <span>Accessibility Analysis</span>
         </h2>
         <span className="w-6 h-6 flex items-center justify-center text-gray-500">
           {isPanelCollapsed ? <PanelExpandIcon /> : <PanelCollapseIcon />}
         </span>
       </button>
 
+      {/* Divider between header and content */}
+      {!isPanelCollapsed && (
+        <div className="panel-divider" />
+      )}
+
       {/* Scrollable content area */}
-      <div className="overflow-y-auto flex-1 min-h-0">
+      <div className="overflow-y-auto flex-1 min-h-0 panel-content">
         {/* Collapsible content */}
         {!isPanelCollapsed && (
           <>

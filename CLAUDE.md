@@ -80,7 +80,7 @@ src/
 │   │   ├── PolylineEditor.tsx   # Custom mode - draggable points
 │   │   ├── MathCurveDisplay.tsx # Mathematical function curve renderer
 │   │   └── CoefficientInputs.tsx # Parameter inputs for math functions
-│   ├── panels/      # ParametersPanel, NavigationWidget, Legend, AppInfo, MeasurementWidget, HexSizeSlider, ParameterSlider, dropdowns, AnalysisModeToggle
+│   ├── panels/      # ParametersPanel, NavigationWidget, SettingsWidget, MeasurementWidget, HelpTipWidget, Legend, AppInfo, HexSizeSlider, ParameterSlider, dropdowns
 │   └── map/         # MapView (includes custom pin/attractor marker management)
 ├── visualization/   # MapLibre setup + color updates + Three.js terrain
 │   ├── mapLibreSetup.ts         # Map initialization, layers (buildings, hexagons, streets)
@@ -278,8 +278,7 @@ Map controls (top-right on desktop, bottom-right on mobile when panel collapsed)
 - Uses MapContext for view state tracking
 
 ### Measurement Widget (`MeasurementWidget.tsx`)
-Distance measurement tool (positioned below navigation widget):
-- **Responsive**: Same visibility rules as NavigationWidget
+Distance measurement tool:
 - **Toggle Button**: Ruler icon, active state highlighted
 - **Behavior**:
   - Click to activate measurement mode (cursor becomes crosshair)
@@ -289,6 +288,38 @@ Distance measurement tool (positioned below navigation widget):
   - Third click starts new measurement
   - Escape key or toggle button to deactivate
 - **Colors**: Uses ACCENT_COLOR (#5631ad) and ACCENT_COLOR_2 (#fcdb02) from constants
+
+### Help Tip Widget (`HelpTipWidget.tsx`)
+Contextual help with dismissable tip:
+- **Help Icon**: Question mark in circle, toggles tip visibility
+- **Tip Content**: Context-sensitive help text based on analysis mode
+  - Buildings mode (non-Custom): "Switch to Custom amenity type to add pins"
+  - Other modes: "Click map to add amenity. Right-click to remove."
+- **Dismiss**: Click icon to toggle, ESC key to hide, click map to auto-dismiss
+
+### Settings Widget (`SettingsWidget.tsx`)
+Analysis mode selector with expandable properties panel:
+- **Icon Column**: Vertical stack of mode buttons + expand/collapse toggle
+  - Buildings: Simple house icon (archetypal outline)
+  - Grid: 2×2 grid lines
+  - Surface: Mountain/terrain shape
+  - Active mode: Purple background (#7c3aed), white icon
+- **Expand Button**: Chevron icon, expands properties panel to left
+- **Properties Panel** (when expanded):
+  - **Title**: Mode name ("Buildings", "Grid", "Surface") using `.panel-title` class
+  - **Divider**: Grey horizontal line below title
+  - **Mode-specific content**:
+    - **Buildings**: Analysis Scope toggle, Amenity Type dropdown, Attractivity dropdown
+    - **Grid**: Hexagon Size slider, Custom Amenities count/clear
+    - **Surface**: Terrain Smoothing slider, Terrain Height slider, Custom Amenities count/clear
+  - **Text styling**: Total/Attractivity values in accent color (#5631ad), "Clear all" in black
+
+### Tools Column (`App.tsx` - ToolsColumn component)
+Vertically centered group of tool widgets on right edge:
+- **Position**: `right-4 sm:right-5 top-1/2 -translate-y-1/2`
+- **Layout**: Flex column with `items-end` (each widget expands independently to left)
+- **Contents**: SettingsWidget, MeasurementWidget, HelpTipWidget
+- **Responsive**: Hidden on mobile when panel is expanded
 
 ### Legend (`Legend.tsx`)
 Score color scale (bottom-right on desktop, bottom-left on mobile when panel collapsed):

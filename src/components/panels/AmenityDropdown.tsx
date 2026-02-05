@@ -29,13 +29,13 @@ export function AmenityDropdown() {
         <>
           <p className="instruction-text">Add amenities by clicking on map</p>
           <div className="flex items-center gap-3 mt-1">
-            <span className="text-sm font-semibold" style={{ color: '#d4a800' }}>
+            <span className="text-sm" style={{ color: '#5631ad' }}>
               Total amenities: {gridAttractors.length}
             </span>
             {gridAttractors.length > 0 && (
               <button
                 onClick={clearGridAttractors}
-                className="text-red-500 hover:text-red-700 text-sm underline"
+                className="text-black hover:text-gray-700 text-sm underline"
               >
                 Clear all
               </button>

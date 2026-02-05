@@ -91,6 +91,46 @@ body {
   pointer-events: auto;
 }
 
+/* Panel header divider */
+.panel-divider {
+  height: 1px;
+  background: rgba(0, 0, 0, 0.1);
+  margin: 12px 0;
+  margin-left: 46px;  /* align with content */
+  margin-right: 22px;
+  flex-shrink: 0;
+}
+
+/* Panel title with icon */
+.panel-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #5631ad;
+  margin: 0;
+}
+
+/* Panel title icon box - accent styled like active tool buttons */
+.panel-title-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #5631ad;
+  color: white;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+/* Panel content - aligned with heading text */
+.panel-content {
+  padding-left: 46px;  /* icon width (36px) + gap (10px) */
+  padding-right: 22px; /* balance right side */
+}
+
 /* Dropdown styling */
 .param-dropdown {
   appearance: none;

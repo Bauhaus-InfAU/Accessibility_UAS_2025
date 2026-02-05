@@ -327,11 +327,40 @@ Content:
 - **Active state**: Grey background (#e5e7eb) on current view
 - **Zoom controls**: +/− buttons (font-size 24px)
 
+### Tools Column (right edge, vertically centered)
+A vertically centered group of tool widgets:
+- **Position**: Right edge of screen, vertically centered (`top-1/2 -translate-y-1/2`)
+- **Layout**: Flex column with `items-end` - each widget expands independently to the left
+- **Visibility**: Hidden on mobile when panel is expanded
+- **Contents** (top to bottom): Settings Widget, Measurement Widget, Help Tip Widget
+
+### Settings Widget (Mode Selector)
+Analysis mode selector with expandable properties panel:
+- **Icon Column**: Vertical stack of mode buttons
+  - Buildings: Simple house icon (archetypal outline)
+  - Grid: 2×2 grid lines icon
+  - Surface: Mountain/terrain shape icon
+  - Active mode: Purple background (#7c3aed), white icon
+  - Expand/collapse chevron at bottom
+- **Properties Panel** (expands to left when toggled):
+  - **Title**: Mode name ("Buildings", "Grid", "Surface") in accent color, same style as main panel
+  - **Divider**: Grey horizontal line separating title from content
+  - **Buildings mode**: Analysis Scope toggle, Amenity Type dropdown, Attractivity section
+  - **Grid mode**: Hexagon Size slider, Custom Amenities (total count, attractivity, clear all)
+  - **Surface mode**: Terrain Smoothing slider, Terrain Height slider, Custom Amenities
+  - **Text colors**: Totals in accent color (#5631ad), "Clear all" in black
+
 ### Measurement Widget
-- **Position**: Below navigation widget (desktop: top-right, mobile: bottom-right when panel collapsed)
-- **Visibility**: Same as Navigation Widget
 - **Toggle button**: Ruler icon, highlights when active
 - **Keyboard shortcut**: Escape key to deactivate
+
+### Help Tip Widget
+Contextual help with dismissable tip:
+- **Help icon**: Question mark in circle, toggles tip visibility
+- **Tip content**: Expands to left showing context-sensitive help
+  - Buildings mode (non-Custom): "Switch to Custom amenity type to add pins"
+  - Other modes: "Click map to add amenity. Right-click to remove."
+- **Dismiss**: Click icon, press ESC, or click on map
 
 ### Legend
 - **Position**: Bottom-right on desktop, bottom-left on mobile (when panel collapsed)
