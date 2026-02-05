@@ -103,3 +103,15 @@ export const HEX_DIAMETER_MIN = 10          // Minimum hexagon diameter in meter
 export const HEX_DIAMETER_MAX = 100         // Maximum hexagon diameter in meters
 export const HEX_DIAMETER_DEFAULT = 25      // Default hexagon diameter in meters
 export const HEX_DIAMETER_STEP = 5          // Slider step in meters
+
+// Terrain smoothing slider configuration
+export const TERRAIN_SMOOTH_MIN = 0         // Minimum smoothing sigma (0 = no smoothing)
+export const TERRAIN_SMOOTH_MAX = 2         // Maximum smoothing sigma
+export const TERRAIN_SMOOTH_DEFAULT = 1.0   // Default smoothing sigma
+export const TERRAIN_SMOOTH_STEP = 0.1      // Slider step
+
+// Terrain height slider configuration
+export const TERRAIN_HEIGHT_MIN = 0         // Minimum terrain height scale in meters
+export const TERRAIN_HEIGHT_MAX = 300       // Maximum terrain height scale in meters
+export const TERRAIN_HEIGHT_DEFAULT = 200   // Default terrain height scale in meters
+export const TERRAIN_HEIGHT_STEP = 10       // Slider step in meters

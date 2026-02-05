@@ -80,7 +80,7 @@ src/
 │   │   ├── PolylineEditor.tsx   # Custom mode - draggable points
 │   │   ├── MathCurveDisplay.tsx # Mathematical function curve renderer
 │   │   └── CoefficientInputs.tsx # Parameter inputs for math functions
-│   ├── panels/      # ParametersPanel, NavigationWidget, Legend, AppInfo, MeasurementWidget, HexSizeSlider, dropdowns, AnalysisModeToggle
+│   ├── panels/      # ParametersPanel, NavigationWidget, Legend, AppInfo, MeasurementWidget, HexSizeSlider, ParameterSlider, dropdowns, AnalysisModeToggle
 │   └── map/         # MapView (includes custom pin/attractor marker management)
 ├── visualization/   # MapLibre setup + color updates + Three.js terrain
 │   ├── mapLibreSetup.ts         # Map initialization, layers (buildings, hexagons, streets)
@@ -229,6 +229,9 @@ Main control panel (top-left on desktop, top full-width on mobile, collapsible):
     - Attractivity (Att_j): Floor area / Volume / Count with checkmark on selected (hidden when Custom)
   - **Grid mode**: Custom Amenities count + "Clear all" button
     - Shows loading indicator when computing full network matrix
+  - **Surface mode**: Two parameter sliders (`ParameterSlider.tsx`)
+    - Terrain Smoothing: Gaussian blur sigma (0-2, default 1.0, step 0.1)
+    - Terrain Height: Maximum peak height in meters (0-300m, default 200m, step 10m)
 - **Section C - Distance Decay Function**: Interactive curve editor (shared across modes)
 
 ### Curve Editor (`CurveEditor/`)
@@ -376,6 +379,14 @@ Key responsive styles:
 - **Resize Handle**:
   - `.resize-handle`: 12px height, `cursor: ns-resize`, centered flex container
   - `.resize-handle-grip`: 40×4px rounded bar, grey background with purple hover/active states
+- **Parameter Sliders** (`.param-slider-*` classes, used by ParameterSlider component):
+  - `.param-slider-row`: Flex container with `align-items: flex-end`, 6px gap, 4px margin-bottom
+  - `.param-slider-label`: 120px fixed width, 13px padding-bottom for alignment with track
+  - `.param-slider-container`: Flex 1, max-width 310px
+  - `.param-slider-value-track`: 12px height for floating value label
+  - `.param-slider-value`: Positioned value label above slider thumb
+  - `.param-slider`: White track, 6px height, purple thumb (14px), hover scale effect
+  - `.param-slider-minmax`: Min/max labels below slider
 - **Mobile Media Query** (`max-width: 639px`):
   - `.glass-panel`: Square corners (`border-radius: 0`)
   - `.param-dropdown`: Smaller font (13px) and padding
@@ -407,7 +418,7 @@ The terrain visualization uses Three.js rendered as a MapLibre custom layer. Bot
 | `src/visualization/shaders/sdfLine.ts` | GLSL shaders for SDF anti-aliased line rendering |
 | `src/visualization/SDFLineMaterial.ts` | Custom Three.js material for smooth lines |
 | `src/computation/terrainAccessibilityCalc.ts` | Network distance-based accessibility calculation |
-| `src/config/constants.ts` | `TERRAIN_SEGMENTS` (64), `TERRAIN_HEIGHT_SCALE` (200m), `TERRAIN_CONTOUR_COUNT` (10), `TERRAIN_SMOOTH_SIGMA` (1.0), `HEX_DIAMETER_*` constants |
+| `src/config/constants.ts` | `TERRAIN_SEGMENTS` (64), `TERRAIN_HEIGHT_SCALE` (200m), `TERRAIN_CONTOUR_COUNT` (10), `TERRAIN_SMOOTH_SIGMA` (1.0), `HEX_DIAMETER_*`, `TERRAIN_SMOOTH_*`, `TERRAIN_HEIGHT_*` slider constants |
 
 ### Key Constants
 
@@ -421,6 +432,14 @@ The terrain visualization uses Three.js rendered as a MapLibre custom layer. Bot
 | `HEX_DIAMETER_MAX` | 100 | Maximum hexagon diameter in meters |
 | `HEX_DIAMETER_DEFAULT` | 15 | Default hexagon diameter in meters |
 | `HEX_DIAMETER_STEP` | 5 | Slider step increment in meters |
+| `TERRAIN_SMOOTH_MIN` | 0 | Minimum terrain smoothing sigma |
+| `TERRAIN_SMOOTH_MAX` | 2 | Maximum terrain smoothing sigma |
+| `TERRAIN_SMOOTH_DEFAULT` | 1.0 | Default terrain smoothing sigma |
+| `TERRAIN_SMOOTH_STEP` | 0.1 | Terrain smoothing slider step |
+| `TERRAIN_HEIGHT_MIN` | 0 | Minimum terrain height in meters |
+| `TERRAIN_HEIGHT_MAX` | 300 | Maximum terrain height in meters |
+| `TERRAIN_HEIGHT_DEFAULT` | 200 | Default terrain height in meters |
+| `TERRAIN_HEIGHT_STEP` | 10 | Terrain height slider step in meters |
 | Base height | 10m | Offset above ground level |
 
 ### Terrain Mesh Creation (`terrainMesh.ts`)
@@ -433,13 +452,15 @@ The terrain visualization uses Three.js rendered as a MapLibre custom layer. Bot
 5. Initial height: 10m (base offset above ground)
 6. Initial color: grey (#cccccc) for unscored
 
-**`updateTerrainFromAttractors(mesh, attractors, decayFn, distanceMatrix)`**:
+**`updateTerrainFromAttractors(mesh, attractors, decayFn, distanceMatrix, smoothingSigma?, heightScale?)`**:
 1. Calls `calculateTerrainScores()` to compute accessibility for each vertex using network distance
 2. Normalizes scores to [0, 1] range based on current min/max
-3. Applies Gaussian blur smoothing (sigma = `TERRAIN_SMOOTH_SIGMA`) to reduce sharp transitions
-4. Updates vertex heights: `heightMeters = smoothedScore * TERRAIN_HEIGHT_SCALE + 10`
+3. Applies Gaussian blur smoothing (configurable sigma, default `TERRAIN_SMOOTH_SIGMA`) to reduce sharp transitions
+4. Updates vertex heights: `heightMeters = smoothedScore * heightScale + 10`
 5. Updates vertex colors using gradient: Purple (#4A3AB4) → Orange (#FD681D) → Red (#FD1D1D)
 6. Returns `{ min, max, avg }` raw score statistics for Legend
+- Optional `smoothingSigma` parameter overrides default (0-2, from UI slider)
+- Optional `heightScale` parameter overrides default (0-300m, from UI slider)
 
 **Terrain Smoothing** (`smoothScores` function):
 - Applies separable Gaussian blur (horizontal then vertical pass) to normalized scores
@@ -539,7 +560,7 @@ interface ThreeJsTerrainLayerState {
 
 **Exported Functions**:
 - `createThreeJsTerrainLayer(graph)` - Creates the MapLibre custom layer
-- `updateTerrainLayer(attractors, decayFn, distanceMatrix)` - Updates terrain, wireframe, and contour positions
+- `updateTerrainLayer(attractors, decayFn, distanceMatrix, smoothingSigma?, heightScale?)` - Updates terrain, wireframe, and contour positions
 - `updateAttractorPins(attractors)` - Syncs 3D pin connecting lines with attractors
 - `resetTerrainLayer()` - Resets to flat grey
 - `setTerrainLayerVisibility(visible)` - Shows/hides terrain layer

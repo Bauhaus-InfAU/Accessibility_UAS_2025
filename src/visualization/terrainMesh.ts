@@ -340,13 +340,17 @@ export function createTerrainMesh(config: TerrainMeshConfig, graph: StreetGraph)
  * @param attractors - Array of grid attractors (amenities)
  * @param decayFn - Distance decay function
  * @param distanceMatrix - Full network distance matrix (all nodes to all nodes)
+ * @param smoothingSigma - Gaussian blur sigma for terrain smoothing (default: TERRAIN_SMOOTH_SIGMA)
+ * @param heightScale - Maximum terrain height in meters (default: TERRAIN_HEIGHT_SCALE)
  * @returns Object with min, max, avg statistics for the Legend
  */
 export function updateTerrainFromAttractors(
   mesh: THREE.Mesh,
   attractors: GridAttractor[],
   decayFn: (distance: number) => number,
-  distanceMatrix: DistanceMatrix
+  distanceMatrix: DistanceMatrix,
+  smoothingSigma: number = TERRAIN_SMOOTH_SIGMA,
+  heightScale: number = TERRAIN_HEIGHT_SCALE
 ): { min: number; max: number; avg: number } {
   const geometry = mesh.geometry as THREE.BufferGeometry
   const positions = geometry.attributes.position.array as Float32Array
@@ -368,7 +372,7 @@ export function updateTerrainFromAttractors(
   const gridWidth = config.segmentsX + 1   // 65
   const gridHeight = config.segmentsY + 1  // 65
   const normalizedScoresArray = new Float32Array(normalizedScores)
-  const smoothedScores = smoothScores(normalizedScoresArray, gridWidth, gridHeight, TERRAIN_SMOOTH_SIGMA)
+  const smoothedScores = smoothScores(normalizedScoresArray, gridWidth, gridHeight, smoothingSigma)
 
   // Grey color for areas with no data
   const greyColor = new THREE.Color(0xcccccc)
@@ -376,9 +380,9 @@ export function updateTerrainFromAttractors(
   // Update heights and colors
   for (let i = 0; i < vertexCount; i++) {
     // Set height based on smoothed normalized score (0-1 range)
-    // This ensures terrain height is always in [0, TERRAIN_HEIGHT_SCALE] range
+    // This ensures terrain height is always in [0, heightScale] range
     // regardless of attractor weights, matching how colors are normalized
-    const heightMeters = smoothedScores[i] * TERRAIN_HEIGHT_SCALE
+    const heightMeters = smoothedScores[i] * heightScale
 
     // Position Z is the height in meters
     positions[i * 3 + 2] = heightMeters + 10 // Add 10m base height to stay above ground

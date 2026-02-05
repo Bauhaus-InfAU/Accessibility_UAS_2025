@@ -6,7 +6,16 @@ import { AttractivityDropdown } from './AttractivityDropdown'
 import { AnalysisModeToggle } from './AnalysisModeToggle'
 import { PillToggle } from './PillToggle'
 import { HexSizeSlider } from './HexSizeSlider'
+import { ParameterSlider } from './ParameterSlider'
 import type { BuildingFilterMode } from '../../config/types'
+import {
+  TERRAIN_SMOOTH_MIN,
+  TERRAIN_SMOOTH_MAX,
+  TERRAIN_SMOOTH_STEP,
+  TERRAIN_HEIGHT_MIN,
+  TERRAIN_HEIGHT_MAX,
+  TERRAIN_HEIGHT_STEP,
+} from '../../config/constants'
 
 // Minimum panel height in pixels
 const MIN_PANEL_HEIGHT = 150
@@ -38,6 +47,10 @@ export function ParametersPanel() {
     hexDiameter,
     setHexDiameter,
     isRegeneratingGrid,
+    terrainSmoothing,
+    setTerrainSmoothing,
+    terrainHeightScale,
+    setTerrainHeightScale,
   } = useAppContext()
 
   // Resize drag state
@@ -173,6 +186,30 @@ export function ParametersPanel() {
                   onChange={setHexDiameter}
                   disabled={isRegeneratingGrid}
                   label={isRegeneratingGrid ? "Hexagon Size (updating...)" : "Hexagon Size"}
+                />
+              </div>
+            )}
+
+            {/* Terrain Sliders - Surface mode only */}
+            {isSurfaceMode && (
+              <div className="mb-4">
+                <ParameterSlider
+                  value={terrainSmoothing}
+                  onChange={setTerrainSmoothing}
+                  min={TERRAIN_SMOOTH_MIN}
+                  max={TERRAIN_SMOOTH_MAX}
+                  step={TERRAIN_SMOOTH_STEP}
+                  label="Terrain Smoothing"
+                  decimals={1}
+                />
+                <ParameterSlider
+                  value={terrainHeightScale}
+                  onChange={setTerrainHeightScale}
+                  min={TERRAIN_HEIGHT_MIN}
+                  max={TERRAIN_HEIGHT_MAX}
+                  step={TERRAIN_HEIGHT_STEP}
+                  label="Terrain Height"
+                  unit="m"
                 />
               </div>
             )}

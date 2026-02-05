@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo, type ReactNode } from 'react'
 import type { Building, ControlPoint, CurveMode, CurveTabMode, AttractivityMode, DistanceMatrix, LandUse, StreetGraph, AnalysisMode, GridAttractor, StreetsGeoJSON, MeasurementPoint, HexCell, BuildingFilterMode } from '../config/types'
-import { MAX_DISTANCE_DEFAULT, DEFAULT_POLYLINE_POINTS, DEFAULT_BEZIER_HANDLES, DEFAULT_NEG_EXP_ALPHA, DEFAULT_EXP_POWER_B, DEFAULT_EXP_POWER_C, HEX_DIAMETER_DEFAULT } from '../config/constants'
+import { MAX_DISTANCE_DEFAULT, DEFAULT_POLYLINE_POINTS, DEFAULT_BEZIER_HANDLES, DEFAULT_NEG_EXP_ALPHA, DEFAULT_EXP_POWER_B, DEFAULT_EXP_POWER_C, HEX_DIAMETER_DEFAULT, TERRAIN_SMOOTH_DEFAULT, TERRAIN_HEIGHT_DEFAULT } from '../config/constants'
 import { loadBuildingsGeoJSON, loadStreetsGeoJSON } from '../data/dataLoader'
 import { processBuildings, getBuildingsWithLandUse, getAvailableLandUses } from '../data/buildingStore'
 import { buildStreetGraph, mapBuildingsToNodes, serializeGraph, findNearestNode } from '../data/streetGraph'
@@ -60,6 +60,8 @@ interface AppState {
   surfaceMinScore: number
   surfaceMaxScore: number
   surfaceAvgScore: number
+  terrainSmoothing: number      // Gaussian blur sigma for terrain smoothing (0-2)
+  terrainHeightScale: number    // Max terrain height in meters (0-300)
 
   // Results (for buildings mode)
   accessibilityScores: Map<string, number>
@@ -99,6 +101,8 @@ interface AppContextValue extends AppState {
   setGridStats: (stats: { min: number; max: number; avg: number }) => void
   setSurfaceStats: (stats: { min: number; max: number; avg: number }) => void
   setHexDiameter: (diameter: number) => void
+  setTerrainSmoothing: (value: number) => void
+  setTerrainHeightScale: (value: number) => void
   // Measurement tool actions
   setMeasurementActive: (active: boolean) => void
   addMeasurementPoint: (coord: [number, number]) => void
@@ -171,6 +175,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [surfaceMinScore, setSurfaceMinScore] = useState(0)
   const [surfaceMaxScore, setSurfaceMaxScore] = useState(0)
   const [surfaceAvgScore, setSurfaceAvgScore] = useState(0)
+
+  // Terrain slider values
+  const [terrainSmoothing, setTerrainSmoothing] = useState(TERRAIN_SMOOTH_DEFAULT)
+  const [terrainHeightScale, setTerrainHeightScale] = useState(TERRAIN_HEIGHT_DEFAULT)
 
   // Measurement tool state
   const [isMeasurementActive, setIsMeasurementActive] = useState(false)
@@ -578,6 +586,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     surfaceMinScore,
     surfaceMaxScore,
     surfaceAvgScore,
+    terrainSmoothing,
+    terrainHeightScale,
     accessibilityScores,
     rawAccessibilityScores,
     minRawScore,
@@ -604,6 +614,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setGridStats,
     setSurfaceStats,
     setHexDiameter,
+    setTerrainSmoothing,
+    setTerrainHeightScale,
     // Measurement tool
     isMeasurementActive,
     measurementPointA,

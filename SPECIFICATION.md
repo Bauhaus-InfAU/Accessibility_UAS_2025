@@ -103,13 +103,16 @@ Calculates accessibility on a hexagonal grid based on user-placed attractors. Us
 ### Terrain Mesh (Grid Mode - Alternative Visualization)
 A continuous 3D terrain surface rendered using Three.js as a MapLibre custom layer:
 - **Mesh resolution**: 65×65 vertices (4,225 points) on a 64×64 segment grid
-- **Height mapping**: Normalized score × 200 meters + 10m base (terrain always spans 0-200m regardless of attractor weights)
+- **Height mapping**: Normalized score × configurable height + 10m base
 - **Color gradient**: Same as buildings/hexagons (Purple → Orange → Red)
 - **Wireframe overlay**: Black grid lines at 30% opacity (hidden by default, contours provide depth cues)
 - **Street network overlay**: White 3px lines at 90% opacity following terrain height (foreground layer)
 - **Contour lines**: 10 colored contour lines matching terrain gradient with adaptive contrast (background layer)
 - **Distance calculation**: Uses network distance via precomputed distance matrix
 - **Bounds**: Covers street network area with 100m padding
+- **Configurable parameters** (Surface mode sliders):
+  - **Terrain Smoothing**: Gaussian blur sigma (0-2, default 1.0, step 0.1) - controls surface smoothness
+  - **Terrain Height**: Maximum terrain height in meters (0-300m, default 200m, step 10m) - controls peak elevation
 
 **Why Three.js instead of MapLibre alone?**
 
@@ -418,11 +421,17 @@ Uses network distance via precomputed full network matrix:
 - Each mesh vertex is mapped to its nearest street network node at creation time
 - For each mesh vertex (mapped to node):
   - Calculate: `score = Σ(attractors) attractivity × f(networkDistance)`
-- Min-max normalize scores to [0, 1] (terrain height always spans 0-200m range)
-- Apply Gaussian smoothing (sigma = 1.0) to reduce sharp transitions
-- Update vertex heights: `z = smoothedScore × TERRAIN_HEIGHT_SCALE + 10m`
+- Min-max normalize scores to [0, 1]
+- Apply Gaussian smoothing (configurable sigma, default 1.0) to reduce sharp transitions
+- Update vertex heights: `z = smoothedScore × terrainHeightScale + 10m`
 - Update vertex colors using accessibility gradient
 - Sync wireframe and contour line positions with mesh
+
+**Configurable Parameters** (adjusted via Surface mode sliders in UI):
+| Parameter | Range | Default | Effect |
+|-----------|-------|---------|--------|
+| Terrain Smoothing | 0-2 | 1.0 | Gaussian blur sigma; 0 = sharp edges, 2 = very smooth |
+| Terrain Height | 0-300m | 200m | Maximum peak elevation; affects depth perception |
 
 **Network distance benefits**: Terrain now shows organic, street-following accessibility patterns instead of smooth circular patterns. Same distance calculation as hexagon grid.
 
