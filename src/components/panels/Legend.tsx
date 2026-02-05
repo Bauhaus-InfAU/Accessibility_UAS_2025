@@ -224,7 +224,7 @@ export function Legend() {
           <div className="inline-flex rounded-full bg-white/20 p-0.5">
             <button
               onClick={() => setGradientRangeMode('adaptive')}
-              className={`px-2.5 py-0.5 text-xs rounded-full transition-colors ${
+              className={`px-3 py-1 text-sm rounded-full transition-colors ${
                 !isFixedMode
                   ? 'bg-white text-gray-700 shadow-sm'
                   : 'text-white/70 hover:text-white'
@@ -241,7 +241,7 @@ export function Legend() {
                 }
                 setGradientRangeMode('fixed')
               }}
-              className={`px-2.5 py-0.5 text-xs rounded-full transition-colors ${
+              className={`px-3 py-1 text-sm rounded-full transition-colors ${
                 isFixedMode
                   ? 'bg-white text-gray-700 shadow-sm'
                   : 'text-white/70 hover:text-white'
