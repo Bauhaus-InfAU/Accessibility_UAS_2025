@@ -130,10 +130,13 @@ export function ParametersPanel() {
   // Dynamic width: auto when collapsed, fixed when expanded
   const panelWidth = isPanelCollapsed ? 'sm:w-auto' : 'sm:w-[580px]'
 
+  // Panel background: accent color when collapsed, glass panel when expanded
+  const panelBg = isPanelCollapsed ? 'panel-collapsed' : 'glass-panel'
+
   return (
     <div
       ref={panelRef}
-      className={`absolute top-0 left-0 right-0 sm:top-5 sm:left-5 sm:right-auto glass-panel floating-panel py-2 px-2 sm:py-2 sm:px-2 w-full ${panelWidth} rounded-none sm:rounded-2xl max-h-[calc(100vh-92px)] sm:max-h-[calc(100vh-76px)] flex flex-col overflow-x-hidden`}
+      className={`absolute top-0 left-0 right-0 sm:top-5 sm:left-5 sm:right-auto ${panelBg} floating-panel py-2 px-2 sm:py-2 sm:px-2 w-full ${panelWidth} rounded-none sm:rounded-2xl max-h-[calc(100vh-92px)] sm:max-h-[calc(100vh-76px)] flex flex-col overflow-x-hidden`}
       style={{
         height: panelHeight && !isPanelCollapsed ? `${panelHeight}px` : undefined,
       }}
@@ -143,13 +146,13 @@ export function ParametersPanel() {
         className="w-full flex items-center justify-between text-left flex-shrink-0"
         onClick={() => setIsPanelCollapsed(!isPanelCollapsed)}
       >
-        <h2 className="panel-title">
-          <span className="panel-title-icon">
+        <h2 className={`panel-title ${isPanelCollapsed ? 'panel-title-collapsed' : ''}`}>
+          <span className={`panel-title-icon ${isPanelCollapsed ? 'panel-title-icon-collapsed' : ''}`}>
             <DecayCurveIcon />
           </span>
           <span>Accessibility Analysis</span>
         </h2>
-        <span className="w-6 h-6 flex items-center justify-center text-gray-500">
+        <span className={`w-6 h-6 flex items-center justify-center ${isPanelCollapsed ? 'text-white' : 'text-gray-500'}`}>
           {isPanelCollapsed ? <PanelExpandIcon /> : <PanelCollapseIcon />}
         </span>
       </button>
