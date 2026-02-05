@@ -203,6 +203,8 @@ The app adapts to different screen sizes using Tailwind CSS breakpoints.
 ### State Management
 - `isPanelCollapsed` state in AppContext controls panel expand/collapse
 - `panelHeight` state in AppContext tracks custom panel height (null = auto)
+- `gradientRangeMode` state: 'adaptive' | 'fixed' (default: 'adaptive')
+- `fixedGradientMin` / `fixedGradientMax` state: User-defined gradient bounds (default: 0, 100)
 - NavigationWidget and Legend read this state to show/hide on mobile
 
 ## UI Components
@@ -221,12 +223,12 @@ Main control panel (top-left on desktop, top full-width on mobile, collapsible):
   - Surface: "Display accessibility as a 3D terrain with height representing scores."
 - **Analysis Scope** (`PillToggle.tsx`): Buildings mode only, pill-style toggle
   - Options: Residential | All Buildings (default: All Buildings)
-  - Selected: White background, purple text (#7c3aed), checkmark icon
+  - Selected: White background, grey text (#374151), shadow
   - Inactive: Grey text, no background
 - **Section B - Parameters** (mode-dependent):
   - **Buildings mode**: Two pill-style dropdowns (`PillDropdown.tsx`)
-    - Amenity Type (j): Land use category selector with checkmark on selected
-    - Attractivity (Att_j): Floor area / Volume / Count with checkmark on selected (hidden when Custom)
+    - Amenity Type (j): Land use category selector
+    - Attractivity (Att_j): Floor area / Volume / Count (hidden when Custom)
   - **Grid mode**: Custom Amenities count + "Clear all" button
     - Shows loading indicator when computing full network matrix
   - **Surface mode**: Two parameter sliders (`ParameterSlider.tsx`)
@@ -253,11 +255,11 @@ Tabbed SVG-based curve editor (responsive: 490×260px desktop, scales on mobile)
 
 **Custom Tab**:
 - Draggable control points: White fill, purple outline
-- **Presets**: Pill-style buttons with checkmark on active (with "Presets:" label above)
+- **Presets**: Pill-style buttons (with "Presets:" label above)
   - Exponential (default): approximates negative exponential f(d) = e^(-0.003·d)
   - Power: approximates exponential power f(d) = e^(-(d/700)^2)
   - Linear, Step, Constant
-  - Selected: White background, purple text, checkmark icon
+  - Selected: White background, grey text, shadow
   - Inactive: Grey background, grey text
 - **Interactions**: Double-click to add point, right-click to remove, drag to move
 
@@ -330,13 +332,22 @@ Score color scale (bottom-right on desktop, bottom-left on mobile when panel col
 - **Grid mode**:
   - Custom Amenities Indicator: Yellow (#fcdb02) circle + amenity count
   - Hexagon Grid Indicator: Gradient circle + "Hexagon Grid" label
+- **Surface mode**:
+  - Custom Amenities Indicator: Yellow (#fcdb02) circle + amenity count
+  - Terrain Surface Indicator: Gradient circle + "Terrain Surface" label
 - **Divider**: Thin grey line separating indicators from score gradient
-- **Title**: "Accessibility Score" (text-base)
+- **Title Row**: "Accessibility Score" + Adaptive/Fixed pill toggle
+  - **Adaptive mode** (default): Min/max values derived from data, updates dynamically
+  - **Fixed mode**: User-defined min/max, scores outside range clamped to boundary colors
+  - Switching to Fixed copies current adaptive values as initial fixed values
 - **Gradient Bar**: Fully rounded (pill-shaped), Purple (#4A3AB4) → Orange (#FD681D) → Red (#FD1D1D)
-  - White vertical marker line indicates average score position
+  - White vertical marker line indicates average score position (relative to current range)
 - **Labels**:
-  - Row 1: Low/High labels with min/max raw score values aligned below
-  - Row 2: Average score with "avg" suffix, positioned below the marker (only shown when range > 0)
+  - Row 1: Low/High labels at ends
+  - Row 2: Min/max score values
+    - Adaptive mode: Plain text showing data min/max
+    - Fixed mode: Colored clickable boxes (purple min, red max) - click to edit
+  - Average score with "avg" suffix, positioned below the marker (only shown when range > 0)
 
 ### App Info (`AppInfo.tsx`)
 Version and credits display (bottom-left corner, always visible):
