@@ -18,6 +18,7 @@ interface AppState {
   // UI State
   isPanelCollapsed: boolean
   panelHeight: number | null  // Custom panel height in pixels (null = auto/default)
+  isHelpTipVisible: boolean   // Whether the help tip is shown
 
   // Data
   buildings: Building[]
@@ -81,6 +82,7 @@ interface AppState {
 interface AppContextValue extends AppState {
   setIsPanelCollapsed: (collapsed: boolean) => void
   setPanelHeight: (height: number | null) => void
+  setIsHelpTipVisible: (visible: boolean) => void
   setCurveTabMode: (mode: CurveTabMode) => void
   setCustomCurveType: (type: CurveMode) => void
   setPolylinePoints: (points: ControlPoint[]) => void
@@ -125,6 +127,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // UI State
   const [isPanelCollapsed, setIsPanelCollapsed] = useState(false)
   const [panelHeight, setPanelHeight] = useState<number | null>(null)
+  const [isHelpTipVisible, setIsHelpTipVisible] = useState(true) // Show by default
 
   const [buildings, setBuildings] = useState<Building[]>([])
   const [graph, setGraph] = useState<StreetGraph | null>(null)
@@ -556,6 +559,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     loadingProgress,
     isPanelCollapsed,
     panelHeight,
+    isHelpTipVisible,
     buildings,
     graph,
     distanceMatrix,
@@ -595,6 +599,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     avgRawScore,
     setIsPanelCollapsed,
     setPanelHeight,
+    setIsHelpTipVisible,
     setCurveTabMode,
     setCustomCurveType,
     setPolylinePoints,

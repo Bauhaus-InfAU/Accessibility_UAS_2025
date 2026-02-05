@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useAppContext } from '../../context/AppContext'
 
 // Ruler icon
@@ -12,21 +13,27 @@ const RulerIcon = () => (
 
 export function MeasurementWidget() {
   const {
-    isPanelCollapsed,
     isMeasurementActive,
     setMeasurementActive,
   } = useAppContext()
 
-  // On mobile: hidden when panel is open, positioned above navigation widget when collapsed
-  // On desktop: always visible, below navigation widget
-  const mobileVisibility = isPanelCollapsed ? '' : 'hidden sm:flex'
+  // ESC key handler - deactivate measurement tool
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isMeasurementActive) {
+        setMeasurementActive(false)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isMeasurementActive, setMeasurementActive])
 
   return (
-    <div className={`absolute bottom-20 right-4 sm:top-[140px] sm:bottom-auto sm:right-5 flex flex-col items-end gap-2 pointer-events-auto z-10 ${mobileVisibility}`}>
+    <div className="measurement-widget flex">
       {/* Toggle button */}
       <button
         onClick={() => setMeasurementActive(!isMeasurementActive)}
-        className={`nav-btn nav-btn-icon ${isMeasurementActive ? 'nav-btn-active' : ''}`}
+        className={`settings-icon-btn ${isMeasurementActive ? 'active' : ''}`}
         title={isMeasurementActive ? 'Disable measurement' : 'Enable measurement'}
       >
         <RulerIcon />

@@ -149,8 +149,8 @@ body {
 }
 
 .nav-btn-icon {
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   padding: 0;
   font-size: 24px;
   justify-content: center;
@@ -575,6 +575,47 @@ body {
   border-radius: 2px;
   background: rgba(0, 0, 0, 0.15);
   transition: background 0.15s ease;
+}
+
+/* Measurement Widget - match settings-widget style */
+.measurement-widget {
+  flex-direction: column;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 12px;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  padding: 8px;
+}
+
+/* Help Tip Widget */
+.help-tip-widget {
+  flex-direction: row;
+  align-items: stretch;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 12px;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  padding: 8px;
+  gap: 8px;
+}
+
+.help-tip-content {
+  max-width: 160px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: #4b5563;
+  line-height: 1.4;
+  border-right: 1px solid rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+}
+
+.help-tip-content p {
+  margin: 0;
 }
 
 /* Settings Widget */
