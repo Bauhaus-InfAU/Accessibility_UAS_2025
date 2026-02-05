@@ -3,6 +3,7 @@ import { useRef, useEffect, useState, type ReactNode } from 'react'
 interface Tab {
   id: string
   label: string
+  sublabel?: string
   disabled?: boolean
 }
 
@@ -55,7 +56,8 @@ export function TabContainer({ tabs, activeTab, onTabChange, className = '' }: T
           onClick={() => onTabChange(tab.id)}
           disabled={tab.disabled}
         >
-          {tab.label}
+          <span className="tab-label-main">{tab.label}</span>
+          {tab.sublabel && <span className="tab-label-sub">{tab.sublabel}</span>}
         </button>
       ))}
       <div

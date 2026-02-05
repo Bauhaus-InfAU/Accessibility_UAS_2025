@@ -1,5 +1,7 @@
 import { toPlotX, toPlotY } from './CurveCanvas'
 import type { CurveTabMode } from '../../config/types'
+import type { CurveHoverValues } from './CurveEditor'
+import type { CoefficientHoverType } from './CoefficientInputs'
 
 interface MathCurveDisplayProps {
   evaluator: (distance: number) => number
@@ -11,6 +13,8 @@ interface MathCurveDisplayProps {
   negExpAlpha?: number
   expPowerB?: number
   expPowerC?: number
+  hoverValues?: CurveHoverValues | null
+  hoveredCoefficient?: CoefficientHoverType
 }
 
 /**
@@ -28,6 +32,8 @@ export function MathCurveDisplay({
   negExpAlpha,
   expPowerB,
   expPowerC,
+  hoverValues,
+  hoveredCoefficient,
 }: MathCurveDisplayProps) {
   // Generate sample points
   const points: string[] = []
@@ -42,11 +48,31 @@ export function MathCurveDisplay({
   // Position for equation (top-right with padding)
   const equationY = 12
 
-  // Style for coefficient values
+  // Style for coefficient values (user-defined parameters) - same as base grey
   const coefficientStyle: React.CSSProperties = {
-    color: '#e85d04',
     fontWeight: 600,
   }
+
+  // Style for highlighted coefficient (when hovering input field) - accent color
+  const coefficientHighlightStyle: React.CSSProperties = {
+    color: '#5631ad',
+    fontWeight: 600,
+  }
+
+  // Style for substituted values (computed from hover) - accent color
+  const substitutedStyle: React.CSSProperties = {
+    color: '#5631ad',
+    fontWeight: 600,
+  }
+
+  // Determine which coefficients are highlighted
+  const isAlphaHighlighted = hoveredCoefficient === 'alpha'
+  const isBHighlighted = hoveredCoefficient === 'b'
+  const isCHighlighted = hoveredCoefficient === 'c'
+
+  const alphaStyle = isAlphaHighlighted ? coefficientHighlightStyle : coefficientStyle
+  const bStyle = isBHighlighted ? coefficientHighlightStyle : coefficientStyle
+  const cStyle = isCHighlighted ? coefficientHighlightStyle : coefficientStyle
 
   return (
     <g>
@@ -68,16 +94,32 @@ export function MathCurveDisplay({
           fontFamily: 'Times New Roman, serif',
           fontSize: '22px',
           fontStyle: 'italic',
-          color: '#5633ac'
+          color: '#6b7280'
         }}>
           {mode === 'negativeExponential' && (
             <span>
-              f(d<sub>ij</sub>) = e<sup>-<span style={coefficientStyle}>{negExpAlpha}</span>·d<sub>ij</sub></sup>
+              {hoverValues ? (
+                <>
+                  <span style={substitutedStyle}>{hoverValues.fValue.toFixed(2)}</span>
+                  {' = e'}
+                  <sup>-<span style={alphaStyle}>{negExpAlpha}</span>·<span style={substitutedStyle}>{Math.round(hoverValues.distance)}</span></sup>
+                </>
+              ) : (
+                <>f(d<sub>ij</sub>) = e<sup>-<span style={alphaStyle}>{negExpAlpha}</span>·d<sub>ij</sub></sup></>
+              )}
             </span>
           )}
           {mode === 'exponentialPower' && (
             <span>
-              f(d<sub>ij</sub>) = e<sup>-(d<sub>ij</sub>/<span style={coefficientStyle}>{expPowerB}</span>)<sup><span style={coefficientStyle}>{expPowerC}</span></sup></sup>
+              {hoverValues ? (
+                <>
+                  <span style={substitutedStyle}>{hoverValues.fValue.toFixed(2)}</span>
+                  {' = e'}
+                  <sup>-(<span style={substitutedStyle}>{Math.round(hoverValues.distance)}</span>/<span style={bStyle}>{expPowerB}</span>)<sup><span style={cStyle}>{expPowerC}</span></sup></sup>
+                </>
+              ) : (
+                <>f(d<sub>ij</sub>) = e<sup>-(d<sub>ij</sub>/<span style={bStyle}>{expPowerB}</span>)<sup><span style={cStyle}>{expPowerC}</span></sup></sup></>
+              )}
             </span>
           )}
         </div>

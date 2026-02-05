@@ -1,5 +1,7 @@
 import { type CurveTabMode } from '../../config/types'
 
+export type CoefficientHoverType = 'alpha' | 'b' | 'c' | null
+
 interface CoefficientInputsProps {
   mode: CurveTabMode
   negExpAlpha: number
@@ -8,6 +10,8 @@ interface CoefficientInputsProps {
   onNegExpAlphaChange: (value: number) => void
   onExpPowerBChange: (value: number) => void
   onExpPowerCChange: (value: number) => void
+  hoveredCoefficient?: CoefficientHoverType
+  onCoefficientHover?: (coefficient: CoefficientHoverType) => void
 }
 
 /**
@@ -21,13 +25,34 @@ export function CoefficientInputs({
   onNegExpAlphaChange,
   onExpPowerBChange,
   onExpPowerCChange,
+  hoveredCoefficient,
+  onCoefficientHover,
 }: CoefficientInputsProps) {
+  const isAlphaHovered = hoveredCoefficient === 'alpha'
+  const isBHovered = hoveredCoefficient === 'b'
+  const isCHovered = hoveredCoefficient === 'c'
+
+  const labelBaseClass = "text-sm min-w-24 transition-colors"
+  const labelNormalClass = `${labelBaseClass} text-gray-600`
+  const labelHighlightClass = `${labelBaseClass} font-semibold`
+  const highlightStyle = { color: '#5631ad' }
+
+  const inputBaseClass = "w-24 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
+  const inputHighlightClass = `${inputBaseClass} font-semibold`
+
   if (mode === 'negativeExponential') {
     return (
       <div className="mt-4 space-y-3">
         {/* Alpha input */}
-        <div className="flex items-center gap-3">
-          <label className="text-sm text-gray-600 min-w-24">
+        <div
+          className="flex items-center gap-3"
+          onMouseEnter={() => onCoefficientHover?.('alpha')}
+          onMouseLeave={() => onCoefficientHover?.(null)}
+        >
+          <label
+            className={isAlphaHovered ? labelHighlightClass : labelNormalClass}
+            style={isAlphaHovered ? highlightStyle : undefined}
+          >
             α (decay rate):
           </label>
           <input
@@ -42,7 +67,8 @@ export function CoefficientInputs({
             step={0.0005}
             min={0}
             max={0.1}
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            className={isAlphaHovered ? inputHighlightClass : inputBaseClass}
+            style={isAlphaHovered ? highlightStyle : undefined}
           />
         </div>
 
@@ -54,8 +80,15 @@ export function CoefficientInputs({
     return (
       <div className="mt-4 space-y-3">
         {/* b (scale) input */}
-        <div className="flex items-center gap-3">
-          <label className="text-sm text-gray-600 min-w-24">
+        <div
+          className="flex items-center gap-3"
+          onMouseEnter={() => onCoefficientHover?.('b')}
+          onMouseLeave={() => onCoefficientHover?.(null)}
+        >
+          <label
+            className={isBHovered ? labelHighlightClass : labelNormalClass}
+            style={isBHovered ? highlightStyle : undefined}
+          >
             b (scale):
           </label>
           <input
@@ -70,13 +103,21 @@ export function CoefficientInputs({
             step={50}
             min={50}
             max={5000}
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            className={isBHovered ? inputHighlightClass : inputBaseClass}
+            style={isBHovered ? highlightStyle : undefined}
           />
         </div>
 
         {/* c (shape) input */}
-        <div className="flex items-center gap-3">
-          <label className="text-sm text-gray-600 min-w-24">
+        <div
+          className="flex items-center gap-3"
+          onMouseEnter={() => onCoefficientHover?.('c')}
+          onMouseLeave={() => onCoefficientHover?.(null)}
+        >
+          <label
+            className={isCHovered ? labelHighlightClass : labelNormalClass}
+            style={isCHovered ? highlightStyle : undefined}
+          >
             c (shape):
           </label>
           <input
@@ -91,7 +132,8 @@ export function CoefficientInputs({
             step={0.1}
             min={0.1}
             max={5}
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            className={isCHovered ? inputHighlightClass : inputBaseClass}
+            style={isCHovered ? highlightStyle : undefined}
           />
         </div>
 

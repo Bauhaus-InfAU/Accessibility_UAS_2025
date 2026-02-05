@@ -93,7 +93,7 @@ export function CurveCanvas({ maxDistance, width, height, padding, children, onP
         fill="#555"
         transform={`rotate(-90, 12, ${padding.top + plotHeight / 2})`}
       >
-        <tspan>Willingness to Travel → </tspan>
+        <tspan>Utility → </tspan>
         <tspan fontStyle="italic">f</tspan>
         <tspan>(</tspan>
         <tspan fontStyle="italic">d</tspan>

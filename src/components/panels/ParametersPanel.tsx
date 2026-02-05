@@ -1,21 +1,19 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useAppContext } from '../../context/AppContext'
-import { CurveEditor } from '../CurveEditor/CurveEditor'
-import { AmenityDropdown } from './AmenityDropdown'
-import { AttractivityDropdown } from './AttractivityDropdown'
-import { AnalysisModeToggle } from './AnalysisModeToggle'
-import { PillToggle } from './PillToggle'
-import { HexSizeSlider } from './HexSizeSlider'
-import { ParameterSlider } from './ParameterSlider'
-import type { BuildingFilterMode } from '../../config/types'
-import {
-  TERRAIN_SMOOTH_MIN,
-  TERRAIN_SMOOTH_MAX,
-  TERRAIN_SMOOTH_STEP,
-  TERRAIN_HEIGHT_MIN,
-  TERRAIN_HEIGHT_MAX,
-  TERRAIN_HEIGHT_STEP,
-} from '../../config/constants'
+import { CurveEditor, type CurveHoverValues } from '../CurveEditor/CurveEditor'
+
+// SVG Icons for expand/collapse
+const PanelExpandIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <polyline points="6 9 12 15 18 9" />
+  </svg>
+)
+
+const PanelCollapseIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <polyline points="6 15 12 9 18 15" />
+  </svg>
+)
 
 // Minimum panel height in pixels
 const MIN_PANEL_HEIGHT = 150
@@ -26,9 +24,6 @@ export function ParametersPanel() {
     setIsPanelCollapsed,
     panelHeight,
     setPanelHeight,
-    analysisMode,
-    buildingFilterMode,
-    setBuildingFilterMode,
     curveTabMode,
     polylinePoints,
     maxDistance,
@@ -41,16 +36,6 @@ export function ParametersPanel() {
     setExpPowerB,
     setExpPowerC,
     isLoading,
-    gridAttractors,
-    clearGridAttractors,
-    totalGridAttractivity,
-    hexDiameter,
-    setHexDiameter,
-    isRegeneratingGrid,
-    terrainSmoothing,
-    setTerrainSmoothing,
-    terrainHeightScale,
-    setTerrainHeightScale,
   } = useAppContext()
 
   // Resize drag state
@@ -58,6 +43,12 @@ export function ParametersPanel() {
   const panelRef = useRef<HTMLDivElement>(null)
   const startYRef = useRef<number>(0)
   const startHeightRef = useRef<number>(0)
+
+  // Hover values from curve editor
+  const [hoverValues, setHoverValues] = useState<CurveHoverValues | null>(null)
+  const handleHoverChange = useCallback((values: CurveHoverValues | null) => {
+    setHoverValues(values)
+  }, [])
 
   // Handle resize drag with window-level event listeners
   useEffect(() => {
@@ -119,16 +110,10 @@ export function ParametersPanel() {
 
   if (isLoading) return null
 
-  const isGridMode = analysisMode === 'grid'
-  const isSurfaceMode = analysisMode === 'surface'
-  const isBuildingsMode = analysisMode === 'buildings'
-  // Show attractor controls in Grid, Surface mode
-  const showAttractorControls = isGridMode || isSurfaceMode
-
   return (
     <div
       ref={panelRef}
-      className="absolute top-0 left-0 right-0 sm:top-3 sm:left-3 sm:right-auto glass-panel floating-panel p-3 sm:p-4 w-full sm:w-[540px] rounded-none sm:rounded-2xl max-h-[calc(100vh-92px)] sm:max-h-[calc(100vh-76px)] flex flex-col overflow-x-hidden"
+      className="absolute top-0 left-0 right-0 sm:top-3 sm:left-3 sm:right-auto glass-panel floating-panel py-3 px-6 sm:py-4 sm:px-6 w-full sm:w-[540px] rounded-none sm:rounded-2xl max-h-[calc(100vh-92px)] sm:max-h-[calc(100vh-76px)] flex flex-col overflow-x-hidden"
       style={{
         height: panelHeight && !isPanelCollapsed ? `${panelHeight}px` : undefined,
       }}
@@ -141,8 +126,8 @@ export function ParametersPanel() {
         <h2 className="text-xl sm:text-2xl font-semibold" style={{ color: '#5633ac' }}>
           Accessibility Analysis
         </h2>
-        <span className="w-6 h-6 flex items-center justify-center rounded-full bg-white text-gray-600 text-sm mr-4">
-          {isPanelCollapsed ? '∨' : '∧'}
+        <span className="w-6 h-6 flex items-center justify-center text-gray-500">
+          {isPanelCollapsed ? <PanelExpandIcon /> : <PanelCollapseIcon />}
         </span>
       </button>
 
@@ -151,162 +136,52 @@ export function ParametersPanel() {
         {/* Collapsible content */}
         {!isPanelCollapsed && (
           <>
-        {/* Introduction and Master Equation */}
-        <p className="text-xs sm:text-sm text-gray-600 mt-2 sm:mt-3 mb-2">
-          Accessibility measures how well a location is served by nearby amenities.
-          For each location <span className="math-var">i</span>, we sum the attractivity <span className="math-var">Att<sub>j</sub></span> of every
-          amenity <span className="math-var">j</span>, weighted by how much the distance <span className="math-var">d<sub>ij</sub></span> reduces
-          its influence via the decay function <span className="math-var">f(d<sub>ij</sub>)</span>.
-        </p>
-        <div className="equation text-center mb-3 flex items-center justify-center gap-1">
-          <span>Acc<sub>i</sub> =</span>
-          <span className="inline-flex flex-col items-center mx-1" style={{ fontSize: '0.65em', lineHeight: 1 }}>
-            <span>N</span>
-            <span style={{ fontSize: '1.8em', lineHeight: 0.9 }}>Σ</span>
-            <span>j=1</span>
-          </span>
-          <span>[Att<sub>j</sub> × f(d<sub>ij</sub>)]</span>
-        </div>
-          <div className="mt-1">
-            {/* Mode Toggle */}
-            <AnalysisModeToggle />
+            {/* Introduction and Master Equation */}
+            <p className="text-xs sm:text-sm text-gray-600 mt-2 sm:mt-3 mb-2">
+              Explore how distance affects accessibility.
+              For each location <span className="math-var">i</span>, we sum the attractivity <span className="math-var">Att<sub>j</sub></span> of every
+              amenity <span className="math-var">j</span>, weighted by how much the <span className="equation-accent">distance <span className="math-var" style={{ color: 'inherit' }}>d<sub>ij</sub></span></span> reduces
+              its influence via the <span className="equation-accent">decay function <span className="math-var" style={{ color: 'inherit' }}>f(d<sub>ij</sub>)</span></span>.
+            </p>
+            <div className="equation equation-grey text-center mb-4 flex items-center justify-center gap-1">
+              <span>Acc<sub>i</sub> =</span>
+              <span className="inline-flex flex-col items-center mx-1" style={{ fontSize: '0.65em', lineHeight: 1 }}>
+                <span>N</span>
+                <span style={{ fontSize: '1.8em', lineHeight: 0.9 }}>Σ</span>
+                <span>j=1</span>
+              </span>
+              <span>[Att<sub>j</sub> × </span>
+              <span className="equation-accent">
+                {hoverValues
+                  ? hoverValues.fValue.toFixed(2)
+                  : <>f(d<sub>ij</sub>)</>
+                }
+              </span>
+              <span>]</span>
+            </div>
 
-            {/* Mode Description */}
-            <p className="text-xs text-gray-500 mb-3">
-              {isBuildingsMode && "Calculate accessibility for buildings based on proximity to amenities."}
-              {isGridMode && "Visualize accessibility on a hexagonal grid, independent of buildings."}
-              {isSurfaceMode && "Display accessibility as a 3D terrain with height representing scores."}
+            <p className="text-xs sm:text-sm text-gray-600 mb-6">
+              Explore how different <span className="equation-accent">distance decay functions <span className="math-var" style={{ color: 'inherit' }}>f(d<sub>ij</sub>)</span></span> affect the accessibility analysis.
+              The shape of the function represents how the utility of an amenity decreases with growing distance.
             </p>
 
-            {/* Hexagon Size - Grid mode only */}
-            {isGridMode && (
-              <div className="mb-4">
-                <HexSizeSlider
-                  value={hexDiameter}
-                  onChange={setHexDiameter}
-                  disabled={isRegeneratingGrid}
-                  label={isRegeneratingGrid ? "Hexagon Size (updating...)" : "Hexagon Size"}
-                />
-              </div>
-            )}
-
-            {/* Terrain Sliders - Surface mode only */}
-            {isSurfaceMode && (
-              <div className="mb-4">
-                <ParameterSlider
-                  value={terrainSmoothing}
-                  onChange={setTerrainSmoothing}
-                  min={TERRAIN_SMOOTH_MIN}
-                  max={TERRAIN_SMOOTH_MAX}
-                  step={TERRAIN_SMOOTH_STEP}
-                  label="Terrain Smoothing"
-                  decimals={1}
-                />
-                <ParameterSlider
-                  value={terrainHeightScale}
-                  onChange={setTerrainHeightScale}
-                  min={TERRAIN_HEIGHT_MIN}
-                  max={TERRAIN_HEIGHT_MAX}
-                  step={TERRAIN_HEIGHT_STEP}
-                  label="Terrain Height"
-                  unit="m"
-                />
-              </div>
-            )}
-
-            {/* Analysis Scope - Buildings mode only, placed before amenity selection */}
-            {isBuildingsMode && (
-              <div className="mb-4">
-                <label className="text-sm font-medium text-gray-600 block mb-1.5">
-                  Analysis Scope (<span className="math-var">i</span>)
-                </label>
-                <PillToggle
-                  options={[
-                    { value: 'residential', label: 'Residential' },
-                    { value: 'all', label: 'All Buildings' },
-                  ]}
-                  value={buildingFilterMode}
-                  onChange={(v) => setBuildingFilterMode(v as BuildingFilterMode)}
-                />
-              </div>
-            )}
-
-            {/* Section B: Parameters - mode-dependent UI */}
-            {showAttractorControls ? (
-              <div className="mb-4">
-                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                  {/* Left column: Custom Amenities */}
-                  <div className="flex-1">
-                    <label className="text-sm font-medium text-gray-600 block mb-1">
-                      Custom Amenities (<span className="math-var">j</span>)
-                    </label>
-                    <p className="instruction-text">Add amenities by clicking on map</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-sm font-semibold" style={{ color: '#d4a800' }}>
-                        Total: {gridAttractors.length}
-                      </span>
-                      {gridAttractors.length > 0 && (
-                        <button
-                          className="text-red-500 hover:text-red-700 text-xs underline"
-                          onClick={clearGridAttractors}
-                        >
-                          Clear all
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Right column: Attractivity */}
-                  <div className="flex-1">
-                    <label className="text-sm font-medium text-gray-600 block mb-1">
-                      Attractivity (<span className="math-var">Att<sub>j</sub></span>)
-                    </label>
-                    <p className="instruction-text">Set attractivity on map</p>
-                    <span className="text-sm font-semibold mt-1 block" style={{ color: '#d4a800' }}>
-                      Total: {totalGridAttractivity}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ) : isBuildingsMode ? (
-              <div className="mb-4">
-                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                  <div className="flex-1">
-                    <label className="text-sm font-medium text-gray-600 block mb-1">
-                      Amenity Type (<span className="math-var">j</span>)
-                    </label>
-                    <AmenityDropdown />
-                  </div>
-                  <div className="flex-1">
-                    <label className="text-sm font-medium text-gray-600 block mb-1">
-                      Attractivity (<span className="math-var">Att<sub>j</sub></span>)
-                    </label>
-                    <AttractivityDropdown />
-                  </div>
-                </div>
-              </div>
-            ) : null}
-
-            {/* Section C: Distance Function */}
+            {/* Distance Decay Function */}
             <div>
-              <label className="text-sm font-medium text-gray-600 block mb-2">
-                Distance Decay Function <span className="math-var">f(d<sub>ij</sub>)</span>
-              </label>
               <CurveEditor
-              curveTabMode={curveTabMode}
-              polylinePoints={polylinePoints}
-              maxDistance={maxDistance}
-              negExpAlpha={negExpAlpha}
-              expPowerB={expPowerB}
-              expPowerC={expPowerC}
-              onTabModeChange={setCurveTabMode}
-              onPolylineChange={setPolylinePoints}
-              onNegExpAlphaChange={setNegExpAlpha}
-              onExpPowerBChange={setExpPowerB}
-              onExpPowerCChange={setExpPowerC}
-            />
-          </div>
-          </div>
+                curveTabMode={curveTabMode}
+                polylinePoints={polylinePoints}
+                maxDistance={maxDistance}
+                negExpAlpha={negExpAlpha}
+                expPowerB={expPowerB}
+                expPowerC={expPowerC}
+                onTabModeChange={setCurveTabMode}
+                onPolylineChange={setPolylinePoints}
+                onNegExpAlphaChange={setNegExpAlpha}
+                onExpPowerBChange={setExpPowerB}
+                onExpPowerCChange={setExpPowerC}
+                onHoverChange={handleHoverChange}
+              />
+            </div>
           </>
         )}
       </div>

@@ -1,12 +1,18 @@
-import { useMemo, useState, useCallback, useEffect } from 'react'
+import { useMemo, useState, useCallback, useEffect, useRef } from 'react'
 import type { ControlPoint, CurveTabMode } from '../../config/types'
-import { CurveCanvas, type PlotHoverPosition } from './CurveCanvas'
+import { CurveCanvas, type PlotHoverPosition, fromPlotX } from './CurveCanvas'
 import { PolylineEditor } from './PolylineEditor'
 import { MathCurveDisplay } from './MathCurveDisplay'
-import { CoefficientInputs } from './CoefficientInputs'
+import { CoefficientInputs, type CoefficientHoverType } from './CoefficientInputs'
 import { CurveExplorer } from './CurveExplorer'
 import { TabContainer } from '../panels/TabContainer'
 import { createNegativeExponentialEvaluator, createExponentialPowerEvaluator, createPolylineEvaluator } from '../../computation/curveEvaluator'
+
+// Hover values reported to parent
+export interface CurveHoverValues {
+  distance: number
+  fValue: number
+}
 
 interface CurveEditorProps {
   curveTabMode: CurveTabMode
@@ -20,6 +26,7 @@ interface CurveEditorProps {
   onNegExpAlphaChange: (alpha: number) => void
   onExpPowerBChange: (b: number) => void
   onExpPowerCChange: (c: number) => void
+  onHoverChange?: (values: CurveHoverValues | null) => void
 }
 
 // Grid cells are square: 8 x-intervals (250m each) and 4 y-intervals (0.25 each)
@@ -51,10 +58,10 @@ function useResponsiveDimensions() {
   return dimensions
 }
 
-const TABS: { id: CurveTabMode; label: string }[] = [
-  { id: 'custom', label: 'Custom' },
-  { id: 'negativeExponential', label: 'Negative Exponential' },
-  { id: 'exponentialPower', label: 'Exponential Power' },
+const TABS: { id: CurveTabMode; label: string; sublabel: string }[] = [
+  { id: 'custom', label: 'Custom', sublabel: 'Distance Decay' },
+  { id: 'negativeExponential', label: 'Negative Exponential', sublabel: 'Distance Decay' },
+  { id: 'exponentialPower', label: 'Exponential Power', sublabel: 'Distance Decay' },
 ]
 
 export function CurveEditor({
@@ -69,6 +76,7 @@ export function CurveEditor({
   onNegExpAlphaChange,
   onExpPowerBChange,
   onExpPowerCChange,
+  onHoverChange,
 }: CurveEditorProps) {
   const { width: svgWidth, height: svgHeight } = useResponsiveDimensions()
   const plotWidth = svgWidth - PADDING.left - PADDING.right
@@ -79,6 +87,9 @@ export function CurveEditor({
 
   // Track active preset (shows which preset was last clicked)
   const [activePreset, setActivePreset] = useState<string | null>('exponential')
+
+  // Track which coefficient input is being hovered
+  const [hoveredCoefficient, setHoveredCoefficient] = useState<CoefficientHoverType>(null)
 
   const handlePlotHover = useCallback((position: PlotHoverPosition | null) => {
     setHoverPlotX(position?.plotX ?? null)
@@ -106,6 +117,29 @@ export function CurveEditor({
         return createPolylineEvaluator(polylinePoints)
     }
   }, [curveTabMode, negExpEvaluator, expPowerEvaluator, polylinePoints])
+
+  // Compute hover values and report to parent
+  const hoverValues = useMemo(() => {
+    if (hoverPlotX === null) return null
+    const distance = fromPlotX(hoverPlotX, maxDistance, plotWidth)
+    const clampedDistance = Math.max(0, Math.min(maxDistance, distance))
+    const fValue = currentEvaluator(clampedDistance)
+    return { distance: clampedDistance, fValue }
+  }, [hoverPlotX, maxDistance, plotWidth, currentEvaluator])
+
+  // Use ref to track previous value and avoid unnecessary calls
+  const prevHoverValuesRef = useRef<typeof hoverValues>(null)
+  useEffect(() => {
+    // Only call if value actually changed
+    const prev = prevHoverValuesRef.current
+    const changed = (hoverValues === null) !== (prev === null) ||
+      (hoverValues && prev && (hoverValues.distance !== prev.distance || hoverValues.fValue !== prev.fValue))
+
+    if (changed) {
+      prevHoverValuesRef.current = hoverValues
+      onHoverChange?.(hoverValues)
+    }
+  }, [hoverValues, onHoverChange])
 
   // Preset functions for custom mode
   const applyPreset = (presetName: string, points: ControlPoint[]) => {
@@ -220,6 +254,8 @@ export function CurveEditor({
             plotHeight={plotHeight}
             mode={curveTabMode}
             negExpAlpha={negExpAlpha}
+            hoverValues={hoverValues}
+            hoveredCoefficient={hoveredCoefficient}
           />
         )}
         {curveTabMode === 'exponentialPower' && (
@@ -231,6 +267,8 @@ export function CurveEditor({
             mode={curveTabMode}
             expPowerB={expPowerB}
             expPowerC={expPowerC}
+            hoverValues={hoverValues}
+            hoveredCoefficient={hoveredCoefficient}
           />
         )}
 
@@ -274,6 +312,8 @@ export function CurveEditor({
           onNegExpAlphaChange={onNegExpAlphaChange}
           onExpPowerBChange={onExpPowerBChange}
           onExpPowerCChange={onExpPowerCChange}
+          hoveredCoefficient={hoveredCoefficient}
+          onCoefficientHover={setHoveredCoefficient}
         />
       )}
     </div>
