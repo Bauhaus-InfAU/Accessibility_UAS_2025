@@ -16,7 +16,7 @@ export function AttractivityDropdown() {
   if (isCustomMode) {
     return (
       <div className="flex flex-col">
-        <span className="text-sm" style={{ color: '#5631ad' }}>
+        <span className="text-sm" style={{ color: '#000000' }}>
           Total attractivity: {totalGridAttractivity}
         </span>
       </div>
