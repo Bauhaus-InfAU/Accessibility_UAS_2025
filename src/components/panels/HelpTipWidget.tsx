@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useAppContext } from '../../context/AppContext'
 
 const HelpIcon = () => (
@@ -11,16 +11,34 @@ const HelpIcon = () => (
 
 export function HelpTipWidget() {
   const { isHelpTipVisible, setIsHelpTipVisible, analysisMode, selectedLandUse, isLoading } = useAppContext()
+  const widgetRef = useRef<HTMLDivElement>(null)
 
-  // ESC key handler - hide help tip
+  // ESC key handler and click-outside handler - hide help tip
   useEffect(() => {
+    if (!isHelpTipVisible) return
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isHelpTipVisible) {
+      if (e.key === 'Escape') {
         setIsHelpTipVisible(false)
       }
     }
+
+    const handleClick = (e: MouseEvent) => {
+      // Don't dismiss if clicking on the widget itself (including the toggle button)
+      if (widgetRef.current && widgetRef.current.contains(e.target as Node)) {
+        return
+      }
+      setIsHelpTipVisible(false)
+    }
+
     window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    // Use capture phase to catch clicks before they're handled by other elements
+    window.addEventListener('click', handleClick, true)
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('click', handleClick, true)
+    }
   }, [isHelpTipVisible, setIsHelpTipVisible])
 
   // Don't show during loading
@@ -29,10 +47,10 @@ export function HelpTipWidget() {
   // Tip text based on analysis mode
   const tipText = analysisMode === 'buildings' && selectedLandUse !== 'Custom'
     ? 'Switch to Custom amenity type to add pins'
-    : 'Click map to add amenity. Right-click to remove.'
+    : 'Click map to add amenity. Right-click to remove. Click the number to change its weight.'
 
   return (
-    <div className="help-tip-widget flex">
+    <div ref={widgetRef} className="help-tip-widget flex">
       {/* Dismissable Tip (shown to the left of icon) */}
       {isHelpTipVisible && (
         <div className="help-tip-content">
