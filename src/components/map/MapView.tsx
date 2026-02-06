@@ -3,8 +3,8 @@ import maplibregl from 'maplibre-gl'
 import { useAppContext } from '../../context/AppContext'
 import { useMapContext } from '../../context/MapContext'
 import { createMap, setStreetLayersVisibility } from '../../visualization/mapLibreSetup'
-import { updateBuildingColors, setBuildingLayersVisibility } from '../../visualization/buildingColorUpdater'
-import { updateHexagonColors, setHexagonLayersVisibility } from '../../visualization/hexagonColorUpdater'
+import { updateBuildingColors, setBuildingLayersVisibility, applyBuildingFilterOpacity, resetBuildingFilterOpacity } from '../../visualization/buildingColorUpdater'
+import { updateHexagonColors, setHexagonLayersVisibility, applyHexagonFilterOpacity, resetHexagonFilterOpacity } from '../../visualization/hexagonColorUpdater'
 import { calculateGridAccessibility, normalizeGridScores, getGridScoreStats } from '../../computation/gridAccessibilityCalc'
 import { updateTerrainLayer, setTerrainLayerVisibility, isTerrainLayerInitialized, updateAttractorPins, createPinOverlayContainer, removePinOverlayContainer, getAttractorPinScreenPositions, setTerrainMeshOpacity, setTerrainStreetNetworkVisibility } from '../../visualization/threeJsLayer'
 import { createCurveEvaluatorForMode } from '../../computation/curveEvaluator'
@@ -258,6 +258,10 @@ export function MapView() {
     gradientRangeMode,
     fixedGradientMin,
     fixedGradientMax,
+    // Filter range state
+    filterRangeActive,
+    filterRangeMinPercent,
+    filterRangeMaxPercent,
     // Measurement tool state
     isMeasurementActive,
     measurementPointA,
@@ -274,14 +278,19 @@ export function MapView() {
   const isGridMode = analysisMode === 'grid'
   const isSurfaceMode = analysisMode === 'surface'
 
+  // Compute filter range for color updaters
+  const filterRange = filterRangeActive
+    ? { minPercent: filterRangeMinPercent, maxPercent: filterRangeMaxPercent }
+    : null
+
   // Memoized color update function for buildings
   const updateColors = useCallback(() => {
     const map = mapRef.current
     if (!map || !mapLoadedRef.current || buildings.length === 0) return
     if (map.getSource('buildings')) {
-      updateBuildingColors(map, buildings, accessibilityScores, selectedLandUse, buildingFilterMode)
+      updateBuildingColors(map, buildings, accessibilityScores, selectedLandUse, buildingFilterMode, filterRange)
     }
-  }, [buildings, accessibilityScores, selectedLandUse, buildingFilterMode])
+  }, [buildings, accessibilityScores, selectedLandUse, buildingFilterMode, filterRange])
 
   // Ref to always access latest updateColors in onLoad handler
   const updateColorsRef = useRef(updateColors)
@@ -520,6 +529,33 @@ export function MapView() {
     updateColors()
   }, [updateColors])
 
+  // Update filter opacity directly when filter range changes (for live updates during drag)
+  // This is separate from updateColors which also updates the source data
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapLoaded) return
+
+    if (filterRangeActive) {
+      const currentFilterRange = { minPercent: filterRangeMinPercent, maxPercent: filterRangeMaxPercent }
+      // Apply to buildings (in buildings mode)
+      if (!isGridMode && !isSurfaceMode) {
+        applyBuildingFilterOpacity(map, currentFilterRange)
+      }
+      // Apply to hexagons (in grid mode)
+      if (isGridMode) {
+        applyHexagonFilterOpacity(map, currentFilterRange)
+      }
+    } else {
+      // Reset opacity when filter is cleared
+      if (!isGridMode && !isSurfaceMode) {
+        resetBuildingFilterOpacity(map)
+      }
+      if (isGridMode) {
+        resetHexagonFilterOpacity(map)
+      }
+    }
+  }, [mapLoaded, filterRangeActive, filterRangeMinPercent, filterRangeMaxPercent, isGridMode, isSurfaceMode])
+
   // Update hexagon grid when attractors or curve parameters change (Grid mode)
   useEffect(() => {
     const map = mapRef.current
@@ -547,12 +583,15 @@ export function MapView() {
     const normalizedScores = normalizeGridScores(rawScores, fixedRange)
     const stats = getGridScoreStats(rawScores)
 
-    // Update hexagon colors on the map
-    updateHexagonColors(map, hexCells, normalizedScores)
+    // Update hexagon colors on the map (pass filter range)
+    const currentFilterRange = filterRangeActive
+      ? { minPercent: filterRangeMinPercent, maxPercent: filterRangeMaxPercent }
+      : null
+    updateHexagonColors(map, hexCells, normalizedScores, currentFilterRange)
 
     // Update grid stats
     setGridStats(stats)
-  }, [mapLoaded, isGridMode, hexCells, gridAttractors, curveTabMode, customCurveType, polylinePoints, bezierHandles, maxDistance, negExpAlpha, expPowerB, expPowerC, setGridStats, fullNetworkMatrix, gradientRangeMode, fixedGradientMin, fixedGradientMax])
+  }, [mapLoaded, isGridMode, hexCells, gridAttractors, curveTabMode, customCurveType, polylinePoints, bezierHandles, maxDistance, negExpAlpha, expPowerB, expPowerC, setGridStats, fullNetworkMatrix, gradientRangeMode, fixedGradientMin, fixedGradientMax, filterRangeActive, filterRangeMinPercent, filterRangeMaxPercent])
 
   // Update terrain when attractors or curve parameters change (Surface mode)
   useEffect(() => {

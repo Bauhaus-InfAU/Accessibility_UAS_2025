@@ -1,6 +1,11 @@
 import type maplibregl from 'maplibre-gl'
 import type { Building, LandUse, BuildingFilterMode } from '../config/types'
 
+export interface FilterRange {
+  minPercent: number  // 0-1
+  maxPercent: number  // 0-1
+}
+
 /**
  * Set the visibility of building layers
  */
@@ -18,13 +23,15 @@ export function setBuildingLayersVisibility(map: maplibregl.Map, visible: boolea
 /**
  * Update building colors on the map based on accessibility scores.
  * Sets the 'score', 'isAnalyzed', and 'hasSelectedAmenity' properties on each building feature.
+ * Optionally applies filter range to fade buildings outside the range.
  */
 export function updateBuildingColors(
   map: maplibregl.Map,
   buildings: Building[],
   scores: Map<string, number>,
   selectedLandUse: LandUse,
-  buildingFilterMode: BuildingFilterMode
+  buildingFilterMode: BuildingFilterMode,
+  filterRange?: FilterRange | null
 ) {
   const source = map.getSource('buildings') as maplibregl.GeoJSONSource
   if (!source) return
@@ -65,4 +72,52 @@ export function updateBuildingColors(
     type: 'FeatureCollection',
     features,
   })
+
+  // Apply filter range to opacity if provided
+  if (filterRange) {
+    applyBuildingFilterOpacity(map, filterRange)
+  } else {
+    // Reset to default opacity when no filter
+    resetBuildingFilterOpacity(map)
+  }
+}
+
+/**
+ * Apply filter range to building opacity - buildings outside range are faded
+ */
+export function applyBuildingFilterOpacity(map: maplibregl.Map, filterRange: FilterRange) {
+  if (!map.getLayer('buildings-fill')) return
+
+  // Build expression that fades buildings outside the filter range
+  // score is normalized 0-1, so we compare directly with filter percents
+  const opacityExpression: maplibregl.ExpressionSpecification = [
+    'case',
+    // Selected amenity buildings: always full opacity
+    ['==', ['get', 'hasSelectedAmenity'], 1],
+    0.85,
+    // Unanalyzed buildings: always full opacity (grey)
+    ['==', ['get', 'isAnalyzed'], 0],
+    0.85,
+    // Analyzed but no score: full opacity
+    ['<', ['get', 'score'], 0],
+    0.85,
+    // Analyzed with score: check if in filter range
+    ['all',
+      ['>=', ['get', 'score'], filterRange.minPercent],
+      ['<=', ['get', 'score'], filterRange.maxPercent]
+    ],
+    0.85,
+    // Outside filter range: faded
+    0.15
+  ]
+
+  map.setPaintProperty('buildings-fill', 'fill-extrusion-opacity', opacityExpression)
+}
+
+/**
+ * Reset building opacity to default (no filter)
+ */
+export function resetBuildingFilterOpacity(map: maplibregl.Map) {
+  if (!map.getLayer('buildings-fill')) return
+  map.setPaintProperty('buildings-fill', 'fill-extrusion-opacity', 0.85)
 }

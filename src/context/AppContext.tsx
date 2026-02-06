@@ -69,6 +69,11 @@ interface AppState {
   fixedGradientMin: number                  // User-defined minimum for fixed mode (default: 0)
   fixedGradientMax: number                  // User-defined maximum for fixed mode (default: 100)
 
+  // Filter range state (for filtering visualization by score range)
+  filterRangeActive: boolean           // Whether a filter range is active (default: false)
+  filterRangeMinPercent: number        // Filter minimum as percentage of gradient (0-1)
+  filterRangeMaxPercent: number        // Filter maximum as percentage of gradient (0-1)
+
   // Results (for buildings mode)
   accessibilityScores: Map<string, number>
   rawAccessibilityScores: Map<string, number>
@@ -114,6 +119,11 @@ interface AppContextValue extends AppState {
   setGradientRangeMode: (mode: 'adaptive' | 'fixed') => void
   setFixedGradientMin: (value: number) => void
   setFixedGradientMax: (value: number) => void
+  // Filter range actions
+  setFilterRangeActive: (active: boolean) => void
+  setFilterRangeMinPercent: (percent: number) => void
+  setFilterRangeMaxPercent: (percent: number) => void
+  clearFilterRange: () => void
   // Measurement tool actions
   setMeasurementActive: (active: boolean) => void
   addMeasurementPoint: (coord: [number, number]) => void
@@ -196,6 +206,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [gradientRangeMode, setGradientRangeMode] = useState<'adaptive' | 'fixed'>('adaptive')
   const [fixedGradientMin, setFixedGradientMin] = useState(0)
   const [fixedGradientMax, setFixedGradientMax] = useState(100)
+
+  // Filter range state (for filtering visualization by score range)
+  const [filterRangeActive, setFilterRangeActive] = useState(false)
+  const [filterRangeMinPercent, setFilterRangeMinPercent] = useState(0)
+  const [filterRangeMaxPercent, setFilterRangeMaxPercent] = useState(1)
 
   // Measurement tool state
   const [isMeasurementActive, setIsMeasurementActive] = useState(false)
@@ -371,6 +386,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       })
     }, 400)
   }, [graph])
+
+  // Filter range actions
+  const clearFilterRange = useCallback(() => {
+    setFilterRangeActive(false)
+    setFilterRangeMinPercent(0)
+    setFilterRangeMaxPercent(1)
+  }, [])
 
   // Measurement tool actions
   const setMeasurementActive = useCallback((active: boolean) => {
@@ -614,6 +636,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     gradientRangeMode,
     fixedGradientMin,
     fixedGradientMax,
+    filterRangeActive,
+    filterRangeMinPercent,
+    filterRangeMaxPercent,
     accessibilityScores,
     rawAccessibilityScores,
     minRawScore,
@@ -647,6 +672,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setGradientRangeMode,
     setFixedGradientMin,
     setFixedGradientMax,
+    // Filter range
+    setFilterRangeActive,
+    setFilterRangeMinPercent,
+    setFilterRangeMaxPercent,
+    clearFilterRange,
     // Measurement tool
     isMeasurementActive,
     measurementPointA,

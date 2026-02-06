@@ -781,6 +781,30 @@ body {
   margin-bottom: 6px;
 }
 
+/* Filter range handles on gradient bar */
+.filter-handle {
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 2px solid white;
+  cursor: ew-resize;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  z-index: 10;
+}
+
+.filter-handle:hover {
+  transform: translate(-50%, -50%) scale(1.2);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.filter-handle:active {
+  transform: translate(-50%, -50%) scale(1.1);
+}
+
 /* Mobile responsive styles */
 @media (max-width: 639px) {
   .glass-panel {

@@ -342,6 +342,12 @@ Score color scale (bottom-right on desktop, bottom-left on mobile when panel col
   - Switching to Fixed copies current adaptive values as initial fixed values
 - **Gradient Bar**: Fully rounded (pill-shaped), Purple (#4A3AB4) → Orange (#FD681D) → Red (#FD1D1D)
   - White vertical marker line indicates average score position (relative to current range)
+  - **Filter Range**: Click and drag on gradient to create filter range
+    - Circular handles at min/max positions (colored to match gradient position)
+    - Buildings/hexagons outside filter range fade to 15% opacity
+    - Filter value labels appear below handles (clickable to edit)
+    - Clear filter: ESC key or right-click on gradient bar
+    - Works in Buildings and Grid modes (not Surface mode)
 - **Labels**:
   - Row 1: Low/High labels at ends
   - Row 2: Min/max score values
