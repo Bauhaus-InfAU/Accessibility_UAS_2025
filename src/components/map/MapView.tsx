@@ -6,7 +6,7 @@ import { createMap, setStreetLayersVisibility } from '../../visualization/mapLib
 import { updateBuildingColors, setBuildingLayersVisibility, applyBuildingFilterOpacity, resetBuildingFilterOpacity } from '../../visualization/buildingColorUpdater'
 import { updateHexagonColors, setHexagonLayersVisibility, applyHexagonFilterOpacity, resetHexagonFilterOpacity } from '../../visualization/hexagonColorUpdater'
 import { calculateGridAccessibility, normalizeGridScores, getGridScoreStats } from '../../computation/gridAccessibilityCalc'
-import { updateTerrainLayer, setTerrainLayerVisibility, isTerrainLayerInitialized, updateAttractorPins, createPinOverlayContainer, removePinOverlayContainer, getAttractorPinScreenPositions, setTerrainMeshOpacity, setTerrainStreetNetworkVisibility } from '../../visualization/threeJsLayer'
+import { updateTerrainLayer, setTerrainLayerVisibility, isTerrainLayerInitialized, updateAttractorPins, createPinOverlayContainer, removePinOverlayContainer, getAttractorPinScreenPositions, setTerrainMeshOpacity, setTerrainStreetNetworkVisibility, setTerrainFilterRange } from '../../visualization/threeJsLayer'
 import { createCurveEvaluatorForMode } from '../../computation/curveEvaluator'
 import { calculateEuclideanDistance, formatDistance, getPathMidpoint, getLineMidpoint } from '../../computation/measurementCalc'
 import { ACCENT_COLOR, ACCENT_COLOR_2 } from '../../config/constants'
@@ -545,6 +545,10 @@ export function MapView() {
       if (isGridMode) {
         applyHexagonFilterOpacity(map, currentFilterRange)
       }
+      // Apply to terrain (in surface mode) - this updates the shader for sharp boundaries
+      if (isSurfaceMode) {
+        setTerrainFilterRange(filterRangeMinPercent, filterRangeMaxPercent, true)
+      }
     } else {
       // Reset opacity when filter is cleared
       if (!isGridMode && !isSurfaceMode) {
@@ -552,6 +556,10 @@ export function MapView() {
       }
       if (isGridMode) {
         resetHexagonFilterOpacity(map)
+      }
+      // Reset terrain filter (in surface mode)
+      if (isSurfaceMode) {
+        setTerrainFilterRange(0, 1, false)
       }
     }
   }, [mapLoaded, filterRangeActive, filterRangeMinPercent, filterRangeMaxPercent, isGridMode, isSurfaceMode])

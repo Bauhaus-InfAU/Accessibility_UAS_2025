@@ -16,10 +16,12 @@ import {
   lngLatToLocalMeters,
   createContourLines,
   updateContourLines,
+  updateContourFilterColors,
   type TerrainMeshConfig,
   type AttractorPinData
 } from './terrainMesh'
 import { SDFLineMaterial } from './SDFLineMaterial'
+import { TerrainColorMaterial } from './TerrainColorMaterial'
 
 // Height offset for pins above terrain (in meters)
 const PIN_HEIGHT_OFFSET = 5
@@ -549,6 +551,11 @@ export function updateTerrainLayer(
     }
   }
 
+  // Apply filter colors to contour lines (after creating/updating them)
+  if (layerState.contourLines && filterRange) {
+    updateContourFilterColors(layerState.contourLines, filterRange)
+  }
+
   // Trigger map repaint
   if (layerState.map) {
     layerState.map.triggerRepaint()
@@ -607,10 +614,40 @@ export function setTerrainLayerVisibility(visible: boolean): void {
 export function setTerrainMeshOpacity(opacity: number): void {
   if (!layerState || !layerState.terrainMesh) return
 
-  const material = layerState.terrainMesh.material as THREE.MeshBasicMaterial
-  material.transparent = opacity < 1
-  material.opacity = opacity
+  const material = layerState.terrainMesh.material as TerrainColorMaterial
+  material.setOpacity(opacity)
   material.needsUpdate = true
+
+  // Trigger repaint
+  if (layerState.map) {
+    layerState.map.triggerRepaint()
+  }
+}
+
+/**
+ * Set the filter range for terrain visualization.
+ * This allows updating the filter without recalculating the terrain scores.
+ * Also updates contour line colors to dark grey for filtered-out levels.
+ *
+ * @param minPercent - Minimum score (0-1) to show in color
+ * @param maxPercent - Maximum score (0-1) to show in color
+ * @param active - Whether filtering is active
+ */
+export function setTerrainFilterRange(
+  minPercent: number,
+  maxPercent: number,
+  active: boolean
+): void {
+  if (!layerState || !layerState.terrainMesh) return
+
+  const material = layerState.terrainMesh.material as TerrainColorMaterial
+  material.setFilterRange(minPercent, maxPercent, active)
+
+  // Update contour line colors based on filter
+  if (layerState.contourLines) {
+    const filterRange = active ? { minPercent, maxPercent } : null
+    updateContourFilterColors(layerState.contourLines, filterRange)
+  }
 
   // Trigger repaint
   if (layerState.map) {

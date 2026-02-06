@@ -344,10 +344,11 @@ Score color scale (bottom-right on desktop, bottom-left on mobile when panel col
   - White vertical marker line indicates average score position (relative to current range)
   - **Filter Range**: Click and drag on gradient to create filter range
     - Circular handles at min/max positions (colored to match gradient position)
-    - Buildings/hexagons outside filter range fade to 15% opacity
+    - Buildings/hexagons/terrain outside filter range shown in background grey (#909090)
+    - Contour lines outside filter range also turn grey to match
     - Filter value labels appear below handles (clickable to edit)
     - Clear filter: ESC key or right-click on gradient bar
-    - Works in Buildings and Grid modes (not Surface mode)
+    - Works in all three modes (Buildings, Grid, and Surface)
 - **Labels**:
   - Row 1: Low/High labels at ends
   - Row 2: Min/max score values

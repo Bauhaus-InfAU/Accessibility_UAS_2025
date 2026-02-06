@@ -33,7 +33,7 @@ export function updateHexagonColors(
 }
 
 // Faded color for hexagons outside filter range
-const FILTER_FADED_COLOR = '#b8b8b8'
+const FILTER_FADED_COLOR = '#909090'  // Grey for filtered-out objects
 
 // Standard color expression (no filter)
 const STANDARD_HEX_COLOR_EXPRESSION: maplibregl.ExpressionSpecification = [

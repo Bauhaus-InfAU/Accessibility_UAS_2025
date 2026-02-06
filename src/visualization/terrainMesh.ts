@@ -4,6 +4,7 @@ import type { StreetGraph, GridAttractor, DistanceMatrix } from '../config/types
 import { DEGREES_TO_METERS, TERRAIN_SEGMENTS, TERRAIN_HEIGHT_SCALE, TERRAIN_CONTOUR_COUNT, TERRAIN_SMOOTH_SIGMA } from '../config/constants'
 import { calculateTerrainScores } from '../computation/terrainAccessibilityCalc'
 import { SDFLineMaterial, createSDFLineGeometry, updateSDFLineGeometry } from './SDFLineMaterial'
+import { TerrainColorMaterial } from './TerrainColorMaterial'
 import { findNearestNode } from '../data/streetGraph'
 
 export { TERRAIN_SEGMENTS }
@@ -297,21 +298,19 @@ export function createTerrainMesh(config: TerrainMeshConfig, graph: StreetGraph)
 
   geometry.attributes.position.needsUpdate = true
 
-  // Create vertex colors (initially grey for unscored)
-  const colors = new Float32Array(vertexCount * 3)
-  const greyColor = new THREE.Color(0xcccccc)
+  // Create score attribute for per-vertex accessibility scores (used by shader)
+  // This enables sharp filter boundaries by making the color decision per-pixel
+  const scores = new Float32Array(vertexCount)
+  // Initialize all scores to 0 (will be updated when attractors are added)
   for (let i = 0; i < vertexCount; i++) {
-    colors[i * 3] = greyColor.r
-    colors[i * 3 + 1] = greyColor.g
-    colors[i * 3 + 2] = greyColor.b
+    scores[i] = 0
   }
-  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+  geometry.setAttribute('score', new THREE.BufferAttribute(scores, 1))
 
-  // Material with vertex colors - use BasicMaterial first to eliminate lighting issues
-  const material = new THREE.MeshBasicMaterial({
-    vertexColors: true,
-    side: THREE.DoubleSide,
-  })
+  // Use custom TerrainColorMaterial for sharp filter boundaries
+  // This material computes colors per-pixel based on the interpolated score,
+  // rather than interpolating vertex colors (which creates blurry boundaries)
+  const material = new TerrainColorMaterial()
 
   const mesh = new THREE.Mesh(geometry, material)
 
@@ -358,7 +357,7 @@ export function updateTerrainFromAttractors(
 ): { min: number; max: number; avg: number } {
   const geometry = mesh.geometry as THREE.BufferGeometry
   const positions = geometry.attributes.position.array as Float32Array
-  const colors = geometry.attributes.color.array as Float32Array
+  const scoreAttr = geometry.attributes.score.array as Float32Array
   const config = mesh.userData.terrainConfig as TerrainMeshConfig
   const vertexNodeIds = mesh.userData.vertexNodeIds as string[]
 
@@ -379,10 +378,7 @@ export function updateTerrainFromAttractors(
   const normalizedScoresArray = new Float32Array(normalizedScores)
   const smoothedScores = smoothScores(normalizedScoresArray, gridWidth, gridHeight, smoothingSigma)
 
-  // Grey color for areas with no data
-  const greyColor = new THREE.Color(0xcccccc)
-
-  // Update heights and colors
+  // Update heights and scores (colors are computed per-pixel in the shader)
   for (let i = 0; i < vertexCount; i++) {
     // Set height based on smoothed normalized score (0-1 range)
     // This ensures terrain height is always in [0, heightScale] range
@@ -392,28 +388,22 @@ export function updateTerrainFromAttractors(
     // Position Z is the height in meters
     positions[i * 3 + 2] = heightMeters + 10 // Add 10m base height to stay above ground
 
-    // Set color based on smoothed normalized score
-    // Only show grey when there are no attractors (truly unscored)
-    // Zero accessibility scores should display as purple (low end of gradient)
-    // Also show grey when score is outside filter range
-    const score = smoothedScores[i]
-    const isOutsideFilter = filterRange && (score < filterRange.minPercent || score > filterRange.maxPercent)
-
-    if (attractors.length === 0 || isOutsideFilter) {
-      colors[i * 3] = greyColor.r
-      colors[i * 3 + 1] = greyColor.g
-      colors[i * 3 + 2] = greyColor.b
-    } else {
-      const color = getColorForScore(score)
-      colors[i * 3] = color.r
-      colors[i * 3 + 1] = color.g
-      colors[i * 3 + 2] = color.b
-    }
+    // Set score attribute (shader will compute color per-pixel for sharp filter boundaries)
+    scoreAttr[i] = smoothedScores[i]
   }
 
   geometry.attributes.position.needsUpdate = true
-  geometry.attributes.color.needsUpdate = true
+  geometry.attributes.score.needsUpdate = true
   geometry.computeVertexNormals()
+
+  // Update material settings for filter and attractor state
+  const material = mesh.material as TerrainColorMaterial
+  material.setHasAttractors(attractors.length > 0)
+  if (filterRange) {
+    material.setFilterRange(filterRange.minPercent, filterRange.maxPercent, true)
+  } else {
+    material.setFilterRange(0, 1, false)
+  }
 
   return { min, max, avg }
 }
@@ -424,21 +414,22 @@ export function updateTerrainFromAttractors(
 export function resetTerrainMesh(mesh: THREE.Mesh): void {
   const geometry = mesh.geometry as THREE.BufferGeometry
   const positions = geometry.attributes.position.array as Float32Array
-  const colors = geometry.attributes.color.array as Float32Array
+  const scoreAttr = geometry.attributes.score.array as Float32Array
   const config = mesh.userData.terrainConfig as TerrainMeshConfig
   const vertexCount = (config.segmentsX + 1) * (config.segmentsY + 1)
 
-  const greyColor = new THREE.Color(0xcccccc)
-
   for (let i = 0; i < vertexCount; i++) {
     positions[i * 3 + 2] = 10 // Reset to base height (10m above ground)
-    colors[i * 3] = greyColor.r
-    colors[i * 3 + 1] = greyColor.g
-    colors[i * 3 + 2] = greyColor.b
+    scoreAttr[i] = 0 // Reset score to 0
   }
 
   geometry.attributes.position.needsUpdate = true
-  geometry.attributes.color.needsUpdate = true
+  geometry.attributes.score.needsUpdate = true
+
+  // Reset material state
+  const material = mesh.material as TerrainColorMaterial
+  material.setHasAttractors(false)
+  material.setFilterRange(0, 1, false)
   geometry.computeVertexNormals()
 }
 
@@ -1423,5 +1414,42 @@ export function updateContourLines(
     contourMesh.userData.normalizedScore = normalizedScore
 
     contourGroup.add(contourMesh)
+  }
+}
+
+// Dark grey color for filtered-out contours
+const CONTOUR_FILTERED_COLOR = 0x909090
+
+/**
+ * Update contour line colors based on filter range.
+ * Contours outside the filter range are colored dark grey.
+ *
+ * @param contourGroup - The contour lines group
+ * @param filterRange - Filter range with minPercent and maxPercent (null = no filter)
+ */
+export function updateContourFilterColors(
+  contourGroup: THREE.Group,
+  filterRange: { minPercent: number; maxPercent: number } | null
+): void {
+  for (const child of contourGroup.children) {
+    const contourMesh = child as THREE.Mesh
+    const material = contourMesh.material as SDFLineMaterial
+    const normalizedScore = contourMesh.userData.normalizedScore as number
+
+    if (filterRange) {
+      // Check if this contour level is outside the filter range
+      const isFiltered = normalizedScore < filterRange.minPercent || normalizedScore > filterRange.maxPercent
+      if (isFiltered) {
+        // Set to dark grey for filtered-out contours
+        material.uniforms.diffuse.value.setHex(CONTOUR_FILTERED_COLOR)
+      } else {
+        // Restore original gradient color
+        material.uniforms.diffuse.value.setHex(getContourColor(normalizedScore))
+      }
+    } else {
+      // No filter - restore original gradient color
+      material.uniforms.diffuse.value.setHex(getContourColor(normalizedScore))
+    }
+    material.needsUpdate = true
   }
 }
