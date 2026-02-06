@@ -616,8 +616,13 @@ export function MapView() {
         ? { min: fixedGradientMin, max: fixedGradientMax }
         : undefined
 
+      // Determine filter range if active
+      const currentFilterRange = filterRangeActive
+        ? { minPercent: filterRangeMinPercent, maxPercent: filterRangeMaxPercent }
+        : null
+
       // Update terrain with current attractors and full network distance matrix
-      const stats = updateTerrainLayer(gridAttractors, evaluator, fullNetworkMatrix, terrainSmoothing, terrainHeightScale, fixedRange)
+      const stats = updateTerrainLayer(gridAttractors, evaluator, fullNetworkMatrix, terrainSmoothing, terrainHeightScale, fixedRange, currentFilterRange)
       if (stats) {
         setSurfaceStats(stats)
       }
@@ -637,7 +642,7 @@ export function MapView() {
 
     // Terrain is already initialized, update immediately
     performTerrainUpdate()
-  }, [mapLoaded, isSurfaceMode, gridAttractors, curveTabMode, customCurveType, polylinePoints, bezierHandles, maxDistance, negExpAlpha, expPowerB, expPowerC, setSurfaceStats, fullNetworkMatrix, terrainSmoothing, terrainHeightScale, gradientRangeMode, fixedGradientMin, fixedGradientMax])
+  }, [mapLoaded, isSurfaceMode, gridAttractors, curveTabMode, customCurveType, polylinePoints, bezierHandles, maxDistance, negExpAlpha, expPowerB, expPowerC, setSurfaceStats, fullNetworkMatrix, terrainSmoothing, terrainHeightScale, gradientRangeMode, fixedGradientMin, fixedGradientMax, filterRangeActive, filterRangeMinPercent, filterRangeMaxPercent])
 
   // Update layer visibility when analysis mode changes
   useEffect(() => {

@@ -343,6 +343,7 @@ export function createTerrainMesh(config: TerrainMeshConfig, graph: StreetGraph)
  * @param smoothingSigma - Gaussian blur sigma for terrain smoothing (default: TERRAIN_SMOOTH_SIGMA)
  * @param heightScale - Maximum terrain height in meters (default: TERRAIN_HEIGHT_SCALE)
  * @param fixedRange - Optional fixed range for color normalization
+ * @param filterRange - Optional filter range to grey out areas outside the range
  * @returns Object with min, max, avg statistics for the Legend
  */
 export function updateTerrainFromAttractors(
@@ -352,7 +353,8 @@ export function updateTerrainFromAttractors(
   distanceMatrix: DistanceMatrix,
   smoothingSigma: number = TERRAIN_SMOOTH_SIGMA,
   heightScale: number = TERRAIN_HEIGHT_SCALE,
-  fixedRange?: { min: number; max: number }
+  fixedRange?: { min: number; max: number },
+  filterRange?: { minPercent: number; maxPercent: number } | null
 ): { min: number; max: number; avg: number } {
   const geometry = mesh.geometry as THREE.BufferGeometry
   const positions = geometry.attributes.position.array as Float32Array
@@ -393,12 +395,16 @@ export function updateTerrainFromAttractors(
     // Set color based on smoothed normalized score
     // Only show grey when there are no attractors (truly unscored)
     // Zero accessibility scores should display as purple (low end of gradient)
-    if (attractors.length === 0) {
+    // Also show grey when score is outside filter range
+    const score = smoothedScores[i]
+    const isOutsideFilter = filterRange && (score < filterRange.minPercent || score > filterRange.maxPercent)
+
+    if (attractors.length === 0 || isOutsideFilter) {
       colors[i * 3] = greyColor.r
       colors[i * 3 + 1] = greyColor.g
       colors[i * 3 + 2] = greyColor.b
     } else {
-      const color = getColorForScore(smoothedScores[i])
+      const color = getColorForScore(score)
       colors[i * 3] = color.r
       colors[i * 3 + 1] = color.g
       colors[i * 3 + 2] = color.b

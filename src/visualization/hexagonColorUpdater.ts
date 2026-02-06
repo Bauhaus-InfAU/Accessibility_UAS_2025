@@ -32,38 +32,65 @@ export function updateHexagonColors(
   }
 }
 
+// Faded color for hexagons outside filter range
+const FILTER_FADED_COLOR = '#b8b8b8'
+
+// Standard color expression (no filter)
+const STANDARD_HEX_COLOR_EXPRESSION: maplibregl.ExpressionSpecification = [
+  'case',
+  // Scored hexagons: use gradient
+  ['>=', ['get', 'score'], 0],
+  [
+    'interpolate',
+    ['linear'],
+    ['get', 'score'],
+    0, '#4A3AB4',    // Purple (low)
+    0.5, '#FD681D',  // Orange (mid)
+    1, '#FD1D1D',    // Red (high)
+  ],
+  // Unscored hexagons: grey
+  '#cccccc',
+]
+
 /**
- * Apply filter range to hexagon opacity - hexagons outside range are faded
+ * Apply filter range to hexagon colors - hexagons outside range are shown as faded grey.
  */
 export function applyHexagonFilterOpacity(map: maplibregl.Map, filterRange: FilterRange) {
   if (!map.getLayer('hexagons-fill')) return
 
-  // Build expression that fades hexagons outside the filter range
-  // score is normalized 0-1, so we compare directly with filter percents
-  const opacityExpression: maplibregl.ExpressionSpecification = [
+  // Build color expression that shows faded grey for hexagons outside the filter range
+  const colorExpression: maplibregl.ExpressionSpecification = [
     'case',
-    // Unscored hexagons: full opacity (grey)
+    // Unscored hexagons: normal grey
     ['<', ['get', 'score'], 0],
-    0.85,
+    '#cccccc',
     // Scored hexagons: check if in filter range
     ['all',
       ['>=', ['get', 'score'], filterRange.minPercent],
       ['<=', ['get', 'score'], filterRange.maxPercent]
     ],
-    0.85,
-    // Outside filter range: faded
-    0.15
+    // In filter range: use normal gradient
+    [
+      'interpolate',
+      ['linear'],
+      ['get', 'score'],
+      0, '#4A3AB4',    // Purple (low)
+      0.5, '#FD681D',  // Orange (mid)
+      1, '#FD1D1D',    // Red (high)
+    ],
+    // Outside filter range: faded grey
+    FILTER_FADED_COLOR
   ]
 
-  map.setPaintProperty('hexagons-fill', 'fill-opacity', opacityExpression)
+  map.setPaintProperty('hexagons-fill', 'fill-color', colorExpression)
 }
 
 /**
- * Reset hexagon opacity to default (no filter)
+ * Reset hexagon colors to default (no filter)
  */
 export function resetHexagonFilterOpacity(map: maplibregl.Map) {
   if (!map.getLayer('hexagons-fill')) return
-  map.setPaintProperty('hexagons-fill', 'fill-opacity', 0.85)
+  map.setPaintProperty('hexagons-fill', 'fill-color', STANDARD_HEX_COLOR_EXPRESSION)
 }
 
 /**

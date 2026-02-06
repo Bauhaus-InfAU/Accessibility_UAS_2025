@@ -423,15 +423,15 @@ export function Legend() {
       <div className="border-t border-white/30 my-4" />
 
       {/* Accessibility Score Title with Pill Toggle */}
-      <div className="flex items-center gap-3 mb-3">
+      <div className="flex items-center gap-3 mb-3 text-sm">
         <span className="text-xs text-white invisible">Low</span>
         <div className="flex items-center gap-2">
           <div className="w-4 h-4" /> {/* spacer to align with circles above */}
-          <span className="text-sm text-white">Accessibility Score</span>
+          <span className="text-white">Accessibility Score</span>
           <div className="inline-flex rounded-full bg-white/20 p-0.5">
             <button
               onClick={() => setGradientRangeMode('adaptive')}
-              className={`px-3 py-1 text-sm rounded-full transition-colors ${
+              className={`px-3 py-1 rounded-full transition-colors ${
                 !isFixedMode
                   ? 'bg-white text-gray-700 shadow-sm'
                   : 'text-white/70 hover:text-white'
@@ -448,7 +448,7 @@ export function Legend() {
                 }
                 setGradientRangeMode('fixed')
               }}
-              className={`px-3 py-1 text-sm rounded-full transition-colors ${
+              className={`px-3 py-1 rounded-full transition-colors ${
                 isFixedMode
                   ? 'bg-white text-gray-700 shadow-sm'
                   : 'text-white/70 hover:text-white'
