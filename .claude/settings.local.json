@@ -18,7 +18,8 @@
       "mcp__playwright__browser_fill_form",
       "mcp__playwright__browser_press_key",
       "mcp__playwright__browser_hover",
-      "mcp__playwright__browser_resize"
+      "mcp__playwright__browser_resize",
+      "Skill(update-claudemd)"
     ]
   }
 }

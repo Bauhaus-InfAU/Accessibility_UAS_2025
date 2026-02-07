@@ -87,6 +87,9 @@ interface AppState {
   measurementPointB: MeasurementPoint | null
   networkPath: [number, number][] | null
   networkDistance: number | null
+
+  // Mobile legend toggle
+  isMobileLegendOpen: boolean
 }
 
 interface AppContextValue extends AppState {
@@ -130,6 +133,7 @@ interface AppContextValue extends AppState {
   setMeasurementActive: (active: boolean) => void
   addMeasurementPoint: (coord: [number, number]) => void
   updateMeasurementPoint: (id: 'A' | 'B', coord: [number, number]) => void
+  setIsMobileLegendOpen: (open: boolean) => void
 }
 
 const AppContext = createContext<AppContextValue | null>(null)
@@ -214,12 +218,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [filterRangeMinPercent, setFilterRangeMinPercent] = useState(0)
   const [filterRangeMaxPercent, setFilterRangeMaxPercent] = useState(1)
 
+  // Mobile legend toggle
+  const [isMobileLegendOpen, setIsMobileLegendOpen] = useState(false)
+
   // Measurement tool state
   const [isMeasurementActive, setIsMeasurementActive] = useState(false)
   const [measurementPointA, setMeasurementPointA] = useState<MeasurementPoint | null>(null)
   const [measurementPointB, setMeasurementPointB] = useState<MeasurementPoint | null>(null)
   const [networkPath, setNetworkPath] = useState<[number, number][] | null>(null)
   const [networkDistance, setNetworkDistance] = useState<number | null>(null)
+
+  // Close mobile legend when panel expands
+  useEffect(() => {
+    if (!isPanelCollapsed) {
+      setIsMobileLegendOpen(false)
+    }
+  }, [isPanelCollapsed])
 
   // Recalculation refs to debounce
   const recalcTimeoutRef = useRef<number | null>(null)
@@ -708,6 +722,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setMeasurementActive,
     addMeasurementPoint,
     updateMeasurementPoint,
+    // Mobile legend toggle
+    isMobileLegendOpen,
+    setIsMobileLegendOpen,
   }
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>

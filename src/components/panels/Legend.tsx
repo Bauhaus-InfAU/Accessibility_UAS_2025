@@ -46,7 +46,7 @@ export function Legend() {
     surfaceMaxScore,
     surfaceAvgScore,
     gridAttractors,
-    isPanelCollapsed,
+    isMobileLegendOpen,
     buildingFilterMode,
     gradientRangeMode,
     fixedGradientMin,
@@ -319,12 +319,12 @@ export function Legend() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [filterRangeActive, clearFilterRange])
 
-  // On mobile: hidden when panel is open, bottom-left when panel is collapsed
-  // On desktop: always bottom-left
-  const mobileVisibility = isPanelCollapsed ? '' : 'hidden sm:block'
+  // On mobile: shown only when mobileLegendOpen (toggled via "?" button)
+  // On desktop: always visible (sm:block overrides hidden)
+  const mobileVisibility = isMobileLegendOpen ? '' : 'hidden sm:block'
 
   return (
-    <div className={`legend-container absolute bottom-4 left-4 sm:bottom-8 sm:left-auto sm:right-5 py-4 pointer-events-auto ${mobileVisibility}`}>
+    <div className={`legend-container absolute bottom-12 left-4 sm:bottom-8 sm:left-auto sm:right-5 py-4 pointer-events-auto ${mobileVisibility}`}>
       {isGridMode ? (
         <>
           {/* Grid Mode: Custom Amenities Indicator */}

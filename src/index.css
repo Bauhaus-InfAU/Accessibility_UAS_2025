@@ -1067,4 +1067,9 @@ body {
   .tab-label-sub {
     font-size: 10px;
   }
+
+  .panel-content {
+    padding-left: 12px;
+    padding-right: 8px;
+  }
 }

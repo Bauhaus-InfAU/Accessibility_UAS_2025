@@ -35,12 +35,12 @@ export function NavigationWidget() {
   const { zoomIn, zoomOut, setTopView, setPerspective, resetView, activeView } = useMapContext()
   const { isPanelCollapsed } = useAppContext()
 
-  // On mobile: hidden when panel is open, bottom-right when panel is collapsed
+  // On mobile: hidden when panel is open, top-left below collapsed panel when collapsed
   // On desktop: always top-right
   const mobileVisibility = isPanelCollapsed ? '' : 'hidden sm:flex'
 
   return (
-    <div className={`absolute bottom-4 right-4 sm:top-5 sm:bottom-auto sm:right-5 p-2 flex gap-2 pointer-events-auto z-10 ${mobileVisibility}`}>
+    <div className={`absolute top-14 left-4 sm:top-5 sm:left-auto sm:right-5 p-2 flex gap-2 pointer-events-auto z-10 ${mobileVisibility}`}>
       {/* View buttons */}
       <div className="flex flex-col gap-1">
         <button

@@ -73,12 +73,21 @@ export function HelpTipWidget() {
   const {
     tutorialStep, setTutorialStep, advanceTutorial, skipTutorial, isLoading, gridAttractors,
     setAnalysisMode, setMeasurementActive,
-    setFilterRangeActive, setFilterRangeMinPercent, setFilterRangeMaxPercent, clearFilterRange
+    setFilterRangeActive, setFilterRangeMinPercent, setFilterRangeMaxPercent, clearFilterRange,
+    isMobileLegendOpen, setIsMobileLegendOpen,
   } = useAppContext()
   const [tipPosition, setTipPosition] = useState({ x: 0, y: 0 })
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 640)
 
   // Track if settings panel is expanded for step 3
   const settingsExpandedRef = useRef(false)
+
+  // Track mobile breakpoint
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 640)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   // Calculate position based on current step
   const calculatePosition = useCallback(() => {
@@ -158,7 +167,6 @@ export function HelpTipWidget() {
         const panel = document.querySelector('.glass-panel')
         if (curveSvg && panel) {
           const svgRect = curveSvg.getBoundingClientRect()
-          const panelRect = panel.getBoundingClientRect()
           // Position tooltip so the extended arrow reaches into the plot
           // Arrow extends 180px to the left, ending inside the curve plot
           // Target the middle of the SVG plot area
@@ -387,11 +395,14 @@ export function HelpTipWidget() {
 
   // Handle icon click
   const handleIconClick = () => {
-    if (isTutorialActive) {
-      // If tutorial active, terminate it
+    if (isMobile) {
+      // Mobile: toggle legend visibility
+      setIsMobileLegendOpen(!isMobileLegendOpen)
+    } else if (isTutorialActive) {
+      // Desktop: if tutorial active, terminate it
       skipTutorial()
     } else {
-      // If tutorial inactive, restart from step 0
+      // Desktop: if tutorial inactive, restart from step 0
       setTutorialStep(0)
     }
   }
@@ -499,8 +510,8 @@ export function HelpTipWidget() {
       <div className="help-tip-widget flex">
         <button
           onClick={handleIconClick}
-          className={`settings-icon-btn ${isTutorialActive ? 'active' : ''}`}
-          title={isTutorialActive ? 'End tutorial' : 'Start tutorial'}
+          className={`settings-icon-btn ${isMobile ? (isMobileLegendOpen ? 'active' : '') : (isTutorialActive ? 'active' : '')}`}
+          title={isMobile ? (isMobileLegendOpen ? 'Hide legend' : 'Show legend') : (isTutorialActive ? 'End tutorial' : 'Start tutorial')}
         >
           <HelpIcon />
         </button>

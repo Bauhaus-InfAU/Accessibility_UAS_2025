@@ -147,6 +147,34 @@ The app adapts to different screen sizes using Tailwind CSS breakpoints.
 ```
 
 ### Mobile Layout (< 640px)
+**Default (Legend hidden):**
+```
+┌─────────────────────────────────────────┐
+│ [Panel Header Only]                     │
+├─────────────────────────────────────────┤
+│                                         │
+│                [MAP]                    │
+│                                         │
+│                          [Navigation]   │
+│                           (bottom-right)│
+│                    [Tools: ? toggles    │
+│                     legend visibility]  │
+└─────────────────────────────────────────┘
+```
+
+**Legend toggled open (via "?" button):**
+```
+┌─────────────────────────────────────────┐
+│ [Panel Header Only]                     │
+├─────────────────────────────────────────┤
+│                                         │
+│                [MAP]                    │
+│                                         │
+│ [Legend]                 [Navigation]   │
+│ (bottom-left)            (bottom-right) │
+└─────────────────────────────────────────┘
+```
+
 **When Panel is Expanded:**
 ```
 ┌─────────────────────────────────────────┐
@@ -160,26 +188,13 @@ The app adapts to different screen sizes using Tailwind CSS breakpoints.
 └─────────────────────────────────────────┘
 ```
 
-**When Panel is Collapsed:**
-```
-┌─────────────────────────────────────────┐
-│ [Panel Header Only]                     │
-├─────────────────────────────────────────┤
-│                                         │
-│                [MAP]                    │
-│                                         │
-│ [Legend]                   [Navigation] │
-│ (bottom-left)              (bottom-right)│
-└─────────────────────────────────────────┘
-```
-
 ### Component-Specific Responsive Behavior
 
 | Component | Mobile (< 640px) | Desktop (≥ 640px) |
 |-----------|------------------|-------------------|
 | **ParametersPanel** | Full-width, square edges, top edge-to-edge | 540px wide, rounded corners, floating |
 | **NavigationWidget** | Hidden when panel open; bottom-right when collapsed | Always visible, top-right |
-| **Legend** | Hidden when panel open; bottom-left when collapsed | Always visible, bottom-right |
+| **Legend** | Hidden by default; toggled via "?" button; auto-hides when panel expands | Always visible, bottom-right |
 | **CurveEditor** | Scales to fit container width, 220px height | 490×260px fixed |
 | **Dropdowns** | Stacked vertically | Side-by-side |
 
@@ -205,7 +220,10 @@ The app adapts to different screen sizes using Tailwind CSS breakpoints.
 - `panelHeight` state in AppContext tracks custom panel height (null = auto)
 - `gradientRangeMode` state: 'adaptive' | 'fixed' (default: 'adaptive')
 - `fixedGradientMin` / `fixedGradientMax` state: User-defined gradient bounds (default: 0, 100)
-- NavigationWidget and Legend read this state to show/hide on mobile
+- `isMobileLegendOpen` state: boolean (default: false) — toggled via "?" button on mobile
+  - Auto-resets to false when panel expands
+- NavigationWidget reads `isPanelCollapsed` to show/hide on mobile
+- Legend reads `isMobileLegendOpen` to show/hide on mobile (desktop always visible via `sm:block`)
 
 ## UI Components
 
@@ -292,8 +310,10 @@ Distance measurement tool:
 - **Colors**: Uses ACCENT_COLOR (#5631ad) and ACCENT_COLOR_2 (#fcdb02) from constants
 
 ### Help Tip Widget (`HelpTipWidget.tsx`)
-Interactive 8-step tutorial with glass morphism tooltips:
-- **Help Icon**: Question mark in circle, starts/ends tutorial
+Interactive 8-step tutorial with glass morphism tooltips (desktop) / legend toggle (mobile):
+- **Help Icon**: Question mark in circle
+  - **Desktop (≥640px)**: Starts/ends tutorial
+  - **Mobile (<640px)**: Toggles legend visibility (no tutorial on mobile)
 - **Tutorial Steps** (advances via Enter key or Next button):
   1. **Map**: Click to add custom amenity points
   2. **Attractor**: Click attractivity box to edit value (arrow points to actual box)
@@ -336,8 +356,8 @@ Vertically centered group of tool widgets on right edge:
 - **Responsive**: Hidden on mobile when panel is expanded
 
 ### Legend (`Legend.tsx`)
-Score color scale (bottom-right on desktop, bottom-left on mobile when panel collapsed):
-- **Responsive**: Hidden on mobile when panel is expanded
+Score color scale (bottom-right on desktop, bottom-left on mobile):
+- **Responsive**: On mobile, hidden by default — toggled via "?" button (`isMobileLegendOpen`). Auto-hides when panel expands. On desktop, always visible.
 - **Buildings mode**:
   - Selected Amenity Indicator: Yellow (#fcdb02) circle + amenity type name (or "Custom Pins")
   - Other Amenities Indicator: Grey (#a0a0a0) circle + "Other Amenities" label
