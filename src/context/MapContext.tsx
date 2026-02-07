@@ -66,7 +66,7 @@ export function MapProvider({ children }: { children: ReactNode }) {
     if (!map || !bounds) return
 
     map.fitBounds(bounds, {
-      padding: 50,
+      padding: -100,
       pitch: 55,
       bearing: -17,
       duration: 800

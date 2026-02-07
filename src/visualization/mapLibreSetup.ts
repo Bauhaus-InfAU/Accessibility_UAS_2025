@@ -211,6 +211,6 @@ function fitMapToBounds(map: maplibregl.Map, buildings: Building[]) {
 
   map.fitBounds(
     [[minLng, minLat], [maxLng, maxLat]],
-    { padding: 50, duration: 0 }
+    { padding: -100, duration: 0 }
   )
 }
