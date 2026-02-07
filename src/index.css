@@ -159,6 +159,7 @@ body {
 .panel-content {
   padding-left: 46px;  /* icon width (36px) + gap (10px) */
   padding-right: 22px; /* balance right side */
+  overflow-x: hidden;
 }
 
 /* Dropdown styling */

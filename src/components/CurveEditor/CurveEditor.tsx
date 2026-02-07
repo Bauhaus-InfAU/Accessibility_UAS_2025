@@ -35,24 +35,25 @@ const DEFAULT_SVG_HEIGHT = 260 // plotHeight = 206, interval = 51.5px
 const MOBILE_SVG_HEIGHT = 220
 const PADDING = { top: 12, right: 15, bottom: 42, left: 50 }
 
-// Hook for responsive SVG dimensions
-function useResponsiveDimensions() {
+// Hook for responsive SVG dimensions — measures actual container width on mobile
+function useResponsiveDimensions(containerRef: React.RefObject<HTMLDivElement | null>) {
   const [dimensions, setDimensions] = useState({ width: DEFAULT_SVG_WIDTH, height: DEFAULT_SVG_HEIGHT })
 
   useEffect(() => {
-    const updateDimensions = () => {
-      if (window.innerWidth < 640) {
-        // Mobile: fit within container with padding
-        const containerWidth = Math.min(window.innerWidth - 32, 400)
-        setDimensions({ width: containerWidth, height: MOBILE_SVG_HEIGHT })
+    const el = containerRef.current
+    const update = () => {
+      if (window.innerWidth < 640 && el) {
+        setDimensions({ width: el.clientWidth, height: MOBILE_SVG_HEIGHT })
       } else {
         setDimensions({ width: DEFAULT_SVG_WIDTH, height: DEFAULT_SVG_HEIGHT })
       }
     }
-    updateDimensions()
-    window.addEventListener('resize', updateDimensions)
-    return () => window.removeEventListener('resize', updateDimensions)
-  }, [])
+    update()
+    const ro = new ResizeObserver(update)
+    if (el) ro.observe(el)
+    window.addEventListener('resize', update)
+    return () => { ro.disconnect(); window.removeEventListener('resize', update) }
+  }, [containerRef])
 
   return dimensions
 }
@@ -77,7 +78,8 @@ export function CurveEditor({
   onExpPowerCChange,
   onHoverChange,
 }: CurveEditorProps) {
-  const { width: svgWidth, height: svgHeight } = useResponsiveDimensions()
+  const containerRef = useRef<HTMLDivElement>(null)
+  const { width: svgWidth, height: svgHeight } = useResponsiveDimensions(containerRef)
   const plotWidth = svgWidth - PADDING.left - PADDING.right
   const plotHeight = svgHeight - PADDING.top - PADDING.bottom
 
@@ -216,7 +218,7 @@ export function CurveEditor({
   }
 
   return (
-    <div className="w-full">
+    <div ref={containerRef} className="w-full">
       {/* Curve mode selector */}
       <p className="text-sm text-gray-500 mb-2">Select Distance Decay Function:</p>
       <div className="inline-flex rounded-full bg-gray-200 p-0.5 mb-3">
@@ -224,7 +226,7 @@ export function CurveEditor({
           <button
             key={mode.value}
             onClick={() => onTabModeChange(mode.value)}
-            className={`px-3 py-1 text-sm rounded-full transition-colors ${
+            className={`px-2 sm:px-3 py-1 text-xs sm:text-sm rounded-full transition-colors ${
               curveTabMode === mode.value
                 ? 'bg-white text-gray-700 shadow-sm'
                 : 'text-gray-600 hover:text-gray-800'
