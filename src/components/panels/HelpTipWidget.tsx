@@ -517,7 +517,7 @@ export function HelpTipWidget() {
       <div className="help-tip-widget flex">
         <button
           onClick={handleIconClick}
-          className={`settings-icon-btn ${isMobile ? (isMobileLegendOpen ? 'active' : '') : (isTutorialActive ? 'active' : '')}${!isMobile && isBlinking && !isTutorialActive ? ' help-btn-blink' : ''}`}
+          className={`settings-icon-btn ${isMobile ? (isMobileLegendOpen ? 'active' : '') : (isTutorialActive ? 'active' : '')}${isBlinking && !(isMobile ? isMobileLegendOpen : isTutorialActive) ? ' help-btn-blink' : ''}`}
           title={isMobile ? (isMobileLegendOpen ? 'Hide legend' : 'Show legend') : (isTutorialActive ? 'End tutorial' : 'Start tutorial')}
         >
           <HelpIcon />
