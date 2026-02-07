@@ -32,10 +32,9 @@ body {
   justify-content: center;
 }
 
-/* Teardrop positioned above box via transform - non-interactive visual decoration */
+/* Teardrop positioned above box via transform - draggable like the box */
 .attractor-teardrop {
   transform: translateY(-34px); /* 32px teardrop height + 2px gap */
-  pointer-events: none;
 }
 
 .attractor-marker:hover .attractivity-box {
