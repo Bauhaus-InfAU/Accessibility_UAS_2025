@@ -1044,6 +1044,18 @@ body {
   margin-left: 2px;
 }
 
+/* Help button attention blink on page load */
+@keyframes help-blink {
+  0%, 100% { background: transparent; color: #6b7280; }
+  50% { background: #5631ad; color: white; }
+}
+
+.help-btn-blink {
+  animation: help-blink 1s ease-in-out 6;
+  animation-delay: 2s;
+  animation-fill-mode: backwards;
+}
+
 /* Mobile responsive styles */
 @media (max-width: 639px) {
   .glass-panel {

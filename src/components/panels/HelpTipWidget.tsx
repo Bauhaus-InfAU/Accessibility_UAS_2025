@@ -387,6 +387,13 @@ export function HelpTipWidget() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [tutorialStep, advanceTutorial, skipTutorial])
 
+  // Blink animation state (desktop only, on page load)
+  const [isBlinking, setIsBlinking] = useState(true)
+  useEffect(() => {
+    const timer = setTimeout(() => setIsBlinking(false), 8000) // 2s delay + 6×1s
+    return () => clearTimeout(timer)
+  }, [])
+
   // Don't show during loading
   if (isLoading) return null
 
@@ -510,7 +517,7 @@ export function HelpTipWidget() {
       <div className="help-tip-widget flex">
         <button
           onClick={handleIconClick}
-          className={`settings-icon-btn ${isMobile ? (isMobileLegendOpen ? 'active' : '') : (isTutorialActive ? 'active' : '')}`}
+          className={`settings-icon-btn ${isMobile ? (isMobileLegendOpen ? 'active' : '') : (isTutorialActive ? 'active' : '')}${!isMobile && isBlinking && !isTutorialActive ? ' help-btn-blink' : ''}`}
           title={isMobile ? (isMobileLegendOpen ? 'Hide legend' : 'Show legend') : (isTutorialActive ? 'End tutorial' : 'Start tutorial')}
         >
           <HelpIcon />
