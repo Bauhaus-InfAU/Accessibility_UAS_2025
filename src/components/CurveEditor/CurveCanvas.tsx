@@ -12,10 +12,11 @@ interface CurveCanvasProps {
   padding: { top: number; right: number; bottom: number; left: number }
   children: ReactNode
   onPlotHover?: (position: PlotHoverPosition | null) => void
+  onPlotClick?: () => void
   shortenRightGridLines?: boolean
 }
 
-export function CurveCanvas({ maxDistance, width, height, padding, children, onPlotHover, shortenRightGridLines = false }: CurveCanvasProps) {
+export function CurveCanvas({ maxDistance, width, height, padding, children, onPlotHover, onPlotClick, shortenRightGridLines = false }: CurveCanvasProps) {
   const plotWidth = width - padding.left - padding.right
   const plotHeight = height - padding.top - padding.bottom
   const svgRef = useRef<SVGSVGElement>(null)
@@ -50,6 +51,7 @@ export function CurveCanvas({ maxDistance, width, height, padding, children, onP
       className="select-none"
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
+      onMouseDown={onPlotClick}
     >
 
       {/* Grid lines */}

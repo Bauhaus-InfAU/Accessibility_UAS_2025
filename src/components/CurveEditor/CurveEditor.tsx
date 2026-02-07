@@ -5,7 +5,6 @@ import { PolylineEditor } from './PolylineEditor'
 import { MathCurveDisplay } from './MathCurveDisplay'
 import { CoefficientInputs, type CoefficientHoverType } from './CoefficientInputs'
 import { CurveExplorer } from './CurveExplorer'
-import { TabContainer } from '../panels/TabContainer'
 import { createNegativeExponentialEvaluator, createExponentialPowerEvaluator, createPolylineEvaluator } from '../../computation/curveEvaluator'
 
 // Hover values reported to parent
@@ -58,10 +57,10 @@ function useResponsiveDimensions() {
   return dimensions
 }
 
-const TABS: { id: CurveTabMode; label: string; sublabel: string }[] = [
-  { id: 'custom', label: 'Custom', sublabel: 'Distance Decay' },
-  { id: 'negativeExponential', label: 'Negative Exponential', sublabel: 'Distance Decay' },
-  { id: 'exponentialPower', label: 'Exponential Power', sublabel: 'Distance Decay' },
+const CURVE_MODES: { value: CurveTabMode; label: string }[] = [
+  { value: 'custom', label: 'Custom' },
+  { value: 'negativeExponential', label: 'Negative Exponential' },
+  { value: 'exponentialPower', label: 'Exponential Power' },
 ]
 
 export function CurveEditor({
@@ -90,6 +89,9 @@ export function CurveEditor({
 
   // Track which coefficient input is being hovered
   const [hoveredCoefficient, setHoveredCoefficient] = useState<CoefficientHoverType>(null)
+
+  // Show hint overlay until first interaction
+  const [showHint, setShowHint] = useState(true)
 
   const handlePlotHover = useCallback((position: PlotHoverPosition | null) => {
     setHoverPlotX(position?.plotX ?? null)
@@ -201,18 +203,13 @@ export function CurveEditor({
     const isActive = activePreset === name
     return (
       <button
-        className={`flex items-center gap-1.5 px-3 py-1 text-sm rounded-full transition-colors ${
+        className={`px-3 py-1 text-sm rounded-full transition-colors ${
           isActive
-            ? 'bg-white text-purple-700 shadow-sm'
+            ? 'bg-white text-gray-700 shadow-sm'
             : 'bg-gray-200 text-gray-600 hover:text-gray-800 hover:bg-gray-300'
         }`}
         onClick={onClick}
       >
-        {isActive && (
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-          </svg>
-        )}
         {label}
       </button>
     )
@@ -220,13 +217,23 @@ export function CurveEditor({
 
   return (
     <div className="w-full">
-      {/* Tabs */}
-      <TabContainer
-        tabs={TABS}
-        activeTab={curveTabMode}
-        onTabChange={(id) => onTabModeChange(id as CurveTabMode)}
-        className="curve-tabs"
-      />
+      {/* Curve mode selector */}
+      <p className="text-sm text-gray-500 mb-2">Select Distance Decay Function:</p>
+      <div className="inline-flex rounded-full bg-gray-200 p-0.5 mb-3">
+        {CURVE_MODES.map((mode) => (
+          <button
+            key={mode.value}
+            onClick={() => onTabModeChange(mode.value)}
+            className={`px-3 py-1 text-sm rounded-full transition-colors ${
+              curveTabMode === mode.value
+                ? 'bg-white text-gray-700 shadow-sm'
+                : 'text-gray-600 hover:text-gray-800'
+            }`}
+          >
+            {mode.label}
+          </button>
+        ))}
+      </div>
 
       {/* SVG Canvas */}
       <CurveCanvas
@@ -235,16 +242,44 @@ export function CurveEditor({
         height={svgHeight}
         padding={PADDING}
         onPlotHover={handlePlotHover}
+        onPlotClick={() => setShowHint(false)}
         shortenRightGridLines={curveTabMode !== 'custom'}
       >
         {curveTabMode === 'custom' && (
-          <PolylineEditor
-            points={polylinePoints}
-            onChange={onPolylineChange}
-            maxDistance={maxDistance}
-            plotWidth={plotWidth}
-            plotHeight={plotHeight}
-          />
+          <>
+            <PolylineEditor
+              points={polylinePoints}
+              onChange={onPolylineChange}
+              maxDistance={maxDistance}
+              plotWidth={plotWidth}
+              plotHeight={plotHeight}
+            />
+            {showHint && (
+              <>
+                <rect
+                  x={plotWidth / 2 - 115}
+                  y={plotHeight / 2 - 26}
+                  width={230}
+                  height={52}
+                  rx={6}
+                  fill="#d3d3d3"
+                  style={{ pointerEvents: 'none' }}
+                />
+                <text
+                  x={plotWidth / 2}
+                  y={plotHeight / 2 - 12}
+                  textAnchor="middle"
+                  fontSize={12}
+                  fill="#555"
+                  style={{ pointerEvents: 'none' }}
+                >
+                  <tspan x={plotWidth / 2} dy={0}>Drag handle to edit control point.</tspan>
+                  <tspan x={plotWidth / 2} dy={16}>Double-click to add point.</tspan>
+                  <tspan x={plotWidth / 2} dy={16}>Right-click to remove.</tspan>
+                </text>
+              </>
+            )}
+          </>
         )}
         {curveTabMode === 'negativeExponential' && (
           <MathCurveDisplay
@@ -294,11 +329,6 @@ export function CurveEditor({
             <PresetButton name="step" label="Step" onClick={setStep} />
             <PresetButton name="constant" label="Constant" onClick={setConstant} />
           </div>
-
-          {/* Instructions */}
-          <p className="instruction-text mt-3">
-            Double-click to add point. Right-click to remove.
-          </p>
         </>
       )}
 
