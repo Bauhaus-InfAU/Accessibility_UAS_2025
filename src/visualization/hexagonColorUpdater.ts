@@ -15,12 +15,13 @@ export function updateHexagonColors(
   map: maplibregl.Map,
   hexCells: HexCell[],
   scores: Map<string, number>,
-  filterRange?: FilterRange | null
+  filterRange?: FilterRange | null,
+  rawScores?: Map<string, number>
 ) {
   const source = map.getSource('hexagons') as maplibregl.GeoJSONSource
   if (!source) return
 
-  const hexGeoJSON = hexCellsToGeoJSON(hexCells, scores)
+  const hexGeoJSON = hexCellsToGeoJSON(hexCells, scores, rawScores)
   source.setData(hexGeoJSON)
 
   // Apply filter range to opacity if provided

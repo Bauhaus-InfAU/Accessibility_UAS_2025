@@ -159,7 +159,7 @@ export function getUniqueNodesFromHexCells(cells: HexCell[]): Map<string, HexCel
 /**
  * Convert hexagon cells to GeoJSON for MapLibre rendering
  */
-export function hexCellsToGeoJSON(cells: HexCell[], scores?: Map<string, number>): GeoJSON.FeatureCollection {
+export function hexCellsToGeoJSON(cells: HexCell[], scores?: Map<string, number>, rawScores?: Map<string, number>): GeoJSON.FeatureCollection {
   const features: GeoJSON.Feature[] = []
 
   for (const cell of cells) {
@@ -173,6 +173,7 @@ export function hexCellsToGeoJSON(cells: HexCell[], scores?: Map<string, number>
       properties: {
         id: cell.id,
         score,
+        rawScore: rawScores?.get(cell.id) ?? -1,
         nearestNodeId: cell.nearestNodeId
       },
       geometry: {

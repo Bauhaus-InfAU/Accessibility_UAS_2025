@@ -442,6 +442,57 @@ export function MapView() {
           map.getCanvas().style.cursor = isCustomModeRef.current ? 'crosshair' : ''
         }
       })
+
+      // Hexagon hover handlers for score popup (Grid mode)
+      map.on('mousemove', 'hexagons-fill', (e) => {
+        // Skip if not in grid mode
+        if (!isGridModeRef.current) return
+
+        const feature = e.features?.[0]
+        if (!feature?.properties) return
+
+        const score = feature.properties.score as number
+        const rawScore = feature.properties.rawScore as number
+
+        // Skip unscored hexagons
+        if (score < 0 || rawScore < 0) {
+          if (popupRef.current) {
+            popupRef.current.remove()
+            popupRef.current = null
+          }
+          map.getCanvas().style.cursor = 'crosshair'
+          return
+        }
+
+        // Show pointer cursor for scored hexagons
+        map.getCanvas().style.cursor = 'pointer'
+
+        // Get color matching the hexagon's color
+        const color = getScoreColor(score)
+
+        // Create or update popup
+        if (!popupRef.current) {
+          popupRef.current = new maplibregl.Popup({
+            closeButton: false,
+            closeOnClick: false,
+            className: 'score-popup',
+          })
+        }
+
+        popupRef.current
+          .setLngLat(e.lngLat)
+          .setHTML(`<div class="score-value" style="color: ${color}">${rawScore.toFixed(1)}</div>`)
+          .addTo(map)
+      })
+
+      map.on('mouseleave', 'hexagons-fill', () => {
+        if (!isGridModeRef.current) return
+        if (popupRef.current) {
+          popupRef.current.remove()
+          popupRef.current = null
+        }
+        map.getCanvas().style.cursor = 'crosshair'
+      })
     }
 
     // Handle map click for adding pins, attractors, or measurement points
@@ -595,7 +646,7 @@ export function MapView() {
     const currentFilterRange = filterRangeActive
       ? { minPercent: filterRangeMinPercent, maxPercent: filterRangeMaxPercent }
       : null
-    updateHexagonColors(map, hexCells, normalizedScores, currentFilterRange)
+    updateHexagonColors(map, hexCells, normalizedScores, currentFilterRange, rawScores)
 
     // Update grid stats
     setGridStats(stats)
@@ -1170,7 +1221,7 @@ export function MapView() {
       map.setPaintProperty('hexagons-fill', 'fill-opacity', isMeasurementActive ? 0.4 : 0.85)
     }
     if (map.getLayer('hexagons-outline')) {
-      map.setPaintProperty('hexagons-outline', 'line-opacity', isMeasurementActive ? 0.2 : 0.5)
+      map.setPaintProperty('hexagons-outline', 'line-opacity', isMeasurementActive ? 0.1 : 0.2)
     }
 
     // Update terrain (Surface mode): reduce opacity, hide 3D streets, show 2D streets
