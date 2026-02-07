@@ -18,7 +18,7 @@ interface AppState {
   // UI State
   isPanelCollapsed: boolean
   panelHeight: number | null  // Custom panel height in pixels (null = auto/default)
-  isHelpTipVisible: boolean   // Whether the help tip is shown
+  tutorialStep: number | null // null = inactive, 0-4 = current step (5-step tutorial)
 
   // Data
   buildings: Building[]
@@ -92,7 +92,9 @@ interface AppState {
 interface AppContextValue extends AppState {
   setIsPanelCollapsed: (collapsed: boolean) => void
   setPanelHeight: (height: number | null) => void
-  setIsHelpTipVisible: (visible: boolean) => void
+  setTutorialStep: (step: number | null) => void
+  advanceTutorial: () => void
+  skipTutorial: () => void
   setCurveTabMode: (mode: CurveTabMode) => void
   setCustomCurveType: (type: CurveMode) => void
   setPolylinePoints: (points: ControlPoint[]) => void
@@ -144,9 +146,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [loadingProgress, setLoadingProgress] = useState(0)
 
   // UI State
-  const [isPanelCollapsed, setIsPanelCollapsed] = useState(false)
+  const [isPanelCollapsed, setIsPanelCollapsed] = useState(false) // Panel starts expanded
   const [panelHeight, setPanelHeight] = useState<number | null>(null)
-  const [isHelpTipVisible, setIsHelpTipVisible] = useState(true) // Show by default
+  const [tutorialStep, setTutorialStep] = useState<number | null>(null) // Tutorial starts inactive, user clicks help icon to start
 
   const [buildings, setBuildings] = useState<Building[]>([])
   const [graph, setGraph] = useState<StreetGraph | null>(null)
@@ -469,6 +471,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [graph, measurementPointA, measurementPointB])
 
+  // Tutorial actions
+  const advanceTutorial = useCallback(() => {
+    setTutorialStep(prev => {
+      if (prev === null) return null
+      if (prev >= 4) return null // End tutorial after step 4 (5 steps: 0-4)
+      const nextStep = prev + 1
+      // If advancing to step 2 (panel step) and panel is collapsed, expand it
+      if (nextStep === 2 && isPanelCollapsed) {
+        setIsPanelCollapsed(false)
+      }
+      return nextStep
+    })
+  }, [isPanelCollapsed])
+
+  const skipTutorial = useCallback(() => {
+    setTutorialStep(null)
+  }, [])
+
 
   // Recalculate accessibility when inputs change (buildings mode only)
   const recalculate = useCallback(() => {
@@ -600,7 +620,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     loadingProgress,
     isPanelCollapsed,
     panelHeight,
-    isHelpTipVisible,
+    tutorialStep,
     buildings,
     graph,
     distanceMatrix,
@@ -646,7 +666,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     avgRawScore,
     setIsPanelCollapsed,
     setPanelHeight,
-    setIsHelpTipVisible,
+    setTutorialStep,
+    advanceTutorial,
+    skipTutorial,
     setCurveTabMode,
     setCustomCurveType,
     setPolylinePoints,

@@ -795,6 +795,202 @@ body {
   transform: translate(-50%, -50%) scale(1.1);
 }
 
+/* Tutorial system styles */
+.tutorial-overlay {
+  position: fixed;
+  z-index: 1000;
+  pointer-events: auto;
+}
+
+.tutorial-tip {
+  max-width: 300px;
+  padding: 16px 20px;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 16px;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  position: relative;
+}
+
+/* Pointer line with circle indicator */
+.tutorial-arrow {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tutorial-arrow::before {
+  /* The line */
+  content: '';
+  position: absolute;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.tutorial-arrow::after {
+  /* The circle at the end */
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: white;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.tutorial-arrow-down {
+  bottom: -28px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  height: 28px;
+}
+
+.tutorial-arrow-down::before {
+  width: 2px;
+  height: 20px;
+  top: 0;
+}
+
+.tutorial-arrow-down::after {
+  bottom: 0;
+}
+
+.tutorial-arrow-up {
+  top: -28px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  height: 28px;
+}
+
+.tutorial-arrow-up::before {
+  width: 2px;
+  height: 20px;
+  bottom: 0;
+}
+
+.tutorial-arrow-up::after {
+  top: 0;
+}
+
+.tutorial-arrow-left {
+  left: -28px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 2px;
+}
+
+.tutorial-arrow-left::before {
+  width: 20px;
+  height: 2px;
+  right: 0;
+}
+
+.tutorial-arrow-left::after {
+  left: 0;
+}
+
+.tutorial-arrow-right {
+  right: -28px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 2px;
+}
+
+.tutorial-arrow-right::before {
+  width: 20px;
+  height: 2px;
+  left: 0;
+}
+
+.tutorial-arrow-right::after {
+  right: 0;
+}
+
+/* Step indicator dots */
+.tutorial-dots {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.tutorial-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #9ca3af;
+  transition: background 0.2s ease;
+}
+
+.tutorial-dot.active {
+  background: #5631ad;
+}
+
+.tutorial-dot.completed {
+  background: #10b981;
+}
+
+/* Tutorial tip content */
+.tutorial-tip-content {
+  font-size: 14px;
+  color: #374151;
+  line-height: 1.5;
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+/* Navigation buttons */
+.tutorial-tip-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.tutorial-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tutorial-btn-skip {
+  background: transparent;
+  color: #6b7280;
+}
+
+.tutorial-btn-skip:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: #374151;
+}
+
+.tutorial-btn-next {
+  background: #5631ad;
+  color: white;
+}
+
+.tutorial-btn-next:hover {
+  background: #4a2a92;
+}
+
+.tutorial-key-hint {
+  font-size: 12px;
+  opacity: 0.7;
+  margin-left: 2px;
+}
+
 /* Mobile responsive styles */
 @media (max-width: 639px) {
   .glass-panel {
