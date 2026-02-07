@@ -150,7 +150,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [loadingProgress, setLoadingProgress] = useState(0)
 
   // UI State
-  const [isPanelCollapsed, setIsPanelCollapsed] = useState(false) // Panel starts expanded
+  const [isPanelCollapsed, setIsPanelCollapsed] = useState(window.innerWidth < 640) // Collapsed by default on mobile
   const [panelHeight, setPanelHeight] = useState<number | null>(null)
   const [tutorialStep, setTutorialStep] = useState<number | null>(null) // Tutorial starts inactive, user clicks help icon to start
 
