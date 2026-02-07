@@ -475,9 +475,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const advanceTutorial = useCallback(() => {
     setTutorialStep(prev => {
       if (prev === null) return null
-      if (prev >= 4) return null // End tutorial after step 4 (5 steps: 0-4)
+      if (prev >= 7) return null // End tutorial after step 7 (8 steps: 0-7)
       const nextStep = prev + 1
-      // If advancing to step 2 (panel step) and panel is collapsed, expand it
+      // If advancing to step 2 (curve step) and panel is collapsed, expand it
       if (nextStep === 2 && isPanelCollapsed) {
         setIsPanelCollapsed(false)
       }

@@ -471,7 +471,7 @@ export function Legend() {
         >
           {/* Gradient bar */}
           <div
-            className="w-full h-4 rounded-full"
+            className="legend-gradient-bar w-full h-4 rounded-full"
             style={{
               background: 'linear-gradient(to right, #4A3AB4, #FD681D, #FD1D1D)',
             }}

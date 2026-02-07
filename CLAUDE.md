@@ -292,12 +292,24 @@ Distance measurement tool:
 - **Colors**: Uses ACCENT_COLOR (#5631ad) and ACCENT_COLOR_2 (#fcdb02) from constants
 
 ### Help Tip Widget (`HelpTipWidget.tsx`)
-Contextual help with dismissable tip:
-- **Help Icon**: Question mark in circle, toggles tip visibility
-- **Tip Content**: Context-sensitive help text based on analysis mode
-  - Buildings mode (non-Custom): "Switch to Custom amenity type to add pins"
-  - Other modes: "Click map to add amenity. Right-click to remove."
-- **Dismiss**: Click icon to toggle, ESC key to hide, click map to auto-dismiss
+Interactive 8-step tutorial with glass morphism tooltips:
+- **Help Icon**: Question mark in circle, starts/ends tutorial
+- **Tutorial Steps** (advances via Enter key or Next button):
+  1. **Map**: Click to add custom amenity points
+  2. **Attractor**: Click attractivity box to edit value (arrow points to actual box)
+  3. **Curve**: Drag points or use presets (extended arrow into plot area)
+  4. **Buildings Mode**: Expands settings panel, explains building analysis
+  5. **Grid Mode**: Switches mode, explains hexagonal grid
+  6. **Surface Mode**: Switches mode, explains 3D terrain
+  7. **Measurement**: Activates measurement tool, explains distance comparison
+  8. **Legend**: Sets 25-75% filter range, explains adaptive/fixed and filtering
+- **Tooltip Positioning**: Dynamically calculated based on target elements
+  - Extended arrows (120-180px) reach distant targets (curve plot, gradient bar)
+  - Mode tips point to edge of expanded settings widget
+- **State Management**: Automatically switches modes, expands panels, activates tools
+- **Navigation**: Enter to advance, ESC to skip, click help icon to terminate
+- **Cleanup**: Resets filter range and measurement tool when tutorial ends
+- **CSS Classes**: `.tutorial-overlay`, `.tutorial-tip`, `.tutorial-arrow-*`, `.tutorial-arrow-left-extended`, `.tutorial-arrow-down-extended`
 
 ### Settings Widget (`SettingsWidget.tsx`)
 Analysis mode selector with expandable properties panel:
@@ -442,6 +454,14 @@ Key responsive styles:
   - `.param-dropdown`: Smaller font (13px) and padding
   - `.equation`: Reduced font size (18px)
   - `.tab-button`: Compact padding (6px 10px), smaller font (12px)
+- **Tutorial System** (`.tutorial-*` classes):
+  - `.tutorial-overlay`: Fixed position, z-index 9999, pointer-events auto
+  - `.tutorial-tip`: Glass morphism panel (backdrop blur, semi-transparent white), max-width 280px, rounded corners
+  - `.tutorial-dots`: Step indicator dots (8 dots), active=purple filled, completed=purple outline, pending=grey
+  - `.tutorial-arrow-*`: White 2px lines with 10px circle endpoint, 28px length for standard arrows
+  - `.tutorial-arrow-left-extended`: 180px extended arrow for curve editor (reaches into plot area)
+  - `.tutorial-arrow-down-extended`: 120px extended arrow for legend (reaches gradient bar)
+  - `.tutorial-btn`: Navigation buttons (Skip=grey text, Next=purple background with Enter key hint)
 
 ## Commands
 - `npm run dev` — Dev server

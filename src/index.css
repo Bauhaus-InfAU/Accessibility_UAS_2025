@@ -895,6 +895,25 @@ body {
   left: 0;
 }
 
+/* Extended left arrow for curve editor step - reaches into the plot */
+.tutorial-arrow-left-extended {
+  left: -180px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 180px;
+  height: 2px;
+}
+
+.tutorial-arrow-left-extended::before {
+  width: 170px;
+  height: 2px;
+  right: 0;
+}
+
+.tutorial-arrow-left-extended::after {
+  left: 0;
+}
+
 .tutorial-arrow-right {
   right: -28px;
   top: 50%;
@@ -911,6 +930,40 @@ body {
 
 .tutorial-arrow-right::after {
   right: 0;
+}
+
+/* Extended down arrow for legend step - reaches to the gradient bar */
+.tutorial-arrow-down-extended {
+  position: absolute;
+  bottom: -120px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tutorial-arrow-down-extended::before {
+  content: '';
+  position: absolute;
+  width: 2px;
+  height: 110px;
+  top: 0;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.tutorial-arrow-down-extended::after {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: white;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  bottom: 0;
 }
 
 /* Step indicator dots */
