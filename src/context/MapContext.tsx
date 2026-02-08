@@ -12,6 +12,9 @@ interface MapContextValue {
   setPerspective: () => void
   resetView: () => void
   activeView: ViewMode
+  bearing: number
+  setBearing: (b: number) => void
+  resetNorth: () => void
 }
 
 const MapContext = createContext<MapContextValue | null>(null)
@@ -26,6 +29,7 @@ export function MapProvider({ children }: { children: ReactNode }) {
   const mapRef = useRef<maplibregl.Map | null>(null)
   const initialBoundsRef = useRef<[[number, number], [number, number]] | null>(null)
   const [activeView, setActiveView] = useState<ViewMode>('perspective')
+  const [bearing, setBearing] = useState(0)
 
   const setMapInstance = useCallback((map: maplibregl.Map | null) => {
     mapRef.current = map
@@ -74,6 +78,10 @@ export function MapProvider({ children }: { children: ReactNode }) {
     setActiveView('perspective')
   }, [])
 
+  const resetNorth = useCallback(() => {
+    mapRef.current?.easeTo({ bearing: 0, duration: 500 })
+  }, [])
+
   const value: MapContextValue = {
     setMapInstance,
     setInitialBounds,
@@ -82,7 +90,10 @@ export function MapProvider({ children }: { children: ReactNode }) {
     setTopView,
     setPerspective,
     resetView,
-    activeView
+    activeView,
+    bearing,
+    setBearing,
+    resetNorth
   }
 
   return <MapContext.Provider value={value}>{children}</MapContext.Provider>

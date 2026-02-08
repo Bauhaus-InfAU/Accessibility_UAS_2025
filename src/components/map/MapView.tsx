@@ -272,7 +272,7 @@ export function MapView() {
     updateMeasurementPoint,
     setMeasurementActive,
   } = useAppContext()
-  const { setMapInstance, setInitialBounds } = useMapContext()
+  const { setMapInstance, setInitialBounds, setBearing } = useMapContext()
 
   const isCustomMode = selectedLandUse === 'Custom'
   const isGridMode = analysisMode === 'grid'
@@ -380,6 +380,11 @@ export function MapView() {
         setBuildingLayersVisibility(map, true)
         setStreetLayersVisibility(map, true)
       }
+
+      // Track bearing changes for compass indicator
+      map.on('rotate', () => {
+        setBearing(map.getBearing())
+      })
 
       // Building hover handlers for score popup
       map.on('mousemove', 'buildings-fill', (e) => {

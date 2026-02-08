@@ -31,8 +31,20 @@ const ResetIcon = () => (
   </svg>
 )
 
+const CompassIcon = ({ bearing }: { bearing: number }) => (
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    style={{ transform: `rotate(${-bearing}deg)`, transition: 'transform 0.1s ease-out' }}
+  >
+    <path d="M12 1 L17.5 17 L12 14 L6.5 17 Z" fill="currentColor" />
+  </svg>
+)
+
 export function NavigationWidget() {
-  const { zoomIn, zoomOut, setTopView, setPerspective, resetView, activeView } = useMapContext()
+  const { zoomIn, zoomOut, setTopView, setPerspective, resetView, activeView, bearing, resetNorth } = useMapContext()
   const { isPanelCollapsed } = useAppContext()
 
   // On mobile: hidden when panel is open, top-left below collapsed panel when collapsed
@@ -66,7 +78,7 @@ export function NavigationWidget() {
         </button>
       </div>
 
-      {/* Zoom controls */}
+      {/* Zoom controls + compass */}
       <div className="flex flex-col gap-1 border-l border-white/30 pl-2">
         <button
           onClick={zoomIn}
@@ -82,6 +94,15 @@ export function NavigationWidget() {
         >
           −
         </button>
+        <div className="border-t border-white/30 pt-1">
+          <button
+            onClick={resetNorth}
+            className="nav-btn nav-btn-icon"
+            title="Reset north"
+          >
+            <CompassIcon bearing={bearing} />
+          </button>
+        </div>
       </div>
     </div>
   )

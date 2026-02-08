@@ -295,7 +295,10 @@ Map controls (top-right on desktop, bottom-right on mobile when panel collapsed)
 - **View Buttons**: Top View, Perspective, Reset (with inline SVG icons)
 - **Active State**: Grey background (#e5e7eb) indicates current view
 - **Zoom Controls**: +/- buttons (font-size 24px)
-- Uses MapContext for view state tracking
+- **Compass**: North arrow below zoom controls (separated by thin divider)
+  - Rotates to always point north (tracks map bearing via MapContext)
+  - Click to reset bearing to north (`map.easeTo({ bearing: 0 })`)
+- Uses MapContext for view state tracking (activeView, bearing, resetNorth)
 
 ### Measurement Widget (`MeasurementWidget.tsx`)
 Distance measurement tool:
