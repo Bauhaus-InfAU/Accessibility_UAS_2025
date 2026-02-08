@@ -530,7 +530,7 @@ The terrain visualization uses Three.js rendered as a MapLibre custom layer. Bot
 | `TERRAIN_HEIGHT_MAX` | 300 | Maximum terrain height in meters |
 | `TERRAIN_HEIGHT_DEFAULT` | 200 | Default terrain height in meters |
 | `TERRAIN_HEIGHT_STEP` | 10 | Terrain height slider step in meters |
-| Base height | 10m | Offset above ground level |
+| Base height | 0m | Ground level (no offset) |
 
 ### Terrain Mesh Creation (`terrainMesh.ts`)
 
@@ -539,7 +539,7 @@ The terrain visualization uses Three.js rendered as a MapLibre custom layer. Bot
 2. Vertices stored in **meters**, centered at origin
 3. Stores lng/lat coordinates for each vertex in `mesh.userData.lngLatCoords`
 4. Maps each vertex to nearest network node (stored in `mesh.userData.vertexNodeIds`)
-5. Initial height: 10m (base offset above ground)
+5. Initial height: 0m (ground level)
 6. Initial color: grey (#cccccc) for unscored
 
 **`updateTerrainFromAttractors(mesh, attractors, decayFn, distanceMatrix, smoothingSigma?, heightScale?)`**:

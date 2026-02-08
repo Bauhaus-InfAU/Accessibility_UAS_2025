@@ -170,8 +170,8 @@ export function createThreeJsTerrainLayer(
           graph,
           0xffffff,  // white
           1.0,       // fully opaque
-          3,         // z-offset
-          2.5        // line width (reduced for better cross-DPR consistency, see ticket 002)
+          0,         // z-offset (0 = sits on terrain surface; no z-fighting due to depthTest:false + renderOrder)
+          3          // line width in CSS pixels
         )
         streetNetworkLines.renderOrder = 10  // Render on top of contours (renderOrder 5)
         scene.add(streetNetworkLines)
@@ -357,27 +357,32 @@ export function createThreeJsTerrainLayer(
         }
 
         // Update SDF material resolution for all line meshes (required for screen-space calculations)
+        // Use CSS pixels (not physical pixels) so line widths are consistent across DPR values
         if (canvas) {
+          const dpr = window.devicePixelRatio || 1
+          const cssW = canvas.width / dpr
+          const cssH = canvas.height / dpr
+
           if (layerState.streetNetworkLines) {
             const material = layerState.streetNetworkLines.material as SDFLineMaterial
-            material.resolution.set(canvas.width, canvas.height)
+            material.resolution.set(cssW, cssH)
           }
           if (layerState.wireframeGrid) {
             const material = layerState.wireframeGrid.material as SDFLineMaterial
-            material.resolution.set(canvas.width, canvas.height)
+            material.resolution.set(cssW, cssH)
           }
           if (layerState.contourLines) {
             // Contour lines is a Group - update resolution for all child meshes
             for (const child of layerState.contourLines.children) {
               const material = (child as THREE.Mesh).material as SDFLineMaterial
-              material.resolution.set(canvas.width, canvas.height)
+              material.resolution.set(cssW, cssH)
             }
           }
           // Update resolution for attractor pin connecting lines
           if (layerState.attractorPinData) {
             for (const data of layerState.attractorPinData.values()) {
               const material = data.line.material as SDFLineMaterial
-              material.resolution.set(canvas.width, canvas.height)
+              material.resolution.set(cssW, cssH)
             }
           }
         }

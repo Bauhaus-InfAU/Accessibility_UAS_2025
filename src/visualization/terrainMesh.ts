@@ -293,7 +293,7 @@ export function createTerrainMesh(config: TerrainMeshConfig, graph: StreetGraph)
     // Three.js convention: +Y is "north" in our local ENU model space.
     // Web Mercator: +Y increases towards the south, so invert here.
     positions[i * 3 + 1] = -localMercY / config.meterScale // meters from center (north-positive)
-    positions[i * 3 + 2] = 10  // 10 meters above ground
+    positions[i * 3 + 2] = 0  // ground level
   }
 
   geometry.attributes.position.needsUpdate = true
@@ -386,7 +386,7 @@ export function updateTerrainFromAttractors(
     const heightMeters = smoothedScores[i] * heightScale
 
     // Position Z is the height in meters
-    positions[i * 3 + 2] = heightMeters + 10 // Add 10m base height to stay above ground
+    positions[i * 3 + 2] = heightMeters // terrain height only, no base offset
 
     // Set score attribute (shader will compute color per-pixel for sharp filter boundaries)
     scoreAttr[i] = smoothedScores[i]
@@ -419,7 +419,7 @@ export function resetTerrainMesh(mesh: THREE.Mesh): void {
   const vertexCount = (config.segmentsX + 1) * (config.segmentsY + 1)
 
   for (let i = 0; i < vertexCount; i++) {
-    positions[i * 3 + 2] = 10 // Reset to base height (10m above ground)
+    positions[i * 3 + 2] = 0 // Reset to ground level
     scoreAttr[i] = 0 // Reset score to 0
   }
 

@@ -2,11 +2,11 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Open |
+| **Status** | Closed |
 | **Created** | 2026-02-02 |
 | **Created by** | Claude (Opus 4.5) |
-| **Closed** | - |
-| **Closed by** | - |
+| **Closed** | 2026-02-08 |
+| **Closed by** | Claude (Opus 4.6) |
 
 ---
 
@@ -34,56 +34,17 @@ This is actually the **opposite** of typical DPR scaling issues. The shader norm
 - High DPR (more physical pixels) = thinner lines
 - Low DPR (fewer physical pixels) = thicker lines
 
-## Quick Fix Applied
+## Resolution
 
-Reduced street network line width from `3.5` to `2.5` in `src/visualization/threeJsLayer.ts:172`.
+Fixed using **Option C** (CSS pixels for resolution). In the render loop, SDF material resolution is now set to CSS pixels (`canvas.width / dpr`, `canvas.height / dpr`) instead of physical pixels. This makes `linewidth` values represent CSS pixels, producing consistent visual thickness regardless of DPR.
 
-This improves appearance on low-DPR screens but doesn't solve the fundamental inconsistency.
+Street network line width restored from `2.5` to `3` (the previous reduction was a workaround).
 
-## Potential Solutions
+### Additional fix: Terrain base height removed
 
-### Option A: Scale linewidth by DPR in the shader
+The terrain mesh had a 10m base height offset causing the street network to appear shifted vertically compared to Buildings/Grid modes. Removed the offset so terrain sits at ground level (0m) when height scale is 0.
 
-Modify the shader to multiply linewidth by a DPR uniform:
+### Files changed
 
-```glsl
-uniform float uDpr;
-vec2 offset = perp * side * (linewidth * uDpr) / resolution.y * clipPos.w;
-```
-
-This would make lines DPR-independent (same visual thickness regardless of display).
-
-**Pros:** Consistent appearance across all displays
-**Cons:** Requires shader modification, new uniform
-
-### Option B: Pass DPR-adjusted linewidth from JS
-
-Instead of modifying the shader, adjust the linewidth value in JavaScript:
-
-```typescript
-const dpr = window.devicePixelRatio || 1
-const adjustedWidth = baseWidth * dpr
-material.linewidth = adjustedWidth
-```
-
-**Pros:** No shader changes needed
-**Cons:** Must update on DPR changes (window move between monitors)
-
-### Option C: Use CSS pixels for resolution
-
-Change how resolution is passed to the shader, using CSS pixels instead of physical pixels:
-
-```typescript
-const dpr = window.devicePixelRatio || 1
-material.resolution.set(canvas.width / dpr, canvas.height / dpr)
-```
-
-**Pros:** Lines scale with DPR naturally
-**Cons:** May affect anti-aliasing quality
-
-## Affected Files
-
-- `src/visualization/threeJsLayer.ts` - passes resolution to SDF materials
-- `src/visualization/SDFLineMaterial.ts` - the material class
-- `src/visualization/shaders/sdfLine.ts` - GLSL shaders
-- `src/visualization/terrainMesh.ts` - creates line geometries
+- `src/visualization/threeJsLayer.ts` — CSS pixel resolution for all SDF materials; street z-offset 3→0, line width 2.5→3
+- `src/visualization/terrainMesh.ts` — removed 10m base height from mesh creation, update, and reset
