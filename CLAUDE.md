@@ -52,6 +52,11 @@ Students define a custom distance decay function f(d) graphically, then see how 
   - Hexagon Size slider in Grid mode to adjust grid resolution
   - Smaller hexagons = more detail, larger hexagons = faster computation
 - **Hover Popups**: Show raw accessibility score on hover (buildings or hexagons)
+- **Accessibility Explorer**: Place a flag on the map to inspect how a point's score is calculated
+  - Shows paths to all amenities with distance and decay values
+  - Flag icon toggle button in tools column
+  - Paths switch to dashed straight lines in Euclidean mode
+  - Escape key to deactivate
 - **Distance Measurement Tool**: Compare network vs euclidean distances between two points
   - Ruler toggle button below navigation widget
   - Shows network path (solid) and euclidean path (dashed) simultaneously
@@ -84,7 +89,7 @@ src/
 │   │   ├── PolylineEditor.tsx   # Custom mode - draggable points
 │   │   ├── MathCurveDisplay.tsx # Mathematical function curve renderer
 │   │   └── CoefficientInputs.tsx # Parameter inputs for math functions
-│   ├── panels/      # ParametersPanel, NavigationWidget, SettingsWidget, MeasurementWidget, HelpTipWidget, Legend, AppInfo, HexSizeSlider, ParameterSlider, dropdowns
+│   ├── panels/      # ParametersPanel, NavigationWidget, SettingsWidget, ExplorerWidget, MeasurementWidget, HelpTipWidget, Legend, AppInfo, HexSizeSlider, ParameterSlider, dropdowns
 │   └── map/         # MapView (includes custom pin/attractor marker management)
 ├── visualization/   # MapLibre setup + color updates + Three.js terrain
 │   ├── mapLibreSetup.ts         # Map initialization, layers (buildings, hexagons, streets)
@@ -324,7 +329,7 @@ Distance measurement tool + distance mode toggle:
 - **Colors**: Uses ACCENT_COLOR (#5631ad) and ACCENT_COLOR_2 (#fcdb02) from constants
 
 ### Help Tip Widget (`HelpTipWidget.tsx`)
-Interactive 8-step tutorial with glass morphism tooltips (desktop) / legend toggle (mobile):
+Interactive 9-step tutorial with glass morphism tooltips (desktop) / legend toggle (mobile):
 - **Help Icon**: Question mark in circle
   - **Desktop (≥640px)**: Starts/ends tutorial
   - **Mobile (<640px)**: Toggles legend visibility (no tutorial on mobile)
@@ -335,14 +340,15 @@ Interactive 8-step tutorial with glass morphism tooltips (desktop) / legend togg
   4. **Buildings Mode**: Expands settings panel, explains building analysis
   5. **Grid Mode**: Switches mode, explains hexagonal grid
   6. **Surface Mode**: Switches mode, explains 3D terrain
-  7. **Measurement**: Activates measurement tool, explains distance comparison
-  8. **Legend**: Sets 25-75% filter range, explains adaptive/fixed and filtering
+  7. **Explorer**: Activates explorer tool, explains score inspection at any point
+  8. **Measurement**: Activates measurement tool, explains distance comparison
+  9. **Legend**: Sets 25-75% filter range, explains adaptive/fixed and filtering
 - **Tooltip Positioning**: Dynamically calculated based on target elements
   - Extended arrows (120-180px) reach distant targets (curve plot, gradient bar)
   - Mode tips point to edge of expanded settings widget
 - **State Management**: Automatically switches modes, expands panels, activates tools
 - **Navigation**: Enter to advance, ESC to skip, click help icon to terminate
-- **Cleanup**: Resets filter range and measurement tool when tutorial ends
+- **Cleanup**: Resets filter range, measurement tool, and explorer when tutorial ends
 - **CSS Classes**: `.tutorial-overlay`, `.tutorial-tip`, `.tutorial-arrow-*`, `.tutorial-arrow-left-extended`, `.tutorial-arrow-down-extended`
 
 ### Settings Widget (`SettingsWidget.tsx`)
@@ -362,11 +368,20 @@ Analysis mode selector with expandable properties panel:
     - **Surface**: Terrain Smoothing slider, Terrain Height slider, Custom Amenities count/clear
   - **Text styling**: Total/Attractivity values in accent color (#5631ad), "Clear all" in black
 
+### Explorer Widget (`ExplorerWidget.tsx`)
+Accessibility score inspector tool:
+- **Toggle Button**: Flag icon, active state highlighted
+- **Behavior**: Click to activate explorer mode, click map to place flag
+  - Shows paths to all amenities with distance and decay values
+  - Paths switch to dashed straight lines in Euclidean mode
+  - Escape key to deactivate
+- **CSS Class**: `.explorer-widget`
+
 ### Tools Column (`App.tsx` - ToolsColumn component)
 Vertically centered group of tool widgets on right edge:
 - **Position**: `right-4 sm:right-5 top-1/2 -translate-y-1/2`
 - **Layout**: Flex column with `items-end` (each widget expands independently to left)
-- **Contents**: SettingsWidget, MeasurementWidget, HelpTipWidget
+- **Contents**: SettingsWidget, ExplorerWidget, MeasurementWidget, HelpTipWidget
 - **Responsive**: Hidden on mobile when panel is expanded
 
 ### Legend (`Legend.tsx`)
@@ -493,7 +508,7 @@ Key responsive styles:
 - **Tutorial System** (`.tutorial-*` classes):
   - `.tutorial-overlay`: Fixed position, z-index 9999, pointer-events auto
   - `.tutorial-tip`: Glass morphism panel (backdrop blur, semi-transparent white), max-width 280px, rounded corners
-  - `.tutorial-dots`: Step indicator dots (8 dots), active=purple filled, completed=purple outline, pending=grey
+  - `.tutorial-dots`: Step indicator dots (9 dots), active=purple filled, completed=purple outline, pending=grey
   - `.tutorial-arrow-*`: White 2px lines with 10px circle endpoint, 28px length for standard arrows
   - `.tutorial-arrow-left-extended`: 180px extended arrow for curve editor (reaches into plot area)
   - `.tutorial-arrow-down-extended`: 120px extended arrow for legend (reaches gradient bar)

@@ -14,7 +14,7 @@ const HelpIcon = () => (
 interface TutorialStep {
   id: number
   content: string
-  position: 'map' | 'attractor' | 'curve' | 'mode-buildings' | 'mode-grid' | 'mode-surface' | 'measurement' | 'legend'
+  position: 'map' | 'attractor' | 'curve' | 'mode-buildings' | 'mode-grid' | 'mode-surface' | 'explorer' | 'measurement' | 'legend'
   arrow: 'up' | 'down' | 'left' | 'right'
 }
 
@@ -57,12 +57,18 @@ const TUTORIAL_STEPS: TutorialStep[] = [
   },
   {
     id: 6,
+    content: 'Place a flag on the map to explore how the accessibility score is calculated at any point. See paths to all amenities with distance and decay values.',
+    position: 'explorer',
+    arrow: 'right'
+  },
+  {
+    id: 7,
     content: 'Use the measurement tool to compare network distance vs. straight-line distance between any two points. Click two locations on the map to measure.',
     position: 'measurement',
     arrow: 'right'
   },
   {
-    id: 7,
+    id: 8,
     content: 'Use Adaptive range for auto-scaling or Fixed range to compare scenarios. Drag on the gradient bar to filter and highlight specific score ranges.',
     position: 'legend',
     arrow: 'down'
@@ -72,7 +78,7 @@ const TUTORIAL_STEPS: TutorialStep[] = [
 export function HelpTipWidget() {
   const {
     tutorialStep, setTutorialStep, advanceTutorial, skipTutorial, isLoading, gridAttractors,
-    setAnalysisMode, setMeasurementActive,
+    setAnalysisMode, setMeasurementActive, setExplorerActive,
     setFilterRangeActive, setFilterRangeMinPercent, setFilterRangeMaxPercent, clearFilterRange,
     isMobileLegendOpen, setIsMobileLegendOpen,
   } = useAppContext()
@@ -251,15 +257,29 @@ export function HelpTipWidget() {
         return { x: window.innerWidth - 500, y: window.innerHeight / 2 + 50 }
       }
 
-      case 'measurement': {
-        // To the left of the measurement tool button
-        const measureBtn = document.querySelector('.measurement-widget .settings-icon-btn')
-        if (measureBtn) {
-          const rect = measureBtn.getBoundingClientRect()
-          // Position tooltip to the LEFT of the button, arrow points right to it
+      case 'explorer': {
+        // To the left of the explorer button
+        const explorerBtn = document.querySelector('.explorer-widget .settings-icon-btn')
+        if (explorerBtn) {
+          const rect = explorerBtn.getBoundingClientRect()
           return {
             x: rect.left - POINTER_LENGTH - 8,
             y: rect.top + rect.height / 2
+          }
+        }
+        return { x: window.innerWidth - 400, y: window.innerHeight / 2 }
+      }
+
+      case 'measurement': {
+        // To the left of the entire measurement widget (includes expanded Distance Mode panel)
+        const measurementWidget = document.querySelector('.measurement-widget')
+        const measureBtn = document.querySelector('.measurement-widget .settings-icon-btn')
+        if (measurementWidget && measureBtn) {
+          const widgetRect = measurementWidget.getBoundingClientRect()
+          const btnRect = measureBtn.getBoundingClientRect()
+          return {
+            x: widgetRect.left - POINTER_LENGTH,
+            y: btnRect.top + btnRect.height / 2
           }
         }
         return { x: window.innerWidth - 400, y: window.innerHeight / 2 }
@@ -322,8 +342,9 @@ export function HelpTipWidget() {
   // Switch to the appropriate mode and handle tool activation when entering steps
   useEffect(() => {
     if (tutorialStep === null) {
-      // Tutorial ended: deactivate measurement and clear filter
+      // Tutorial ended: deactivate tools and clear filter
       setMeasurementActive(false)
+      setExplorerActive(false)
       clearFilterRange()
     } else if (tutorialStep === 3) {
       setAnalysisMode('buildings')
@@ -332,7 +353,17 @@ export function HelpTipWidget() {
     } else if (tutorialStep === 5) {
       setAnalysisMode('surface')
     } else if (tutorialStep === 6) {
-      // Measurement step: collapse settings, switch to buildings, activate measurement
+      // Explorer step: collapse settings, switch to buildings, activate explorer
+      const collapseBtn = document.querySelector('.settings-icon-btn.expand-btn') as HTMLButtonElement
+      const settingsProperties = document.querySelector('.settings-properties')
+      if (collapseBtn && settingsProperties) {
+        collapseBtn.click()
+      }
+      setAnalysisMode('buildings')
+      setExplorerActive(true)
+    } else if (tutorialStep === 7) {
+      // Measurement step: deactivate explorer, collapse settings, activate measurement
+      setExplorerActive(false)
       const collapseBtn = document.querySelector('.settings-icon-btn.expand-btn') as HTMLButtonElement
       const settingsProperties = document.querySelector('.settings-properties')
       if (collapseBtn && settingsProperties) {
@@ -340,14 +371,14 @@ export function HelpTipWidget() {
       }
       setAnalysisMode('buildings')
       setMeasurementActive(true)
-    } else if (tutorialStep === 7) {
+    } else if (tutorialStep === 8) {
       // Legend step: deactivate measurement, set 25-75% filter (keep Adaptive mode)
       setMeasurementActive(false)
       setFilterRangeActive(true)
       setFilterRangeMinPercent(0.25)
       setFilterRangeMaxPercent(0.75)
     }
-  }, [tutorialStep, setAnalysisMode, setMeasurementActive, setFilterRangeActive, setFilterRangeMinPercent, setFilterRangeMaxPercent, clearFilterRange])
+  }, [tutorialStep, setAnalysisMode, setMeasurementActive, setExplorerActive, setFilterRangeActive, setFilterRangeMinPercent, setFilterRangeMaxPercent, clearFilterRange])
 
   // Update position on step change and window resize
   useEffect(() => {
@@ -421,7 +452,7 @@ export function HelpTipWidget() {
       return 'tutorial-arrow-left-extended'
     }
     // Use extended down arrow for legend step (step 7) to reach the gradient bar
-    if (stepId === 7 && arrow === 'down') {
+    if (stepId === 8 && arrow === 'down') {
       return 'tutorial-arrow-down-extended'
     }
     switch (arrow) {
@@ -499,7 +530,7 @@ export function HelpTipWidget() {
             className="tutorial-btn tutorial-btn-next"
             onClick={advanceTutorial}
           >
-            {tutorialStep === 7 ? 'Finish' : 'Next'}
+            {tutorialStep === 8 ? 'Finish' : 'Next'}
             <span className="tutorial-key-hint">&#x21B5;</span>
           </button>
         </div>
