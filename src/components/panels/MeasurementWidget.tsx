@@ -1,5 +1,7 @@
 import { useEffect } from 'react'
 import { useAppContext } from '../../context/AppContext'
+import { PillToggle } from './PillToggle'
+import type { DistanceMode } from '../../config/types'
 
 // Ruler icon
 const RulerIcon = () => (
@@ -15,6 +17,8 @@ export function MeasurementWidget() {
   const {
     isMeasurementActive,
     setMeasurementActive,
+    distanceMode,
+    setDistanceMode,
   } = useAppContext()
 
   // ESC key handler - deactivate measurement tool
@@ -29,15 +33,31 @@ export function MeasurementWidget() {
   }, [isMeasurementActive, setMeasurementActive])
 
   return (
-    <div className="measurement-widget flex">
+    <div className={`measurement-widget flex ${isMeasurementActive ? 'expanded' : ''}`}>
+      {/* Expanded panel when measurement active */}
+      {isMeasurementActive && (
+        <div className="measurement-properties">
+          <div className="settings-title">Distance Mode</div>
+          <PillToggle
+            options={[
+              { value: 'network', label: 'Network' },
+              { value: 'euclidean', label: 'Euclidean' },
+            ]}
+            value={distanceMode}
+            onChange={(v) => setDistanceMode(v as DistanceMode)}
+          />
+        </div>
+      )}
       {/* Toggle button */}
-      <button
-        onClick={() => setMeasurementActive(!isMeasurementActive)}
-        className={`settings-icon-btn ${isMeasurementActive ? 'active' : ''}`}
-        title={isMeasurementActive ? 'Disable measurement' : 'Enable measurement'}
-      >
-        <RulerIcon />
-      </button>
+      <div className={isMeasurementActive ? 'measurement-icon-column' : ''}>
+        <button
+          onClick={() => setMeasurementActive(!isMeasurementActive)}
+          className={`settings-icon-btn ${isMeasurementActive ? 'active' : ''}`}
+          title={isMeasurementActive ? 'Disable measurement' : 'Enable measurement'}
+        >
+          <RulerIcon />
+        </button>
+      </div>
     </div>
   )
 }

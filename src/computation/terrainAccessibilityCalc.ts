@@ -1,5 +1,6 @@
-import type { GridAttractor, DistanceMatrix } from '../config/types'
+import type { GridAttractor, DistanceMatrix, DistanceMode } from '../config/types'
 import { getDistance } from './distanceMatrix'
+import { calculateEuclideanDistance } from './measurementCalc'
 
 /**
  * Calculate accessibility score for a single vertex using network distance.
@@ -16,13 +17,17 @@ export function calculateVertexScore(
   vertexNodeId: string,
   attractors: GridAttractor[],
   decayFn: (distance: number) => number,
-  distanceMatrix: DistanceMatrix
+  distanceMatrix: DistanceMatrix,
+  distanceMode: DistanceMode = 'network',
+  vertexCoord?: [number, number]
 ): number {
   let score = 0
+  const isEuclidean = distanceMode === 'euclidean'
 
   for (const attractor of attractors) {
-    // Look up network distance from vertex's nearest node to attractor's nearest node
-    const distance = getDistance(distanceMatrix, vertexNodeId, attractor.nearestNodeId)
+    const distance = isEuclidean && vertexCoord
+      ? calculateEuclideanDistance(vertexCoord, attractor.coord)
+      : getDistance(distanceMatrix, vertexNodeId, attractor.nearestNodeId)
 
     // Skip if no path exists (unreachable)
     if (distance === undefined || distance === Infinity) continue
@@ -60,7 +65,9 @@ export function calculateTerrainScores(
   attractors: GridAttractor[],
   decayFn: (distance: number) => number,
   distanceMatrix: DistanceMatrix,
-  fixedRange?: { min: number; max: number }
+  fixedRange?: { min: number; max: number },
+  distanceMode: DistanceMode = 'network',
+  vertexCoords?: [number, number][]
 ): { rawScores: number[]; normalizedScores: number[]; min: number; max: number; avg: number } {
   const rawScores: number[] = new Array(vertexNodeIds.length)
 
@@ -81,7 +88,8 @@ export function calculateTerrainScores(
   let sum = 0
 
   for (let i = 0; i < vertexNodeIds.length; i++) {
-    const score = calculateVertexScore(vertexNodeIds[i], attractors, decayFn, distanceMatrix)
+    const coord = vertexCoords ? vertexCoords[i] : undefined
+    const score = calculateVertexScore(vertexNodeIds[i], attractors, decayFn, distanceMatrix, distanceMode, coord)
     rawScores[i] = score
 
     if (score < dataMin) dataMin = score

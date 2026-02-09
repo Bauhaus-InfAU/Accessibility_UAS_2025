@@ -2,11 +2,11 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Open |
+| **Status** | Closed |
 | **Created** | 2026-02-09 |
 | **Created by** | Martin Bielik |
-| **Closed** | - |
-| **Closed by** | - |
+| **Closed** | 2026-02-09 |
+| **Closed by** | Claude |
 
 ---
 

@@ -1,7 +1,7 @@
-import type { ExplorerResult, StreetGraph, DistanceMatrix } from '../config/types'
+import type { ExplorerResult, StreetGraph, DistanceMatrix, DistanceMode } from '../config/types'
 import { EXPLORER_PALETTE, EXPLORER_MAX_DISPLAY } from '../config/constants'
 import { getDistance } from './distanceMatrix'
-import { findShortestPath } from './measurementCalc'
+import { findShortestPath, calculateEuclideanDistance } from './measurementCalc'
 
 interface AmenityInput {
   id: string
@@ -26,8 +26,12 @@ export function computeExplorerResults(
   graph: StreetGraph,
   distanceMatrix: DistanceMatrix,
   decayFn: (d: number) => number,
-  maxDisplay: number = EXPLORER_MAX_DISPLAY
+  maxDisplay: number = EXPLORER_MAX_DISPLAY,
+  distanceMode: DistanceMode = 'network',
+  flagCoord?: [number, number]
 ): ExplorerResult[] {
+  const isEuclidean = distanceMode === 'euclidean'
+
   // Step 1+2: compute distances and partial scores
   const scored: Array<{
     amenity: AmenityInput
@@ -37,7 +41,9 @@ export function computeExplorerResults(
   }> = []
 
   for (const amenity of amenities) {
-    const dist = getDistance(distanceMatrix, flagNodeId, amenity.nodeId)
+    const dist = isEuclidean && flagCoord
+      ? calculateEuclideanDistance(flagCoord, amenity.coord)
+      : getDistance(distanceMatrix, flagNodeId, amenity.nodeId)
     if (dist === undefined) continue
 
     const decayValue = decayFn(dist)
@@ -60,14 +66,20 @@ export function computeExplorerResults(
   for (let i = 0; i < topN.length; i++) {
     const { amenity, networkDistance, decayValue, partialScore } = topN[i]
 
-    // Find shortest path for visualization
-    const pathResult = findShortestPath(
-      graph,
-      { id: 'A', coord: [0, 0], nearestNodeId: flagNodeId }, // coord unused by findShortestPath
-      { id: 'B', coord: amenity.coord, nearestNodeId: amenity.nodeId }
-    )
+    let networkPath: [number, number][]
 
-    const networkPath = pathResult?.coordinates ?? []
+    if (isEuclidean && flagCoord) {
+      // Euclidean mode: straight line from flag to amenity
+      networkPath = [flagCoord, amenity.coord]
+    } else {
+      // Network mode: find shortest path
+      const pathResult = findShortestPath(
+        graph,
+        { id: 'A', coord: [0, 0], nearestNodeId: flagNodeId },
+        { id: 'B', coord: amenity.coord, nearestNodeId: amenity.nodeId }
+      )
+      networkPath = pathResult?.coordinates ?? []
+    }
 
     results.push({
       amenityId: amenity.id,

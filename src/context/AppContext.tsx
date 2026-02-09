@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo, type ReactNode } from 'react'
-import type { Building, ControlPoint, CurveMode, CurveTabMode, AttractivityMode, DistanceMatrix, LandUse, StreetGraph, AnalysisMode, GridAttractor, StreetsGeoJSON, MeasurementPoint, HexCell, BuildingFilterMode, ExplorerResult, ExplorerAmenityPreview } from '../config/types'
+import type { Building, ControlPoint, CurveMode, CurveTabMode, AttractivityMode, DistanceMatrix, LandUse, StreetGraph, AnalysisMode, GridAttractor, StreetsGeoJSON, MeasurementPoint, HexCell, BuildingFilterMode, ExplorerResult, ExplorerAmenityPreview, DistanceMode } from '../config/types'
 import { MAX_DISTANCE_DEFAULT, DEFAULT_POLYLINE_POINTS, DEFAULT_BEZIER_HANDLES, DEFAULT_NEG_EXP_ALPHA, DEFAULT_EXP_POWER_B, DEFAULT_EXP_POWER_C, HEX_DIAMETER_DEFAULT, TERRAIN_SMOOTH_DEFAULT, TERRAIN_HEIGHT_DEFAULT, EXPLORER_PALETTE, EXPLORER_MAX_DISPLAY } from '../config/constants'
 import { loadBuildingsGeoJSON, loadStreetsGeoJSON } from '../data/dataLoader'
 import { processBuildings, getBuildingsWithLandUse, getAvailableLandUses } from '../data/buildingStore'
@@ -81,6 +81,9 @@ interface AppState {
   maxRawScore: number
   avgRawScore: number
 
+  // Distance mode (network vs euclidean)
+  distanceMode: DistanceMode
+
   // Measurement tool state
   isMeasurementActive: boolean
   measurementPointA: MeasurementPoint | null
@@ -137,6 +140,8 @@ interface AppContextValue extends AppState {
   setFilterRangeMinPercent: (percent: number) => void
   setFilterRangeMaxPercent: (percent: number) => void
   clearFilterRange: () => void
+  // Distance mode
+  setDistanceMode: (mode: DistanceMode) => void
   // Measurement tool actions
   setMeasurementActive: (active: boolean) => void
   addMeasurementPoint: (coord: [number, number]) => void
@@ -233,6 +238,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Mobile legend toggle
   const [isMobileLegendOpen, setIsMobileLegendOpen] = useState(false)
+
+  // Distance mode
+  const [distanceMode, setDistanceMode] = useState<DistanceMode>('network')
 
   // Measurement tool state
   const [isMeasurementActive, setIsMeasurementActive] = useState(false)
@@ -631,7 +639,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           targetBuildings,
           gridAttractors,
           activeMatrix,
-          evaluator
+          evaluator,
+          distanceMode
         )
         processScores(rawScores)
         return
@@ -651,11 +660,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         selectedLandUse,
         activeMatrix,
         evaluator,
-        attractivityMode
+        attractivityMode,
+        distanceMode
       )
       processScores(rawScores)
     })
-  }, [buildings, distanceMatrix, fullNetworkMatrix, curveTabMode, customCurveType, polylinePoints, bezierHandles, maxDistance, selectedLandUse, attractivityMode, gridAttractors, negExpAlpha, expPowerB, expPowerC, buildingFilterMode, gradientRangeMode, fixedGradientMin, fixedGradientMax])
+  }, [buildings, distanceMatrix, fullNetworkMatrix, curveTabMode, customCurveType, polylinePoints, bezierHandles, maxDistance, selectedLandUse, attractivityMode, gridAttractors, negExpAlpha, expPowerB, expPowerC, buildingFilterMode, gradientRangeMode, fixedGradientMin, fixedGradientMax, distanceMode])
 
   // Debounced recalculation for buildings mode
   useEffect(() => {
@@ -805,6 +815,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setFilterRangeMinPercent,
     setFilterRangeMaxPercent,
     clearFilterRange,
+    // Distance mode
+    distanceMode,
+    setDistanceMode,
     // Measurement tool
     isMeasurementActive,
     measurementPointA,

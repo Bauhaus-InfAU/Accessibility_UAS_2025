@@ -1,5 +1,6 @@
-import type { Building, DistanceMatrix, AttractivityMode, LandUse, CustomPin } from '../config/types'
+import type { Building, DistanceMatrix, AttractivityMode, LandUse, CustomPin, DistanceMode } from '../config/types'
 import { getDistance } from './distanceMatrix'
+import { calculateEuclideanDistance } from './measurementCalc'
 
 function getAttractivity(building: Building, landUse: LandUse, mode: AttractivityMode): number {
   const area = building.landUseAreas[landUse] || 0
@@ -19,18 +20,22 @@ export function calculateAccessibility(
   selectedLandUse: LandUse,
   distanceMatrix: DistanceMatrix,
   curveEvaluator: (distance: number) => number,
-  attractivityMode: AttractivityMode
+  attractivityMode: AttractivityMode,
+  distanceMode: DistanceMode = 'network'
 ): Map<string, number> {
   const rawScores = new Map<string, number>()
+  const isEuclidean = distanceMode === 'euclidean'
 
   for (const resBuilding of residentialBuildings) {
-    if (!resBuilding.nearestNodeId) continue
+    if (!isEuclidean && !resBuilding.nearestNodeId) continue
 
     let acc = 0
     for (const amenity of amenityBuildings) {
-      if (!amenity.nearestNodeId) continue
+      if (!isEuclidean && !amenity.nearestNodeId) continue
 
-      const dist = getDistance(distanceMatrix, resBuilding.nearestNodeId, amenity.nearestNodeId)
+      const dist = isEuclidean
+        ? calculateEuclideanDistance(resBuilding.centroid, amenity.centroid)
+        : getDistance(distanceMatrix, resBuilding.nearestNodeId, amenity.nearestNodeId)
       if (dist === undefined) continue
 
       const decay = curveEvaluator(dist)
@@ -52,18 +57,22 @@ export function calculateAccessibilityFromPins(
   residentialBuildings: Building[],
   customPins: CustomPin[],
   distanceMatrix: DistanceMatrix,
-  curveEvaluator: (distance: number) => number
+  curveEvaluator: (distance: number) => number,
+  distanceMode: DistanceMode = 'network'
 ): Map<string, number> {
   const rawScores = new Map<string, number>()
+  const isEuclidean = distanceMode === 'euclidean'
 
   for (const resBuilding of residentialBuildings) {
-    if (!resBuilding.nearestNodeId) continue
+    if (!isEuclidean && !resBuilding.nearestNodeId) continue
 
     let acc = 0
     for (const pin of customPins) {
-      if (!pin.nearestNodeId) continue
+      if (!isEuclidean && !pin.nearestNodeId) continue
 
-      const dist = getDistance(distanceMatrix, resBuilding.nearestNodeId, pin.nearestNodeId)
+      const dist = isEuclidean
+        ? calculateEuclideanDistance(resBuilding.centroid, pin.coord)
+        : getDistance(distanceMatrix, resBuilding.nearestNodeId, pin.nearestNodeId)
       if (dist === undefined) continue
 
       const decay = curveEvaluator(dist)

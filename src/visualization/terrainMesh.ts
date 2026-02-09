@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import maplibregl from 'maplibre-gl'
-import type { StreetGraph, GridAttractor, DistanceMatrix } from '../config/types'
+import type { StreetGraph, GridAttractor, DistanceMatrix, DistanceMode } from '../config/types'
 import { DEGREES_TO_METERS, TERRAIN_SEGMENTS, TERRAIN_HEIGHT_SCALE, TERRAIN_CONTOUR_COUNT, TERRAIN_SMOOTH_SIGMA } from '../config/constants'
 import { calculateTerrainScores } from '../computation/terrainAccessibilityCalc'
 import { SDFLineMaterial, createSDFLineGeometry, updateSDFLineGeometry } from './SDFLineMaterial'
@@ -353,23 +353,27 @@ export function updateTerrainFromAttractors(
   smoothingSigma: number = TERRAIN_SMOOTH_SIGMA,
   heightScale: number = TERRAIN_HEIGHT_SCALE,
   fixedRange?: { min: number; max: number },
-  filterRange?: { minPercent: number; maxPercent: number } | null
+  filterRange?: { minPercent: number; maxPercent: number } | null,
+  distanceMode?: DistanceMode
 ): { min: number; max: number; avg: number } {
   const geometry = mesh.geometry as THREE.BufferGeometry
   const positions = geometry.attributes.position.array as Float32Array
   const scoreAttr = geometry.attributes.score.array as Float32Array
   const config = mesh.userData.terrainConfig as TerrainMeshConfig
   const vertexNodeIds = mesh.userData.vertexNodeIds as string[]
+  const lngLatCoords = mesh.userData.lngLatCoords as [number, number][]
 
   const vertexCount = (config.segmentsX + 1) * (config.segmentsY + 1)
 
-  // Calculate scores for all vertices using network distance
+  // Calculate scores for all vertices
   const { normalizedScores, min, max, avg } = calculateTerrainScores(
     vertexNodeIds,
     attractors,
     decayFn,
     distanceMatrix,
-    fixedRange
+    fixedRange,
+    distanceMode,
+    distanceMode === 'euclidean' ? lngLatCoords : undefined
   )
 
   // Apply Gaussian smoothing to reduce sharp transitions at network node boundaries

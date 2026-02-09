@@ -16,7 +16,7 @@ Students define a custom distance decay function f(d) graphically, then see how 
 - Acc_i = accessibility of building i (residential only, or all buildings based on filter)
 - Att_j = attractivity of amenity j (floor area, volume, or 1)
 - f(d_ij) = user-defined decay function (0 to 1) at distance d_ij
-- d_ij = shortest path distance via street network
+- d_ij = distance between building i and amenity j (network or euclidean, based on Distance Mode)
 
 ## Tech Stack
 - TypeScript + React + Vite
@@ -42,6 +42,10 @@ Students define a custom distance decay function f(d) graphically, then see how 
   - Each pin has editable attractivity value (default 1, click box to edit)
 - **Custom Amenities (Grid mode)**: User-placed amenity points (2 default on startup, same interactions as custom pins)
   - Each amenity has editable attractivity value with visual attractivity box
+- **Distance Mode**: Toggle between Network (Dijkstra shortest paths) and Euclidean (straight-line) distance
+  - Affects all accessibility calculations (Buildings, Grid, Surface modes)
+  - Explorer paths switch to dashed straight lines in Euclidean mode
+  - Panel co-located with measurement tool (visible when measurement is active)
 - **Attractivity Modes**: Floor area, volume, or count-based weighting (Buildings mode with predefined amenities)
 - **3D Visualization**: Buildings colored by accessibility score (purple=low, red=high)
 - **Hexagon Grid**: Configurable diameter hexagons (10-100m, default 15m) colored by accessibility (Grid mode), organic boundary within 100m of network
@@ -218,6 +222,7 @@ The app adapts to different screen sizes using Tailwind CSS breakpoints.
 ### State Management
 - `isPanelCollapsed` state in AppContext controls panel expand/collapse
 - `panelHeight` state in AppContext tracks custom panel height (null = auto)
+- `distanceMode` state: 'network' | 'euclidean' (default: 'network') — global distance calculation mode
 - `gradientRangeMode` state: 'adaptive' | 'fixed' (default: 'adaptive')
 - `fixedGradientMin` / `fixedGradientMax` state: User-defined gradient bounds (default: 0, 100)
 - `isMobileLegendOpen` state: boolean (default: false) — toggled via "?" button on mobile
@@ -301,16 +306,21 @@ Map controls (top-right on desktop, bottom-right on mobile when panel collapsed)
 - Uses MapContext for view state tracking (activeView, bearing, resetNorth)
 
 ### Measurement Widget (`MeasurementWidget.tsx`)
-Distance measurement tool:
+Distance measurement tool + distance mode toggle:
 - **Toggle Button**: Ruler icon, active state highlighted
+- **Distance Mode Panel**: Expands to the left when measurement is active
+  - PillToggle with Network/Euclidean options
+  - Controls global `distanceMode` state affecting all accessibility calculations
+  - Network: uses Dijkstra shortest paths via street graph
+  - Euclidean: uses straight-line distance (no street network)
 - **Behavior**:
-  - Click to activate measurement mode
+  - Click to activate measurement mode AND expand distance mode panel
   - **Ghost markers**: On activation, a ghost "A" marker follows the cursor at 60% opacity (system cursor hidden). After A is placed, a ghost "B" marker follows until B is placed. After both placed, crosshair cursor shown. Third click resets (new A placed, ghost B follows again).
   - Click map to place point A, click again for point B
-  - Both network and euclidean paths displayed simultaneously
+  - Both network and euclidean paths displayed simultaneously (measurement tool always shows both regardless of distance mode)
   - Drag markers to update measurements live
   - Third click starts new measurement
-  - Escape key or toggle button to deactivate
+  - Escape key or toggle button to deactivate (panel collapses)
 - **Colors**: Uses ACCENT_COLOR (#5631ad) and ACCENT_COLOR_2 (#fcdb02) from constants
 
 ### Help Tip Widget (`HelpTipWidget.tsx`)
@@ -452,6 +462,7 @@ Shown during initial data loading:
   - Buildings/grid fade to 30% opacity when measurement active
   - **Terrain (Surface mode)**: Opacity reduced to 50%, 3D street network hidden, MapLibre 2D streets shown
   - CSS classes: `.measurement-marker`, `.measurement-marker-circle`, `.measurement-distance-label`, `.measurement-ghost-marker`
+  - Distance Mode panel CSS: `.measurement-widget.expanded`, `.measurement-properties`, `.measurement-icon-column`
 - **Terrain Pin Overlay** (HTML pins positioned via 3D projection):
   - Container: `.terrain-pin-overlay` - absolute positioned, pointer-events none
   - Pin elements: `.terrain-pin-svg` - individual pin with drop shadow, `will-change: transform`

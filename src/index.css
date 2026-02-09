@@ -752,6 +752,22 @@ body {
   padding: 8px;
 }
 
+.measurement-widget.expanded {
+  flex-direction: row;
+  align-items: stretch;
+  padding: 0;
+}
+
+.measurement-widget.expanded .measurement-icon-column {
+  padding: 8px;
+}
+
+.measurement-widget.expanded .measurement-properties {
+  padding: 12px 16px;
+  min-width: 160px;
+  border-right: 1px solid rgba(0, 0, 0, 0.1);
+}
+
 /* Help Tip Widget */
 .help-tip-widget {
   flex-direction: row;

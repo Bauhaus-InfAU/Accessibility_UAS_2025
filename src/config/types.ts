@@ -81,6 +81,9 @@ export type AnalysisMode = 'buildings' | 'grid' | 'surface'
 // Building filter mode for Buildings analysis
 export type BuildingFilterMode = 'residential' | 'all'
 
+// Distance mode: network (Dijkstra shortest paths) or euclidean (straight-line)
+export type DistanceMode = 'network' | 'euclidean'
+
 // Hexagon cell for grid mode
 export interface HexCell {
   id: string

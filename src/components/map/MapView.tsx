@@ -336,6 +336,8 @@ export function MapView() {
     filterRangeActive,
     filterRangeMinPercent,
     filterRangeMaxPercent,
+    // Distance mode
+    distanceMode,
     // Measurement tool state
     isMeasurementActive,
     measurementPointA,
@@ -825,7 +827,7 @@ export function MapView() {
       : undefined
 
     // Calculate accessibility scores for hexagon cells
-    const rawScores = calculateGridAccessibility(hexCells, gridAttractors, fullNetworkMatrix, evaluator)
+    const rawScores = calculateGridAccessibility(hexCells, gridAttractors, fullNetworkMatrix, evaluator, distanceMode)
     const normalizedScores = normalizeGridScores(rawScores, fixedRange)
     const stats = getGridScoreStats(rawScores)
 
@@ -837,7 +839,7 @@ export function MapView() {
 
     // Update grid stats
     setGridStats(stats)
-  }, [mapLoaded, isGridMode, hexCells, gridAttractors, curveTabMode, customCurveType, polylinePoints, bezierHandles, maxDistance, negExpAlpha, expPowerB, expPowerC, setGridStats, fullNetworkMatrix, gradientRangeMode, fixedGradientMin, fixedGradientMax, filterRangeActive, filterRangeMinPercent, filterRangeMaxPercent])
+  }, [mapLoaded, isGridMode, hexCells, gridAttractors, curveTabMode, customCurveType, polylinePoints, bezierHandles, maxDistance, negExpAlpha, expPowerB, expPowerC, setGridStats, fullNetworkMatrix, gradientRangeMode, fixedGradientMin, fixedGradientMax, filterRangeActive, filterRangeMinPercent, filterRangeMaxPercent, distanceMode])
 
   // Update terrain when attractors or curve parameters change (Surface mode)
   useEffect(() => {
@@ -868,7 +870,7 @@ export function MapView() {
         : null
 
       // Update terrain with current attractors and full network distance matrix
-      const stats = updateTerrainLayer(gridAttractors, evaluator, fullNetworkMatrix, terrainSmoothing, terrainHeightScale, fixedRange, currentFilterRange)
+      const stats = updateTerrainLayer(gridAttractors, evaluator, fullNetworkMatrix, terrainSmoothing, terrainHeightScale, fixedRange, currentFilterRange, distanceMode)
       if (stats) {
         setSurfaceStats(stats)
       }
@@ -888,7 +890,7 @@ export function MapView() {
 
     // Terrain is already initialized, update immediately
     performTerrainUpdate()
-  }, [mapLoaded, isSurfaceMode, gridAttractors, curveTabMode, customCurveType, polylinePoints, bezierHandles, maxDistance, negExpAlpha, expPowerB, expPowerC, setSurfaceStats, fullNetworkMatrix, terrainSmoothing, terrainHeightScale, gradientRangeMode, fixedGradientMin, fixedGradientMax, filterRangeActive, filterRangeMinPercent, filterRangeMaxPercent])
+  }, [mapLoaded, isSurfaceMode, gridAttractors, curveTabMode, customCurveType, polylinePoints, bezierHandles, maxDistance, negExpAlpha, expPowerB, expPowerC, setSurfaceStats, fullNetworkMatrix, terrainSmoothing, terrainHeightScale, gradientRangeMode, fixedGradientMin, fixedGradientMax, filterRangeActive, filterRangeMinPercent, filterRangeMaxPercent, distanceMode])
 
   // Update layer visibility when analysis mode changes
   useEffect(() => {
@@ -1452,11 +1454,14 @@ export function MapView() {
       amenities,
       graph,
       fullNetworkMatrix,
-      evaluator
+      evaluator,
+      undefined, // maxDisplay (use default)
+      distanceMode,
+      explorerLocation
     )
 
     setExplorerResults(results.length > 0 ? results : null)
-  }, [isExplorerActive, explorerLocation, explorerNodeId, graph, fullNetworkMatrix, gridAttractors, buildings, selectedLandUse, attractivityMode, isGridMode, isSurfaceMode, curveTabMode, customCurveType, polylinePoints, bezierHandles, maxDistance, negExpAlpha, expPowerB, expPowerC, setExplorerResults])
+  }, [isExplorerActive, explorerLocation, explorerNodeId, graph, fullNetworkMatrix, gridAttractors, buildings, selectedLandUse, attractivityMode, isGridMode, isSurfaceMode, curveTabMode, customCurveType, polylinePoints, bezierHandles, maxDistance, negExpAlpha, expPowerB, expPowerC, setExplorerResults, distanceMode])
 
   // Explorer tool: sync flag marker, path rendering, and distance labels
   useEffect(() => {
@@ -1568,12 +1573,20 @@ export function MapView() {
             'line-color': ['get', 'color'],
             'line-width': 5,
             'line-opacity': 0.8,
+            ...(distanceMode === 'euclidean' ? { 'line-dasharray': [1, 2.5] } : {}),
           },
           layout: {
             'line-cap': 'round',
             'line-join': 'round',
           },
         })
+      }
+
+      // Update dash pattern based on distance mode
+      if (map.getLayer('explorer-paths-layer')) {
+        map.setPaintProperty('explorer-paths-layer', 'line-dasharray',
+          distanceMode === 'euclidean' ? [1, 2.5] : null
+        )
       }
 
       // Manage distance labels
@@ -1667,7 +1680,7 @@ export function MapView() {
         updateExplorerFlagScore(explorerFlagMarkerRef.current.getElement(), null)
       }
     }
-  }, [isExplorerActive, explorerLocation, explorerResults, explorerAmenityPreview, setExplorerResults, setExplorerActive])
+  }, [isExplorerActive, explorerLocation, explorerResults, explorerAmenityPreview, setExplorerResults, setExplorerActive, distanceMode])
 
   // Update cursor when measurement mode changes
   useEffect(() => {

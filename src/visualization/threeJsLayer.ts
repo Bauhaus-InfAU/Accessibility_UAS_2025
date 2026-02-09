@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import maplibregl from 'maplibre-gl'
-import type { StreetGraph, GridAttractor, DistanceMatrix } from '../config/types'
+import type { StreetGraph, GridAttractor, DistanceMatrix, DistanceMode } from '../config/types'
 import {
   createTerrainMesh,
   updateTerrainFromAttractors,
@@ -510,7 +510,8 @@ export function updateTerrainLayer(
   smoothingSigma?: number,
   heightScale?: number,
   fixedRange?: { min: number; max: number },
-  filterRange?: { minPercent: number; maxPercent: number } | null
+  filterRange?: { minPercent: number; maxPercent: number } | null,
+  distanceMode?: DistanceMode
 ): { min: number; max: number; avg: number } | null {
   if (!layerState || !layerState.terrainMesh) {
     console.warn('[TerrainLayer] Not initialized, cannot update')
@@ -527,7 +528,8 @@ export function updateTerrainLayer(
     smoothingSigma,
     heightScale,
     fixedRange,
-    filterRange
+    filterRange,
+    distanceMode
   )
 
   // Update wireframe positions to match terrain

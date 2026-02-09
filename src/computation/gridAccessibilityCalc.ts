@@ -1,6 +1,7 @@
-import type { HexCell, GridAttractor, DistanceMatrix } from '../config/types'
+import type { HexCell, GridAttractor, DistanceMatrix, DistanceMode } from '../config/types'
 import { getUniqueNodesFromHexCells } from '../data/hexagonGrid'
 import { getDistance } from './distanceMatrix'
+import { calculateEuclideanDistance } from './measurementCalc'
 
 /**
  * Calculate accessibility scores for hexagon grid cells based on amenities.
@@ -17,7 +18,8 @@ export function calculateGridAccessibility(
   hexCells: HexCell[],
   amenities: GridAttractor[],
   fullMatrix: DistanceMatrix,
-  curveEvaluator: (distance: number) => number
+  curveEvaluator: (distance: number) => number,
+  distanceMode: DistanceMode = 'network'
 ): Map<string, number> {
   const rawScores = new Map<string, number>()
 
@@ -25,7 +27,26 @@ export function calculateGridAccessibility(
     return rawScores
   }
 
-  // Group hexagons by nearestNodeId for efficient calculation
+  if (distanceMode === 'euclidean') {
+    // Euclidean mode: iterate cells directly, compute straight-line distance
+    for (const cell of hexCells) {
+      let acc = 0
+      for (const amenity of amenities) {
+        const dist = calculateEuclideanDistance(cell.center, amenity.coord)
+        const decay = curveEvaluator(dist)
+        if (decay <= 0) continue
+
+        const attractivity = amenity.attractivity ?? 1
+        if (attractivity <= 0) continue
+
+        acc += attractivity * decay
+      }
+      rawScores.set(cell.id, acc)
+    }
+    return rawScores
+  }
+
+  // Network mode: group hexagons by nearestNodeId for efficient calculation
   const nodeToHexCells = getUniqueNodesFromHexCells(hexCells)
 
   // For each unique node, calculate accessibility
