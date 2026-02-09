@@ -54,11 +54,14 @@ function getPinScale(_attractivity: number): number {
 // - showTeardrop=false: box only (Surface mode - 3D pin rendered by HTML overlay)
 function createAttractorMarkerElement(
   attractivity: number,
+  index: number,
   onAttractivityChange: (newValue: number) => void,
   showTeardrop: boolean = true
 ): HTMLDivElement {
   const el = document.createElement('div')
   el.className = 'attractor-marker'
+
+  const attLabel = `<span class="att-math-label">Att<sub>${index}</sub></span>&nbsp;=&nbsp;${attractivity}`
 
   if (showTeardrop) {
     // Teardrop in a zero-height wrapper so it doesn't affect bounding box
@@ -71,15 +74,15 @@ function createAttractorMarkerElement(
           </svg>
         </div>
       </div>
-      <div class="attractivity-box">
-        <span class="att-value">${attractivity}</span>
+      <div class="attractivity-box" data-attractivity="${attractivity}">
+        <span class="att-value">${attLabel}</span>
       </div>
     `
   } else {
     // Box only (Surface mode - 3D pin rendered separately by HTML overlay)
     el.innerHTML = `
-      <div class="attractivity-box">
-        <span class="att-value">${attractivity}</span>
+      <div class="attractivity-box" data-attractivity="${attractivity}">
+        <span class="att-value">${attLabel}</span>
       </div>
     `
   }
@@ -94,7 +97,7 @@ function createAttractorMarkerElement(
     // Already editing, don't create another input
     if (attBox.querySelector('input')) return
 
-    const currentValue = parseFloat(attValue.textContent || '1')
+    const currentValue = parseFloat(attBox.getAttribute('data-attractivity') || '1')
     attValue.style.display = 'none'
 
     const input = document.createElement('input')
@@ -113,7 +116,11 @@ function createAttractorMarkerElement(
       isFinished = true
       const newValue = parseFloat(input.value)
       if (!isNaN(newValue) && newValue >= 0) {
-        attValue.textContent = newValue.toString()
+        // Preserve current label format (explorer index or generic "j")
+        const currentSub = attValue.querySelector('sub')
+        const sub = currentSub ? currentSub.textContent : 'j'
+        attValue.innerHTML = `<span class="att-math-label">Att<sub>${sub}</sub></span>&nbsp;=&nbsp;${newValue}`
+        attBox.setAttribute('data-attractivity', newValue.toString())
         onAttractivityChange(newValue)
       }
       input.remove()
@@ -145,22 +152,20 @@ function createAttractorMarkerElement(
 // Update attractivity value on existing marker element
 function updateAttractorMarkerAttractivity(el: HTMLElement, attractivity: number): void {
   const attValue = el.querySelector('.att-value') as HTMLSpanElement
-  if (attValue) {
-    attValue.textContent = attractivity.toString()
-  }
+  if (!attValue) return
+  // Preserve current label format (explorer index or generic "j")
+  const currentSub = attValue.querySelector('sub')
+  const sub = currentSub ? currentSub.textContent : 'j'
+  attValue.innerHTML = `<span class="att-math-label">Att<sub>${sub}</sub></span>&nbsp;=&nbsp;${attractivity}`
+  const attBox = el.querySelector('.attractivity-box') as HTMLDivElement
+  if (attBox) attBox.setAttribute('data-attractivity', attractivity.toString())
 }
 
-// Update attractor marker label for explorer mode (e.g., "Att₁ = 1")
-function updateAttractorMarkerLabel(el: HTMLElement, index: number | null, attractivity: number): void {
+// Update attractor marker label with numbered subscript (e.g., "Att₁ = 1")
+function updateAttractorMarkerLabel(el: HTMLElement, index: number, attractivity: number): void {
   const attValue = el.querySelector('.att-value') as HTMLSpanElement | null
   if (!attValue) return
-  if (index !== null) {
-    // Explorer active: show "Att_N = value" with math styling
-    attValue.innerHTML = `<span class="att-math-label">Att<sub>${index}</sub></span>&nbsp;=&nbsp;${attractivity}`
-  } else {
-    // Explorer inactive: show just the value
-    attValue.textContent = attractivity.toString()
-  }
+  attValue.innerHTML = `<span class="att-math-label">Att<sub>${index}</sub></span>&nbsp;=&nbsp;${attractivity}`
 }
 
 // Update attractor marker color (teardrop fill + attractivity box background)
@@ -979,13 +984,15 @@ export function MapView() {
     }
 
     // Add or update markers for current attractors
-    for (const attractor of gridAttractors) {
+    for (let idx = 0; idx < gridAttractors.length; idx++) {
+      const attractor = gridAttractors[idx]
       let marker = attractorMarkersRef.current.get(attractor.id)
 
       if (!marker) {
         // Create unified marker element
         const el = createAttractorMarkerElement(
           attractor.attractivity,
+          idx + 1,
           (newValue) => {
             updateGridAttractorAttractivityRef.current(attractor.id, newValue)
           },
@@ -1031,6 +1038,14 @@ export function MapView() {
         marker.setLngLat(attractor.coord)
         const el = marker.getElement()
         updateAttractorMarkerAttractivity(el, attractor.attractivity)
+      }
+    }
+
+    // Update all marker labels with correct sequential indices (indices shift when attractors are added/removed)
+    for (let idx = 0; idx < gridAttractors.length; idx++) {
+      const marker = attractorMarkersRef.current.get(gridAttractors[idx].id)
+      if (marker) {
+        updateAttractorMarkerLabel(marker.getElement(), idx + 1, gridAttractors[idx].attractivity)
       }
     }
 
@@ -1492,11 +1507,13 @@ export function MapView() {
     // If explorer is not active, clean up
     if (!isExplorerActive) {
       cleanupExplorerVisuals()
-      // Reset all attractor markers and terrain pins to default yellow + reset labels
-      for (const [id, marker] of attractorMarkersRef.current.entries()) {
-        updateAttractorMarkerColor(marker.getElement(), null)
-        const attractor = gridAttractors.find(a => a.id === id)
-        updateAttractorMarkerLabel(marker.getElement(), null, attractor?.attractivity ?? 1)
+      // Reset all attractor markers and terrain pins to default yellow + restore numbered labels
+      for (let idx = 0; idx < gridAttractors.length; idx++) {
+        const marker = attractorMarkersRef.current.get(gridAttractors[idx].id)
+        if (marker) {
+          updateAttractorMarkerColor(marker.getElement(), null)
+          updateAttractorMarkerLabel(marker.getElement(), idx + 1, gridAttractors[idx].attractivity)
+        }
       }
       for (const pinEl of pinElementsRef.current.values()) {
         const pinPath = pinEl.querySelector('path') as SVGPathElement | null

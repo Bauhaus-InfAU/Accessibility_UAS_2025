@@ -439,8 +439,9 @@ Shown during initial data loading:
   - Thin white outline (0.5px, 50% opacity) for cell boundaries
 - **Attractor Markers** (unified across Grid, Buildings+Custom, and Surface modes):
   - Attractivity box: Yellow (#fcdb02) fill, black outline (1.5px), fully rounded (pill shape)
+  - Box displays `Att_N = value` with numbered subscript (e.g., "Att₁ = 1") using `.att-math-label` math styling
   - Box always centered at attractor coordinate (consistent positioning across all modes)
-  - Click box to edit attractivity value (input field appears)
+  - Click box to edit attractivity value (input field appears), numeric value stored in `data-attractivity` attribute
   - Teardrop pin: Yellow SVG with black center dot, positioned above box
     - Visible in Grid and Buildings+Custom modes (2D visualization)
     - Hidden in Surface mode (3D teardrop rendered separately at terrain height)
