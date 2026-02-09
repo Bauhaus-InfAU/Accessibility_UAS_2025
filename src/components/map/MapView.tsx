@@ -309,10 +309,12 @@ export function MapView() {
   const updateGridAttractorRef = useRef(updateGridAttractor)
   const updateGridAttractorAttractivityRef = useRef(updateGridAttractorAttractivity)
   const removeGridAttractorRef = useRef(removeGridAttractor)
+  const buildingFilterModeRef = useRef(buildingFilterMode)
   const isMeasurementActiveRef = useRef(isMeasurementActive)
   const addMeasurementPointRef = useRef(addMeasurementPoint)
   const updateMeasurementPointRef = useRef(updateMeasurementPoint)
 
+  buildingFilterModeRef.current = buildingFilterMode
   isCustomModeRef.current = isCustomMode
   isGridModeRef.current = isGridMode
   isSurfaceModeRef.current = isSurfaceMode
@@ -410,8 +412,8 @@ export function MapView() {
         if (!feature?.properties) return
 
         const { id, isResidential } = feature.properties
-        // Skip non-residential buildings
-        if (!isResidential) {
+        // Skip non-residential buildings when filter is set to residential only
+        if (buildingFilterModeRef.current === 'residential' && !isResidential) {
           if (popupRef.current) {
             popupRef.current.remove()
             popupRef.current = null
