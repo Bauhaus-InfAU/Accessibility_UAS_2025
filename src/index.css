@@ -840,13 +840,6 @@ body {
   color: white;
 }
 
-.settings-icon-btn.expand-btn {
-  color: #9ca3af;
-}
-
-.settings-icon-btn.expand-btn:hover {
-  color: #6b7280;
-}
 
 .settings-divider {
   height: 1px;

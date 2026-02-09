@@ -353,12 +353,11 @@ Interactive 9-step tutorial with glass morphism tooltips (desktop) / legend togg
 
 ### Settings Widget (`SettingsWidget.tsx`)
 Analysis mode selector with expandable properties panel:
-- **Icon Column**: Vertical stack of mode buttons + expand/collapse toggle
+- **Icon Column**: Vertical stack of mode buttons (clicking active mode toggles panel)
   - Buildings: Simple house icon (archetypal outline)
   - Grid: 2×2 grid lines
   - Surface: Mountain/terrain shape
   - Active mode: Purple background (#7c3aed), white icon
-- **Expand Button**: Chevron icon, expands properties panel to left
 - **Properties Panel** (when expanded):
   - **Title**: Mode name ("Buildings", "Grid", "Surface") using `.panel-title` class
   - **Divider**: Grey horizontal line below title

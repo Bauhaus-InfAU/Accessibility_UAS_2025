@@ -40,17 +40,6 @@ const SurfaceIcon = () => (
   </svg>
 )
 
-const ExpandIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <polyline points="15 18 9 12 15 6" />
-  </svg>
-)
-
-const CollapseIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <polyline points="9 18 15 12 9 6" />
-  </svg>
-)
 
 interface ModeButtonProps {
   mode: AnalysisMode
@@ -308,17 +297,6 @@ export function SettingsWidget() {
           title="Surface Analysis"
         />
 
-        {/* Divider */}
-        <div className="settings-divider" />
-
-        {/* Expand/Collapse button */}
-        <button
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="settings-icon-btn expand-btn"
-          title={isExpanded ? "Collapse settings" : "Expand settings"}
-        >
-          {isExpanded ? <CollapseIcon /> : <ExpandIcon />}
-        </button>
       </div>
     </div>
   )

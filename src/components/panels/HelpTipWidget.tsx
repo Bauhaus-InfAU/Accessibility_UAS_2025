@@ -199,13 +199,13 @@ export function HelpTipWidget() {
 
       case 'mode-buildings': {
         // To the left of the ENTIRE settings widget - first expand the settings panel
-        const expandBtn = document.querySelector('.settings-icon-btn.expand-btn')
+        const buildingsModeBtn = document.querySelector('.settings-icons .settings-icon-btn:first-child')
         const settingsProperties = document.querySelector('.settings-properties')
 
-        // If settings panel isn't expanded, click the expand button
-        if (expandBtn && !settingsProperties && !settingsExpandedRef.current) {
+        // If settings panel isn't expanded, click the active mode button to expand
+        if (buildingsModeBtn && !settingsProperties && !settingsExpandedRef.current) {
           settingsExpandedRef.current = true
-          ;(expandBtn as HTMLButtonElement).click()
+          ;(buildingsModeBtn as HTMLButtonElement).click()
           // Return a temporary position, will be recalculated after panel expands
           return { x: window.innerWidth - 500, y: window.innerHeight / 2 - 100 }
         }
@@ -354,20 +354,21 @@ export function HelpTipWidget() {
       setAnalysisMode('surface')
     } else if (tutorialStep === 6) {
       // Explorer step: collapse settings, switch to buildings, activate explorer
-      const collapseBtn = document.querySelector('.settings-icon-btn.expand-btn') as HTMLButtonElement
       const settingsProperties = document.querySelector('.settings-properties')
-      if (collapseBtn && settingsProperties) {
-        collapseBtn.click()
+      if (settingsProperties) {
+        // Click the active mode button to collapse (it toggles expand)
+        const activeBtn = document.querySelector('.settings-icons .settings-icon-btn.active') as HTMLButtonElement
+        if (activeBtn) activeBtn.click()
       }
       setAnalysisMode('buildings')
       setExplorerActive(true)
     } else if (tutorialStep === 7) {
       // Measurement step: deactivate explorer, collapse settings, activate measurement
       setExplorerActive(false)
-      const collapseBtn = document.querySelector('.settings-icon-btn.expand-btn') as HTMLButtonElement
       const settingsProperties = document.querySelector('.settings-properties')
-      if (collapseBtn && settingsProperties) {
-        collapseBtn.click()
+      if (settingsProperties) {
+        const activeBtn = document.querySelector('.settings-icons .settings-icon-btn.active') as HTMLButtonElement
+        if (activeBtn) activeBtn.click()
       }
       setAnalysisMode('buildings')
       setMeasurementActive(true)
