@@ -1681,8 +1681,12 @@ export function MapView() {
     }
 
     const canvas = map.getCanvas()
-    if (isMeasurementActive) {
+    if (isMeasurementActive && measurementPointA && measurementPointB) {
+      // Both points placed - show crosshair for next click (reset)
       canvas.style.cursor = 'crosshair'
+    } else if (isMeasurementActive) {
+      // Ghost marker follows cursor - hide system cursor
+      canvas.style.cursor = 'none'
     } else if (isExplorerActive && !explorerLocation) {
       // Ghost flag follows cursor - hide system cursor
       canvas.style.cursor = 'none'
@@ -1695,7 +1699,7 @@ export function MapView() {
     } else {
       canvas.style.cursor = ''
     }
-  }, [isMeasurementActive, isExplorerActive, explorerLocation, isCustomMode, isGridMode, isSurfaceMode])
+  }, [isMeasurementActive, measurementPointA, measurementPointB, isExplorerActive, explorerLocation, isCustomMode, isGridMode, isSurfaceMode])
 
   // Reduce building/grid/terrain opacity when measurement or explorer is active
   useEffect(() => {
@@ -1769,6 +1773,51 @@ export function MapView() {
       ghost.remove()
     }
   }, [mapLoaded, isExplorerActive, explorerLocation])
+
+  // Ghost A/B marker overlay: follows cursor when measurement is active but points not yet placed
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapLoadedRef.current || !containerRef.current) return
+
+    if (!isMeasurementActive) return
+
+    // Determine which label to show
+    let label: string | null = null
+    if (!measurementPointA) {
+      label = 'A'
+    } else if (!measurementPointB) {
+      label = 'B'
+    }
+    // Both placed → no ghost needed
+    if (!label) return
+
+    // Create ghost marker element (same visual as real measurement markers)
+    const ghost = document.createElement('div')
+    ghost.className = 'measurement-ghost-marker'
+    ghost.innerHTML = `<div class="measurement-marker-circle">${label}</div>`
+    ghost.style.display = 'none'
+    containerRef.current.appendChild(ghost)
+
+    const onMouseMove = (e: maplibregl.MapMouseEvent) => {
+      // Center the 28px circle on cursor
+      const point = e.point
+      ghost.style.display = 'block'
+      ghost.style.transform = `translate(${point.x - 14}px, ${point.y - 14}px)`
+    }
+
+    const onMouseLeave = () => {
+      ghost.style.display = 'none'
+    }
+
+    map.on('mousemove', onMouseMove)
+    map.getCanvas().addEventListener('mouseleave', onMouseLeave)
+
+    return () => {
+      map.off('mousemove', onMouseMove)
+      map.getCanvas().removeEventListener('mouseleave', onMouseLeave)
+      ghost.remove()
+    }
+  }, [mapLoaded, isMeasurementActive, measurementPointA, measurementPointB])
 
   // Exit measurement mode on Escape key
   useEffect(() => {

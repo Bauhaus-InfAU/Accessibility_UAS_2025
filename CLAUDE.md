@@ -304,7 +304,8 @@ Map controls (top-right on desktop, bottom-right on mobile when panel collapsed)
 Distance measurement tool:
 - **Toggle Button**: Ruler icon, active state highlighted
 - **Behavior**:
-  - Click to activate measurement mode (cursor becomes crosshair)
+  - Click to activate measurement mode
+  - **Ghost markers**: On activation, a ghost "A" marker follows the cursor at 60% opacity (system cursor hidden). After A is placed, a ghost "B" marker follows until B is placed. After both placed, crosshair cursor shown. Third click resets (new A placed, ghost B follows again).
   - Click map to place point A, click again for point B
   - Both network and euclidean paths displayed simultaneously
   - Drag markers to update measurements live
@@ -450,7 +451,7 @@ Shown during initial data loading:
   - Hover on labels brings to foreground
   - Buildings/grid fade to 30% opacity when measurement active
   - **Terrain (Surface mode)**: Opacity reduced to 50%, 3D street network hidden, MapLibre 2D streets shown
-  - CSS classes: `.measurement-marker`, `.measurement-marker-circle`, `.measurement-distance-label`
+  - CSS classes: `.measurement-marker`, `.measurement-marker-circle`, `.measurement-distance-label`, `.measurement-ghost-marker`
 - **Terrain Pin Overlay** (HTML pins positioned via 3D projection):
   - Container: `.terrain-pin-overlay` - absolute positioned, pointer-events none
   - Pin elements: `.terrain-pin-svg` - individual pin with drop shadow, `will-change: transform`

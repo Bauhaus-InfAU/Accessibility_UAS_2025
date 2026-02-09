@@ -731,6 +731,15 @@ body {
   transform: scale(1.05);
 }
 
+/* Measurement ghost marker (follows cursor before A/B placement) */
+.measurement-ghost-marker {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0.6;
+  z-index: 5;
+  will-change: transform;
+}
+
 /* Measurement Widget - match settings-widget style */
 .measurement-widget {
   flex-direction: column;
