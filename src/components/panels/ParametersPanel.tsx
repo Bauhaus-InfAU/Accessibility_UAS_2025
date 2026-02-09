@@ -180,7 +180,7 @@ export function ParametersPanel() {
             </p>
             {/* Main equation (hidden when explorer is active with preview/results) */}
             {!(explorerResults && explorerResults.length > 0) && !(isExplorerActive && explorerAmenityPreview) && (
-              <div className="equation equation-grey text-center mb-4 flex items-center justify-center gap-1">
+              <div className="equation text-center mb-4 flex items-center justify-center gap-1">
                 <span>Acc<sub>i</sub>{' ='}</span>
                 <span className="inline-flex flex-col items-center mx-1" style={{ fontSize: '0.65em', lineHeight: 1 }}>
                   <span>N</span>
