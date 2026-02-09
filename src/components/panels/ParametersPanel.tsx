@@ -53,6 +53,10 @@ export function ParametersPanel() {
     setExpPowerB,
     setExpPowerC,
     isLoading,
+    isExplorerActive,
+    explorerResults,
+    explorerAmenityPreview,
+    hoveredExplorerId,
   } = useAppContext()
 
   // Resize drag state
@@ -174,22 +178,128 @@ export function ParametersPanel() {
               amenity <span className="math-var">j</span>, weighted by how much the <span className="equation-accent">distance <span className="math-var" style={{ color: 'inherit' }}>d<sub>ij</sub></span></span> reduces
               its influence via the <span className="equation-accent">decay function <span className="math-var" style={{ color: 'inherit' }}>f(d<sub>ij</sub>)</span></span>.
             </p>
-            <div className="equation equation-grey text-center mb-4 flex items-center justify-center gap-1">
-              <span>Acc<sub>i</sub> =</span>
-              <span className="inline-flex flex-col items-center mx-1" style={{ fontSize: '0.65em', lineHeight: 1 }}>
-                <span>N</span>
-                <span style={{ fontSize: '1.8em', lineHeight: 0.9 }}>Σ</span>
-                <span>j=1</span>
-              </span>
-              <span>[Att<sub>j</sub> × </span>
-              <span className="equation-accent font-bold">
-                {hoverValues
-                  ? hoverValues.fValue.toFixed(2)
-                  : <>f(d<sub>ij</sub>)</>
-                }
-              </span>
-              <span>]</span>
-            </div>
+            {/* Main equation (hidden when explorer is active with preview/results) */}
+            {!(explorerResults && explorerResults.length > 0) && !(isExplorerActive && explorerAmenityPreview) && (
+              <div className="equation equation-grey text-center mb-4 flex items-center justify-center gap-1">
+                <span>Acc<sub>i</sub>{' ='}</span>
+                <span className="inline-flex flex-col items-center mx-1" style={{ fontSize: '0.65em', lineHeight: 1 }}>
+                  <span>N</span>
+                  <span style={{ fontSize: '1.8em', lineHeight: 0.9 }}>Σ</span>
+                  <span>j=1</span>
+                </span>
+                <span>[Att<sub>j</sub> × </span>
+                <span className="equation-accent font-bold">
+                  {hoverValues
+                    ? hoverValues.fValue.toFixed(2)
+                    : <>f(d<sub>ij</sub>)</>
+                  }
+                </span>
+                <span>]</span>
+              </div>
+            )}
+
+            {/* Preview symbolic equation row (explorer active, no flag placed yet) */}
+            {isExplorerActive && explorerAmenityPreview && !(explorerResults && explorerResults.length > 0) && (
+              <div className="mb-4 text-xs sm:text-sm" style={{ fontFamily: "'Times New Roman', Georgia, serif", fontStyle: 'italic' }}>
+                <div className="flex flex-wrap items-baseline gap-x-1 text-gray-500" style={{ fontSize: '14px' }}>
+                  <span>Acc<sub>i</sub></span>
+                  <span>=</span>
+                  {explorerAmenityPreview.map((p, i) => {
+                    const isHovered = hoveredExplorerId === p.id
+                    const hasHover = hoveredExplorerId !== null
+                    return (
+                      <span key={p.id}>
+                        {i > 0 && <span className="mx-0.5">+</span>}
+                        <span style={{
+                          color: p.color,
+                          fontWeight: isHovered ? 800 : 600,
+                          opacity: hasHover && !isHovered ? 0.35 : 1,
+                          transition: 'opacity 0.15s, font-weight 0.15s',
+                        }}>
+                          [Att<sub>{i + 1}</sub> × f(d<sub>i{i + 1}</sub>)]
+                        </span>
+                      </span>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Expanded equation when explorer results exist */}
+            {explorerResults && explorerResults.length > 0 && (
+              <div className="mb-4 text-xs sm:text-sm" style={{ fontFamily: "'Times New Roman', Georgia, serif", fontStyle: 'italic' }}>
+                {/* Row 1: symbolic terms [Att_1 × f(d_i1)] + ... */}
+                <div className="flex flex-wrap items-baseline gap-x-1 text-gray-500" style={{ fontSize: '14px' }}>
+                  <span>Acc<sub>i</sub></span>
+                  <span>=</span>
+                  {explorerResults.map((r, i) => {
+                    const isHovered = hoveredExplorerId === r.amenityId
+                    const hasHover = hoveredExplorerId !== null
+                    return (
+                      <span key={r.amenityId}>
+                        {i > 0 && <span className="mx-0.5">+</span>}
+                        <span style={{
+                          color: r.color,
+                          fontWeight: isHovered ? 800 : 600,
+                          opacity: hasHover && !isHovered ? 0.35 : 1,
+                          transition: 'opacity 0.15s, font-weight 0.15s',
+                        }}>
+                          [Att<sub>{i + 1}</sub> × f(d<sub>i{i + 1}</sub>)]
+                        </span>
+                      </span>
+                    )
+                  })}
+                </div>
+                {/* Row 2: numeric values [1.0 × 0.40] + ... */}
+                <div className="flex flex-wrap items-baseline gap-x-1 mt-1 text-gray-500" style={{ fontSize: '14px' }}>
+                  <span>Acc<sub>i</sub></span>
+                  <span>=</span>
+                  {explorerResults.map((r, i) => {
+                    const isHovered = hoveredExplorerId === r.amenityId
+                    const hasHover = hoveredExplorerId !== null
+                    return (
+                      <span key={r.amenityId}>
+                        {i > 0 && <span className="mx-0.5">+</span>}
+                        <span style={{
+                          color: r.color,
+                          fontWeight: isHovered ? 800 : 600,
+                          opacity: hasHover && !isHovered ? 0.35 : 1,
+                          transition: 'opacity 0.15s, font-weight 0.15s',
+                        }}>
+                          [{r.attractivity.toFixed(1)} × {r.decayValue.toFixed(2)}]
+                        </span>
+                      </span>
+                    )
+                  })}
+                </div>
+                {/* Row 3: partial scores → total */}
+                <div className="flex flex-wrap items-baseline gap-x-1 mt-1 text-gray-500" style={{ fontSize: '14px' }}>
+                  <span>Acc<sub>i</sub></span>
+                  <span>=</span>
+                  {explorerResults.map((r, i) => {
+                    const isHovered = hoveredExplorerId === r.amenityId
+                    const hasHover = hoveredExplorerId !== null
+                    return (
+                      <span key={r.amenityId}>
+                        {i > 0 && <span className="mx-0.5">+</span>}
+                        <span style={{
+                          color: r.color,
+                          fontWeight: isHovered ? 800 : 600,
+                          opacity: hasHover && !isHovered ? 0.35 : 1,
+                          transition: 'opacity 0.15s, font-weight 0.15s',
+                        }}>
+                          {r.partialScore.toFixed(2)}
+                        </span>
+                      </span>
+                    )
+                  })}
+                  <span>=</span>
+                  <span style={{ fontWeight: 700, color: '#374151' }}>
+                    {explorerResults.reduce((sum, r) => sum + r.partialScore, 0).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            )}
 
             <p className="text-xs sm:text-sm text-gray-600 mb-6">
               Explore how different <span className="equation-accent">distance decay functions <span className="math-var" style={{ color: 'inherit' }}>f(d<sub>ij</sub>)</span></span> affect the accessibility analysis.
@@ -211,6 +321,8 @@ export function ParametersPanel() {
                 onExpPowerBChange={setExpPowerB}
                 onExpPowerCChange={setExpPowerC}
                 onHoverChange={handleHoverChange}
+                explorerResults={explorerResults}
+                hoveredAmenityId={hoveredExplorerId}
               />
             </div>
           </>

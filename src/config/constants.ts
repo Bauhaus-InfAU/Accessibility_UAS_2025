@@ -110,6 +110,13 @@ export const TERRAIN_SMOOTH_MAX = 2         // Maximum smoothing sigma
 export const TERRAIN_SMOOTH_DEFAULT = 1.0   // Default smoothing sigma
 export const TERRAIN_SMOOTH_STEP = 0.1      // Slider step
 
+// Explorer tool palette (10 distinguishable colors, wraps via modulo)
+export const EXPLORER_PALETTE = [
+  '#e6194b', '#3cb44b', '#4363d8', '#f58231', '#42d4f4',
+  '#f032e6', '#bfef45', '#fabed4', '#469990', '#dcbeff',
+]
+export const EXPLORER_MAX_DISPLAY = 10 // max paths shown by default
+
 // Terrain height slider configuration
 export const TERRAIN_HEIGHT_MIN = 0         // Minimum terrain height scale in meters
 export const TERRAIN_HEIGHT_MAX = 300       // Maximum terrain height scale in meters

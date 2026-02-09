@@ -9,6 +9,7 @@ import { calculateGridAccessibility, normalizeGridScores, getGridScoreStats } fr
 import { updateTerrainLayer, setTerrainLayerVisibility, isTerrainLayerInitialized, updateAttractorPins, createPinOverlayContainer, removePinOverlayContainer, getAttractorPinScreenPositions, setTerrainMeshOpacity, setTerrainStreetNetworkVisibility, setTerrainFilterRange, raycastTerrainScore, hasTerrainAttractors } from '../../visualization/threeJsLayer'
 import { createCurveEvaluatorForMode } from '../../computation/curveEvaluator'
 import { calculateEuclideanDistance, formatDistance, getPathMidpoint, getLineMidpoint } from '../../computation/measurementCalc'
+import { computeExplorerResults } from '../../computation/explorerCalc'
 import { ACCENT_COLOR, ACCENT_COLOR_2 } from '../../config/constants'
 
 // Flag to track if attractivity editing just finished (prevents map click from adding pin)
@@ -149,6 +150,35 @@ function updateAttractorMarkerAttractivity(el: HTMLElement, attractivity: number
   }
 }
 
+// Update attractor marker label for explorer mode (e.g., "Att₁ = 1")
+function updateAttractorMarkerLabel(el: HTMLElement, index: number | null, attractivity: number): void {
+  const attValue = el.querySelector('.att-value') as HTMLSpanElement | null
+  if (!attValue) return
+  if (index !== null) {
+    // Explorer active: show "Att_N = value" with math styling
+    attValue.innerHTML = `<span class="att-math-label">Att<sub>${index}</sub></span>&nbsp;=&nbsp;${attractivity}`
+  } else {
+    // Explorer inactive: show just the value
+    attValue.textContent = attractivity.toString()
+  }
+}
+
+// Update attractor marker color (teardrop fill + attractivity box background)
+function updateAttractorMarkerColor(el: HTMLElement, color: string | null): void {
+  const defaultColor = '#fcdb02'
+  const c = color ?? defaultColor
+  // Update teardrop SVG fill
+  const teardropPath = el.querySelector('.attractor-teardrop path') as SVGPathElement | null
+  if (teardropPath) {
+    teardropPath.setAttribute('fill', c)
+  }
+  // Update attractivity box background
+  const attBox = el.querySelector('.attractivity-box') as HTMLDivElement | null
+  if (attBox) {
+    attBox.style.background = c
+  }
+}
+
 // Create measurement marker element (purple circle with A/B label)
 function createMeasurementMarkerElement(label: 'A' | 'B'): HTMLDivElement {
   const el = document.createElement('div')
@@ -173,6 +203,44 @@ function createDistanceLabelElement(distance: string, bgColor: string, textColor
 // Update distance label content
 function updateDistanceLabelElement(el: HTMLElement, distance: string): void {
   el.textContent = distance
+}
+
+// Create explorer flag marker element (black flag on post + score box)
+function createExplorerFlagElement(): HTMLDivElement {
+  const el = document.createElement('div')
+  el.className = 'explorer-flag'
+  el.innerHTML = `
+    <div class="explorer-flag-icon">
+      <svg width="28" height="36" viewBox="0 0 28 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <line x1="5" y1="2" x2="5" y2="35" stroke="#333" stroke-width="2.5" stroke-linecap="round"/>
+        <path d="M5 2l20 7-20 7z" fill="#333" stroke="#111" stroke-width="1.5" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div class="explorer-flag-score"></div>
+  `
+  return el
+}
+
+// Update the score label on the explorer flag element
+function updateExplorerFlagScore(el: HTMLElement, score: number | null): void {
+  const scoreEl = el.querySelector('.explorer-flag-score') as HTMLDivElement | null
+  if (!scoreEl) return
+  if (score !== null) {
+    scoreEl.innerHTML = `<span class="explorer-flag-score-label">Acc<sub>i</sub></span>&nbsp;=&nbsp;${score.toFixed(2)}`
+    scoreEl.style.display = 'flex'
+  } else {
+    scoreEl.innerHTML = ''
+    scoreEl.style.display = 'none'
+  }
+}
+
+// Create explorer distance label element
+function createExplorerDistanceLabelElement(distance: string, bgColor: string): HTMLDivElement {
+  const el = document.createElement('div')
+  el.className = 'explorer-distance-label'
+  el.style.backgroundColor = bgColor
+  el.textContent = distance
+  return el
 }
 
 // Create terrain pin SVG element (HTML overlay positioned via 3D projection)
@@ -217,6 +285,8 @@ export function MapView() {
   const attractorMarkersRef = useRef<Map<string, maplibregl.Marker>>(new Map())
   const measurementMarkersRef = useRef<Map<'A' | 'B', maplibregl.Marker>>(new Map())
   const distanceLabelMarkersRef = useRef<Map<'network' | 'euclidean', maplibregl.Marker>>(new Map())
+  const explorerFlagMarkerRef = useRef<maplibregl.Marker | null>(null)
+  const explorerLabelMarkersRef = useRef<Map<string, maplibregl.Marker>>(new Map())
   const popupRef = useRef<maplibregl.Popup | null>(null)
   const terrainUpdatePendingRef = useRef(false)
   // HTML pin overlay refs for terrain-aware 3D-projected pins
@@ -229,6 +299,7 @@ export function MapView() {
     rawAccessibilityScores,
     isLoading,
     selectedLandUse,
+    attractivityMode,
     buildingFilterMode,
     // Curve parameters for terrain
     curveTabMode,
@@ -274,6 +345,16 @@ export function MapView() {
     addMeasurementPoint,
     updateMeasurementPoint,
     setMeasurementActive,
+    // Explorer tool state
+    isExplorerActive,
+    explorerLocation,
+    explorerNodeId,
+    explorerResults,
+    explorerAmenityPreview,
+    setExplorerActive,
+    setExplorerLocation,
+    setExplorerResults,
+    setHoveredExplorerId,
   } = useAppContext()
   const { setMapInstance, setInitialBounds, setBearing } = useMapContext()
 
@@ -327,6 +408,11 @@ export function MapView() {
   isMeasurementActiveRef.current = isMeasurementActive
   addMeasurementPointRef.current = addMeasurementPoint
   updateMeasurementPointRef.current = updateMeasurementPoint
+
+  const isExplorerActiveRef = useRef(isExplorerActive)
+  const setExplorerLocationRef = useRef(setExplorerLocation)
+  isExplorerActiveRef.current = isExplorerActive
+  setExplorerLocationRef.current = setExplorerLocation
 
   // Refs for terrain hover score denormalization
   const surfaceMinScoreRef = useRef(surfaceMinScore)
@@ -407,6 +493,8 @@ export function MapView() {
       map.on('mousemove', 'buildings-fill', (e) => {
         // Skip if not in buildings mode
         if (isGridModeRef.current || isSurfaceModeRef.current) return
+        // Suppress normal popup when explorer is active (ghost flag shows score instead)
+        if (isExplorerActiveRef.current) return
 
         const feature = e.features?.[0]
         if (!feature?.properties) return
@@ -469,6 +557,8 @@ export function MapView() {
       map.on('mousemove', 'hexagons-fill', (e) => {
         // Skip if not in grid mode
         if (!isGridModeRef.current) return
+        // Suppress normal popup when explorer is active (ghost flag shows score instead)
+        if (isExplorerActiveRef.current) return
 
         const feature = e.features?.[0]
         if (!feature?.properties) return
@@ -523,6 +613,8 @@ export function MapView() {
       map.on('mousemove', (e) => {
         if (!isSurfaceModeRef.current) return
         if (isMeasurementActiveRef.current) return
+        // Suppress normal popup when explorer is active (ghost flag shows score instead)
+        if (isExplorerActiveRef.current) return
 
         // No attractors placed → no scores to show
         if (!hasTerrainAttractors()) {
@@ -596,6 +688,12 @@ export function MapView() {
         return
       }
 
+      // Explorer mode: place or move flag
+      if (isExplorerActiveRef.current) {
+        setExplorerLocationRef.current([lng, lat])
+        return
+      }
+
       // Grid mode: add attractor (shared with surface mode)
       if (isGridModeRef.current) {
         addGridAttractorRef.current([lng, lat])
@@ -635,6 +733,15 @@ export function MapView() {
         marker.remove()
       }
       distanceLabelMarkersRef.current.clear()
+      // Clean up explorer markers
+      if (explorerFlagMarkerRef.current) {
+        explorerFlagMarkerRef.current.remove()
+        explorerFlagMarkerRef.current = null
+      }
+      for (const marker of explorerLabelMarkersRef.current.values()) {
+        marker.remove()
+      }
+      explorerLabelMarkersRef.current.clear()
       // Clean up popup
       if (popupRef.current) {
         popupRef.current.remove()
@@ -906,6 +1013,14 @@ export function MapView() {
           e.preventDefault()
           e.stopPropagation()
           removeGridAttractorRef.current(attractor.id)
+        })
+
+        // Hover handlers for explorer highlighting
+        el.addEventListener('mouseenter', () => {
+          setHoveredExplorerId(attractor.id)
+        })
+        el.addEventListener('mouseleave', () => {
+          setHoveredExplorerId(null)
         })
 
         attractorMarkersRef.current.set(attractor.id, marker)
@@ -1273,19 +1388,305 @@ export function MapView() {
     }
   }, [isMeasurementActive, measurementPointA, measurementPointB, networkPath, networkDistance])
 
+  // Explorer tool: compute results when location or parameters change
+  useEffect(() => {
+    if (!isExplorerActive || !explorerLocation || !explorerNodeId || !graph || !fullNetworkMatrix) {
+      return
+    }
+
+    // Create curve evaluator
+    const evaluator = createCurveEvaluatorForMode(
+      curveTabMode,
+      customCurveType,
+      polylinePoints,
+      bezierHandles,
+      maxDistance,
+      negExpAlpha,
+      expPowerB,
+      expPowerC
+    )
+
+    // Gather amenities based on current mode
+    const amenities: Array<{ id: string; label: string; coord: [number, number]; nodeId: string; attractivity: number }> = []
+
+    if (selectedLandUse === 'Custom' || isGridMode || isSurfaceMode) {
+      // Use shared attractors (custom pins / grid attractors)
+      for (const a of gridAttractors) {
+        amenities.push({
+          id: a.id,
+          label: `Amenity ${amenities.length + 1}`,
+          coord: a.coord,
+          nodeId: a.nearestNodeId,
+          attractivity: a.attractivity,
+        })
+      }
+    } else {
+      // Predefined amenity type: use amenity buildings
+      const amenityBuildings = buildings.filter(b => (b.landUseAreas[selectedLandUse] || 0) > 0)
+      for (const b of amenityBuildings) {
+        if (!b.nearestNodeId) continue
+        const area = b.landUseAreas[selectedLandUse] || 0
+        let att: number
+        switch (attractivityMode) {
+          case 'volume': att = area * b.height; break
+          case 'count': att = area > 0 ? 1 : 0; break
+          default: att = area
+        }
+        amenities.push({
+          id: b.id,
+          label: `Building ${b.id.slice(0, 6)}`,
+          coord: b.centroid,
+          nodeId: b.nearestNodeId,
+          attractivity: att,
+        })
+      }
+    }
+
+    if (amenities.length === 0) {
+      setExplorerResults(null)
+      return
+    }
+
+    const results = computeExplorerResults(
+      explorerNodeId,
+      amenities,
+      graph,
+      fullNetworkMatrix,
+      evaluator
+    )
+
+    setExplorerResults(results.length > 0 ? results : null)
+  }, [isExplorerActive, explorerLocation, explorerNodeId, graph, fullNetworkMatrix, gridAttractors, buildings, selectedLandUse, attractivityMode, isGridMode, isSurfaceMode, curveTabMode, customCurveType, polylinePoints, bezierHandles, maxDistance, negExpAlpha, expPowerB, expPowerC, setExplorerResults])
+
+  // Explorer tool: sync flag marker, path rendering, and distance labels
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapLoadedRef.current) return
+
+    // Helper to clean up all explorer visuals
+    const cleanupExplorerVisuals = () => {
+      // Remove flag marker
+      if (explorerFlagMarkerRef.current) {
+        explorerFlagMarkerRef.current.remove()
+        explorerFlagMarkerRef.current = null
+      }
+      // Remove label markers
+      for (const marker of explorerLabelMarkersRef.current.values()) {
+        marker.remove()
+      }
+      explorerLabelMarkersRef.current.clear()
+      // Remove path layer
+      if (map.getLayer('explorer-paths-layer')) {
+        map.removeLayer('explorer-paths-layer')
+      }
+      if (map.getSource('explorer-paths')) {
+        map.removeSource('explorer-paths')
+      }
+    }
+
+    // If explorer is not active, clean up
+    if (!isExplorerActive) {
+      cleanupExplorerVisuals()
+      // Reset all attractor markers and terrain pins to default yellow + reset labels
+      for (const [id, marker] of attractorMarkersRef.current.entries()) {
+        updateAttractorMarkerColor(marker.getElement(), null)
+        const attractor = gridAttractors.find(a => a.id === id)
+        updateAttractorMarkerLabel(marker.getElement(), null, attractor?.attractivity ?? 1)
+      }
+      for (const pinEl of pinElementsRef.current.values()) {
+        const pinPath = pinEl.querySelector('path') as SVGPathElement | null
+        if (pinPath) pinPath.setAttribute('fill', '#fcdb02')
+      }
+      return
+    }
+
+    // Handle flag marker
+    if (explorerLocation) {
+      if (!explorerFlagMarkerRef.current) {
+        const el = createExplorerFlagElement()
+        explorerFlagMarkerRef.current = new maplibregl.Marker({
+          element: el,
+          draggable: true,
+          anchor: 'bottom',
+        })
+          .setLngLat(explorerLocation)
+          .addTo(map)
+
+        explorerFlagMarkerRef.current.on('dragend', () => {
+          const lngLat = explorerFlagMarkerRef.current!.getLngLat()
+          setExplorerLocationRef.current([lngLat.lng, lngLat.lat])
+        })
+
+        // Right-click to remove flag and clear results
+        el.addEventListener('contextmenu', (e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          setExplorerActive(false)
+        })
+      } else {
+        explorerFlagMarkerRef.current.setLngLat(explorerLocation)
+      }
+    } else {
+      // Remove flag if location is null
+      if (explorerFlagMarkerRef.current) {
+        explorerFlagMarkerRef.current.remove()
+        explorerFlagMarkerRef.current = null
+      }
+    }
+
+    // Render paths and labels when results exist
+    if (explorerResults && explorerResults.length > 0) {
+      // Build GeoJSON features for all paths
+      const features: GeoJSON.Feature[] = explorerResults
+        .filter(r => r.networkPath.length >= 2)
+        .map(r => ({
+          type: 'Feature' as const,
+          properties: { color: r.color, amenityId: r.amenityId },
+          geometry: {
+            type: 'LineString' as const,
+            coordinates: r.networkPath,
+          },
+        }))
+
+      const pathData: GeoJSON.FeatureCollection = {
+        type: 'FeatureCollection',
+        features,
+      }
+
+      if (map.getSource('explorer-paths')) {
+        (map.getSource('explorer-paths') as maplibregl.GeoJSONSource).setData(pathData)
+      } else {
+        map.addSource('explorer-paths', {
+          type: 'geojson',
+          data: pathData,
+        })
+        map.addLayer({
+          id: 'explorer-paths-layer',
+          type: 'line',
+          source: 'explorer-paths',
+          paint: {
+            'line-color': ['get', 'color'],
+            'line-width': 5,
+            'line-opacity': 0.8,
+          },
+          layout: {
+            'line-cap': 'round',
+            'line-join': 'round',
+          },
+        })
+      }
+
+      // Manage distance labels
+      const currentLabelIds = new Set(explorerResults.map(r => r.amenityId))
+
+      // Remove stale labels
+      for (const [id, marker] of explorerLabelMarkersRef.current) {
+        if (!currentLabelIds.has(id)) {
+          marker.remove()
+          explorerLabelMarkersRef.current.delete(id)
+        }
+      }
+
+      // Add or update labels
+      for (const result of explorerResults) {
+        if (result.networkPath.length < 2) continue
+
+        const midpoint = getPathMidpoint(result.networkPath)
+        const distStr = formatDistance(result.networkDistance)
+        let label = explorerLabelMarkersRef.current.get(result.amenityId)
+
+        if (!label) {
+          const el = createExplorerDistanceLabelElement(distStr, result.color)
+          label = new maplibregl.Marker({
+            element: el,
+            anchor: 'center',
+          })
+            .setLngLat(midpoint)
+            .addTo(map)
+          explorerLabelMarkersRef.current.set(result.amenityId, label)
+        } else {
+          label.setLngLat(midpoint)
+          const el = label.getElement()
+          el.textContent = distStr
+          el.style.backgroundColor = result.color
+        }
+      }
+      // Color attractor pins and update labels by their explorer palette color
+      for (let i = 0; i < explorerResults.length; i++) {
+        const result = explorerResults[i]
+        const marker = attractorMarkersRef.current.get(result.amenityId)
+        if (marker) {
+          updateAttractorMarkerColor(marker.getElement(), result.color)
+          updateAttractorMarkerLabel(marker.getElement(), i + 1, result.attractivity)
+        }
+        // Also color terrain pin SVGs (Surface mode)
+        const pinEl = pinElementsRef.current.get(result.amenityId)
+        if (pinEl) {
+          const pinPath = pinEl.querySelector('path') as SVGPathElement | null
+          if (pinPath) pinPath.setAttribute('fill', result.color)
+        }
+      }
+      // Update flag score label
+      if (explorerFlagMarkerRef.current) {
+        const totalScore = explorerResults.reduce((sum, r) => sum + r.partialScore, 0)
+        updateExplorerFlagScore(explorerFlagMarkerRef.current.getElement(), totalScore)
+      }
+    } else {
+      // No results yet: remove paths and labels
+      if (map.getLayer('explorer-paths-layer')) {
+        map.removeLayer('explorer-paths-layer')
+      }
+      if (map.getSource('explorer-paths')) {
+        map.removeSource('explorer-paths')
+      }
+      for (const marker of explorerLabelMarkersRef.current.values()) {
+        marker.remove()
+      }
+      explorerLabelMarkersRef.current.clear()
+
+      // Apply preview colors immediately (before flag placement)
+      if (explorerAmenityPreview) {
+        for (let i = 0; i < explorerAmenityPreview.length; i++) {
+          const p = explorerAmenityPreview[i]
+          const marker = attractorMarkersRef.current.get(p.id)
+          if (marker) {
+            updateAttractorMarkerColor(marker.getElement(), p.color)
+            updateAttractorMarkerLabel(marker.getElement(), i + 1, p.attractivity)
+          }
+          // Also color terrain pin SVGs (Surface mode)
+          const pinEl = pinElementsRef.current.get(p.id)
+          if (pinEl) {
+            const pinPath = pinEl.querySelector('path') as SVGPathElement | null
+            if (pinPath) pinPath.setAttribute('fill', p.color)
+          }
+        }
+      }
+
+      // Clear flag score label
+      if (explorerFlagMarkerRef.current) {
+        updateExplorerFlagScore(explorerFlagMarkerRef.current.getElement(), null)
+      }
+    }
+  }, [isExplorerActive, explorerLocation, explorerResults, explorerAmenityPreview, setExplorerResults, setExplorerActive])
+
   // Update cursor when measurement mode changes
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapLoadedRef.current) return
 
-    // Clear hover popup when measurement activates (especially terrain popup in Surface mode)
-    if (isMeasurementActive && popupRef.current) {
+    // Clear hover popup when measurement or explorer activates (especially terrain popup in Surface mode)
+    if ((isMeasurementActive || isExplorerActive) && popupRef.current) {
       popupRef.current.remove()
       popupRef.current = null
     }
 
     const canvas = map.getCanvas()
     if (isMeasurementActive) {
+      canvas.style.cursor = 'crosshair'
+    } else if (isExplorerActive && !explorerLocation) {
+      // Ghost flag follows cursor - hide system cursor
+      canvas.style.cursor = 'none'
+    } else if (isExplorerActive && explorerLocation) {
       canvas.style.cursor = 'crosshair'
     } else if (isGridMode || isSurfaceMode) {
       canvas.style.cursor = 'crosshair'
@@ -1294,14 +1695,15 @@ export function MapView() {
     } else {
       canvas.style.cursor = ''
     }
-  }, [isMeasurementActive, isCustomMode, isGridMode, isSurfaceMode])
+  }, [isMeasurementActive, isExplorerActive, explorerLocation, isCustomMode, isGridMode, isSurfaceMode])
 
-  // Reduce building/grid/terrain opacity when measurement is active
+  // Reduce building/grid/terrain opacity when measurement or explorer is active
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapLoadedRef.current) return
 
-    const opacity = isMeasurementActive ? 0.3 : 1
+    const toolActive = isMeasurementActive || isExplorerActive
+    const opacity = toolActive ? 0.3 : 1
 
     // Update building layers opacity
     if (map.getLayer('buildings-fill')) {
@@ -1310,19 +1712,63 @@ export function MapView() {
 
     // Update hexagon grid opacity (both fill and outline)
     if (map.getLayer('hexagons-fill')) {
-      map.setPaintProperty('hexagons-fill', 'fill-opacity', isMeasurementActive ? 0.4 : 0.85)
+      map.setPaintProperty('hexagons-fill', 'fill-opacity', toolActive ? 0.4 : 0.85)
     }
     if (map.getLayer('hexagons-outline')) {
-      map.setPaintProperty('hexagons-outline', 'line-opacity', isMeasurementActive ? 0.1 : 0.2)
+      map.setPaintProperty('hexagons-outline', 'line-opacity', toolActive ? 0.1 : 0.2)
     }
 
     // Update terrain (Surface mode): reduce opacity, hide 3D streets, show 2D streets
     if (isSurfaceMode && isTerrainLayerInitialized()) {
-      setTerrainMeshOpacity(isMeasurementActive ? 0.5 : 1)
-      setTerrainStreetNetworkVisibility(!isMeasurementActive)
-      setStreetLayersVisibility(map, isMeasurementActive)
+      setTerrainMeshOpacity(toolActive ? 0.5 : 1)
+      setTerrainStreetNetworkVisibility(!toolActive)
+      setStreetLayersVisibility(map, toolActive)
     }
-  }, [isMeasurementActive, isSurfaceMode])
+  }, [isMeasurementActive, isExplorerActive, isSurfaceMode])
+
+  // Ghost flag overlay: follows cursor when explorer is active but no flag placed yet
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapLoadedRef.current || !containerRef.current) return
+
+    // Only show ghost flag when explorer is active and no location placed
+    if (!isExplorerActive || explorerLocation) return
+
+    // Create ghost flag element (flag icon only, no score)
+    const ghost = document.createElement('div')
+    ghost.className = 'explorer-ghost-flag'
+    ghost.innerHTML = `
+      <div class="explorer-flag-icon">
+        <svg width="28" height="36" viewBox="0 0 28 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <line x1="5" y1="2" x2="5" y2="35" stroke="#333" stroke-width="2.5" stroke-linecap="round"/>
+          <path d="M5 2l20 7-20 7z" fill="#333" stroke="#111" stroke-width="1.5" stroke-linejoin="round"/>
+        </svg>
+      </div>
+    `
+    ghost.style.display = 'none'
+    containerRef.current.appendChild(ghost)
+
+    const onMouseMove = (e: maplibregl.MapMouseEvent) => {
+      // Position ghost flag: offset so post bottom (tip) aligns with cursor
+      // In the 28×36 viewBox, the post bottom is at (x=5, y=35)
+      const point = e.point
+      ghost.style.display = 'flex'
+      ghost.style.transform = `translate(${point.x - 5}px, ${point.y - 36}px)`
+    }
+
+    const onMouseLeave = () => {
+      ghost.style.display = 'none'
+    }
+
+    map.on('mousemove', onMouseMove)
+    map.getCanvas().addEventListener('mouseleave', onMouseLeave)
+
+    return () => {
+      map.off('mousemove', onMouseMove)
+      map.getCanvas().removeEventListener('mouseleave', onMouseLeave)
+      ghost.remove()
+    }
+  }, [mapLoaded, isExplorerActive, explorerLocation])
 
   // Exit measurement mode on Escape key
   useEffect(() => {

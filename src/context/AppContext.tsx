@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo, type ReactNode } from 'react'
-import type { Building, ControlPoint, CurveMode, CurveTabMode, AttractivityMode, DistanceMatrix, LandUse, StreetGraph, AnalysisMode, GridAttractor, StreetsGeoJSON, MeasurementPoint, HexCell, BuildingFilterMode } from '../config/types'
-import { MAX_DISTANCE_DEFAULT, DEFAULT_POLYLINE_POINTS, DEFAULT_BEZIER_HANDLES, DEFAULT_NEG_EXP_ALPHA, DEFAULT_EXP_POWER_B, DEFAULT_EXP_POWER_C, HEX_DIAMETER_DEFAULT, TERRAIN_SMOOTH_DEFAULT, TERRAIN_HEIGHT_DEFAULT } from '../config/constants'
+import type { Building, ControlPoint, CurveMode, CurveTabMode, AttractivityMode, DistanceMatrix, LandUse, StreetGraph, AnalysisMode, GridAttractor, StreetsGeoJSON, MeasurementPoint, HexCell, BuildingFilterMode, ExplorerResult, ExplorerAmenityPreview } from '../config/types'
+import { MAX_DISTANCE_DEFAULT, DEFAULT_POLYLINE_POINTS, DEFAULT_BEZIER_HANDLES, DEFAULT_NEG_EXP_ALPHA, DEFAULT_EXP_POWER_B, DEFAULT_EXP_POWER_C, HEX_DIAMETER_DEFAULT, TERRAIN_SMOOTH_DEFAULT, TERRAIN_HEIGHT_DEFAULT, EXPLORER_PALETTE, EXPLORER_MAX_DISPLAY } from '../config/constants'
 import { loadBuildingsGeoJSON, loadStreetsGeoJSON } from '../data/dataLoader'
 import { processBuildings, getBuildingsWithLandUse, getAvailableLandUses } from '../data/buildingStore'
 import { buildStreetGraph, mapBuildingsToNodes, serializeGraph, findNearestNode } from '../data/streetGraph'
@@ -88,6 +88,14 @@ interface AppState {
   networkPath: [number, number][] | null
   networkDistance: number | null
 
+  // Explorer tool state
+  isExplorerActive: boolean
+  explorerLocation: [number, number] | null
+  explorerNodeId: string | null
+  explorerResults: ExplorerResult[] | null
+  explorerAmenityPreview: ExplorerAmenityPreview[] | null  // Available as soon as explorer activates
+  hoveredExplorerId: string | null
+
   // Mobile legend toggle
   isMobileLegendOpen: boolean
 }
@@ -133,6 +141,11 @@ interface AppContextValue extends AppState {
   setMeasurementActive: (active: boolean) => void
   addMeasurementPoint: (coord: [number, number]) => void
   updateMeasurementPoint: (id: 'A' | 'B', coord: [number, number]) => void
+  // Explorer tool actions
+  setExplorerActive: (active: boolean) => void
+  setExplorerLocation: (coord: [number, number]) => void
+  setExplorerResults: (results: ExplorerResult[] | null) => void
+  setHoveredExplorerId: (id: string | null) => void
   setIsMobileLegendOpen: (open: boolean) => void
 }
 
@@ -227,6 +240,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [measurementPointB, setMeasurementPointB] = useState<MeasurementPoint | null>(null)
   const [networkPath, setNetworkPath] = useState<[number, number][] | null>(null)
   const [networkDistance, setNetworkDistance] = useState<number | null>(null)
+
+  // Explorer tool state
+  const [isExplorerActive, setIsExplorerActive] = useState(false)
+  const [explorerLocation, setExplorerLocationState] = useState<[number, number] | null>(null)
+  const [explorerNodeId, setExplorerNodeId] = useState<string | null>(null)
+  const [explorerResults, setExplorerResults] = useState<ExplorerResult[] | null>(null)
+  const [hoveredExplorerId, setHoveredExplorerId] = useState<string | null>(null)
 
   // Close mobile legend when panel expands
   useEffect(() => {
@@ -413,6 +433,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Measurement tool actions
   const setMeasurementActive = useCallback((active: boolean) => {
     setIsMeasurementActive(active)
+    if (active) {
+      // Mutual exclusivity: deactivate explorer when measurement activates
+      setIsExplorerActive(false)
+      setExplorerLocationState(null)
+      setExplorerNodeId(null)
+      setExplorerResults(null)
+    }
     if (!active) {
       // Clear points and path when deactivating
       setMeasurementPointA(null)
@@ -484,6 +511,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     }
   }, [graph, measurementPointA, measurementPointB])
+
+  // Explorer tool actions
+  const setExplorerActive = useCallback((active: boolean) => {
+    setIsExplorerActive(active)
+    if (active) {
+      // Mutual exclusivity: deactivate measurement when explorer activates
+      setIsMeasurementActive(false)
+      setMeasurementPointA(null)
+      setMeasurementPointB(null)
+      setNetworkPath(null)
+      setNetworkDistance(null)
+    }
+    if (!active) {
+      // Clear explorer state when deactivating
+      setExplorerLocationState(null)
+      setExplorerNodeId(null)
+      setExplorerResults(null)
+      setHoveredExplorerId(null)
+    }
+  }, [])
+
+  const setExplorerLocation = useCallback((coord: [number, number]) => {
+    if (!graph) return
+    const nodeId = findNearestNode(graph, coord)
+    setExplorerLocationState(coord)
+    setExplorerNodeId(nodeId)
+  }, [graph])
 
   // Tutorial actions
   const advanceTutorial = useCallback(() => {
@@ -627,6 +681,44 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [gridAttractors]
   )
 
+  // Explorer amenity preview: available as soon as explorer activates (before flag placement)
+  // Assigns stable palette colors based on original amenity order
+  const explorerAmenityPreview = useMemo<ExplorerAmenityPreview[] | null>(() => {
+    if (!isExplorerActive) return null
+
+    const preview: ExplorerAmenityPreview[] = []
+
+    if (selectedLandUse === 'Custom' || analysisMode === 'grid' || analysisMode === 'surface') {
+      // Custom/Grid/Surface: use shared attractors
+      for (let i = 0; i < gridAttractors.length && i < EXPLORER_MAX_DISPLAY; i++) {
+        preview.push({
+          id: gridAttractors[i].id,
+          color: EXPLORER_PALETTE[i % EXPLORER_PALETTE.length],
+          attractivity: gridAttractors[i].attractivity,
+        })
+      }
+    } else {
+      // Predefined amenity type: use amenity buildings
+      const amenityBuildings = buildings.filter(b => (b.landUseAreas[selectedLandUse] || 0) > 0)
+      for (let i = 0; i < amenityBuildings.length && i < EXPLORER_MAX_DISPLAY; i++) {
+        const b = amenityBuildings[i]
+        const area = b.landUseAreas[selectedLandUse] || 0
+        let att: number
+        switch (attractivityMode) {
+          case 'volume': att = area * b.height; break
+          case 'count': att = area > 0 ? 1 : 0; break
+          default: att = area
+        }
+        preview.push({
+          id: b.id,
+          color: EXPLORER_PALETTE[i % EXPLORER_PALETTE.length],
+          attractivity: att,
+        })
+      }
+    }
+
+    return preview.length > 0 ? preview : null
+  }, [isExplorerActive, gridAttractors, buildings, selectedLandUse, attractivityMode, analysisMode])
 
   const value: AppContextValue = {
     isLoading,
@@ -722,6 +814,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setMeasurementActive,
     addMeasurementPoint,
     updateMeasurementPoint,
+    // Explorer tool
+    isExplorerActive,
+    explorerLocation,
+    explorerNodeId,
+    explorerResults,
+    explorerAmenityPreview,
+    hoveredExplorerId,
+    setExplorerActive,
+    setExplorerLocation,
+    setExplorerResults,
+    setHoveredExplorerId,
     // Mobile legend toggle
     isMobileLegendOpen,
     setIsMobileLegendOpen,

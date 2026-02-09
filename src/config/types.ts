@@ -106,5 +106,25 @@ export interface MeasurementPoint {
   nearestNodeId: string
 }
 
+// Explorer tool result for a single amenity contribution
+export interface ExplorerResult {
+  amenityId: string
+  amenityLabel: string
+  amenityCoord: [number, number]
+  attractivity: number
+  networkDistance: number          // d_ij in meters
+  decayValue: number              // f(d_ij)
+  partialScore: number            // Att_j × f(d_ij)
+  networkPath: [number, number][] // path coordinates
+  color: string                   // assigned palette color
+}
+
+// Lightweight amenity preview for explorer (available before flag placement)
+export interface ExplorerAmenityPreview {
+  id: string
+  color: string
+  attractivity: number
+}
+
 export type BuildingsGeoJSON = FeatureCollection<MultiPolygon>
 export type StreetsGeoJSON = FeatureCollection<LineString>

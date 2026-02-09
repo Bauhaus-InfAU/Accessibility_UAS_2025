@@ -3,6 +3,7 @@ import { MapProvider } from '../context/MapContext'
 import { MapView } from './map/MapView'
 import { ParametersPanel } from './panels/ParametersPanel'
 import { NavigationWidget } from './panels/NavigationWidget'
+import { ExplorerWidget } from './panels/ExplorerWidget'
 import { MeasurementWidget } from './panels/MeasurementWidget'
 import { HelpTipWidget } from './panels/HelpTipWidget'
 import { SettingsWidget } from './panels/SettingsWidget'
@@ -19,6 +20,7 @@ function ToolsColumn() {
   return (
     <div className={`tools-column absolute right-4 sm:right-5 top-1/2 -translate-y-1/2 flex flex-col items-end gap-2 pointer-events-auto z-10 ${mobileVisibility}`}>
       <SettingsWidget />
+      <ExplorerWidget />
       <MeasurementWidget />
       <HelpTipWidget />
     </div>

@@ -5,7 +5,9 @@ import { PolylineEditor } from './PolylineEditor'
 import { MathCurveDisplay } from './MathCurveDisplay'
 import { CoefficientInputs, type CoefficientHoverType } from './CoefficientInputs'
 import { CurveExplorer } from './CurveExplorer'
+import { ExplorerDots } from './ExplorerDots'
 import { createNegativeExponentialEvaluator, createExponentialPowerEvaluator, createPolylineEvaluator } from '../../computation/curveEvaluator'
+import type { ExplorerResult } from '../../config/types'
 
 // Hover values reported to parent
 export interface CurveHoverValues {
@@ -26,6 +28,8 @@ interface CurveEditorProps {
   onExpPowerBChange: (b: number) => void
   onExpPowerCChange: (c: number) => void
   onHoverChange?: (values: CurveHoverValues | null) => void
+  explorerResults?: ExplorerResult[] | null
+  hoveredAmenityId?: string | null
 }
 
 // Grid cells are square: 8 x-intervals (250m each) and 4 y-intervals (0.25 each)
@@ -77,6 +81,8 @@ export function CurveEditor({
   onExpPowerBChange,
   onExpPowerCChange,
   onHoverChange,
+  explorerResults,
+  hoveredAmenityId,
 }: CurveEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const { width: svgWidth, height: svgHeight } = useResponsiveDimensions(containerRef)
@@ -317,6 +323,17 @@ export function CurveEditor({
           plotHeight={plotHeight}
           hoverPlotX={hoverPlotX}
         />
+
+        {/* Explorer dots overlay */}
+        {explorerResults && explorerResults.length > 0 && (
+          <ExplorerDots
+            results={explorerResults}
+            maxDistance={maxDistance}
+            plotWidth={plotWidth}
+            plotHeight={plotHeight}
+            hoveredAmenityId={hoveredAmenityId ?? null}
+          />
+        )}
       </CurveCanvas>
 
       {/* Tab-specific controls */}
