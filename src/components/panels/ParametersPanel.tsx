@@ -182,7 +182,7 @@ export function ParametersPanel() {
                 <span>j=1</span>
               </span>
               <span>[Att<sub>j</sub> × </span>
-              <span className="equation-accent">
+              <span className="equation-accent font-bold">
                 {hoverValues
                   ? hoverValues.fValue.toFixed(2)
                   : <>f(d<sub>ij</sub>)</>
