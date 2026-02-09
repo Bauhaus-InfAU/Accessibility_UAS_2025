@@ -589,6 +589,24 @@ function lngLatToLocalMeters(
 }
 
 /**
+ * Convert local model-space meters back to lng/lat (inverse of lngLatToLocalMeters).
+ */
+export function localMetersToLngLat(
+  pos: { x: number; y: number },
+  config: TerrainMeshConfig
+): [number, number] {
+  const centerX = (config.mercatorMinX + config.mercatorMaxX) / 2
+  const centerY = (config.mercatorMinY + config.mercatorMaxY) / 2
+
+  const mercX = pos.x * config.meterScale + centerX
+  const mercY = -pos.y * config.meterScale + centerY
+
+  const coord = new maplibregl.MercatorCoordinate(mercX, mercY, 0)
+  const lngLat = coord.toLngLat()
+  return [lngLat.lng, lngLat.lat]
+}
+
+/**
  * Sample terrain height at lng/lat using bilinear interpolation.
  *
  * @param lngLat - Longitude/latitude coordinates
@@ -636,6 +654,59 @@ export function sampleTerrainHeight(
   const h0 = h00 * (1 - fx) + h10 * fx
   const h1 = h01 * (1 - fx) + h11 * fx
   return h0 * (1 - fy) + h1 * fy
+}
+
+/**
+ * Sample terrain normalized score at lng/lat using bilinear interpolation.
+ * Returns the smoothed normalized score (0-1) from the `score` BufferAttribute.
+ * Returns -1 if the point is outside terrain bounds.
+ *
+ * @param lngLat - Longitude/latitude coordinates
+ * @param terrainMesh - The terrain mesh with score data
+ * @returns Normalized score (0-1) or -1 if outside bounds
+ */
+export function sampleTerrainScore(
+  lngLat: [number, number],
+  terrainMesh: THREE.Mesh
+): number {
+  const config = terrainMesh.userData.terrainConfig as TerrainMeshConfig
+  const scoreArray = (terrainMesh.geometry as THREE.BufferGeometry)
+    .attributes.score?.array as Float32Array | undefined
+
+  if (!scoreArray) return -1
+
+  // Normalize lng/lat to 0-1 within terrain bounds
+  const normX = (lngLat[0] - config.minLng) / (config.maxLng - config.minLng)
+  const normY = (lngLat[1] - config.minLat) / (config.maxLat - config.minLat)
+
+  // Return -1 if outside terrain bounds
+  if (normX < 0 || normX > 1 || normY < 0 || normY > 1) return -1
+
+  // Map to grid indices (0-64 for 65 vertices)
+  const gridX = normX * config.segmentsX
+  const gridY = normY * config.segmentsY
+
+  // Get surrounding vertex indices
+  const x0 = Math.floor(gridX)
+  const x1 = Math.min(x0 + 1, config.segmentsX)
+  const y0 = Math.floor(gridY)
+  const y1 = Math.min(y0 + 1, config.segmentsY)
+
+  // Fractional position for interpolation
+  const fx = gridX - x0
+  const fy = gridY - y0
+
+  // Get scores from 4 corners (score is a single-component attribute)
+  const verticesPerRow = config.segmentsX + 1
+  const s00 = scoreArray[y0 * verticesPerRow + x0]
+  const s10 = scoreArray[y0 * verticesPerRow + x1]
+  const s01 = scoreArray[y1 * verticesPerRow + x0]
+  const s11 = scoreArray[y1 * verticesPerRow + x1]
+
+  // Bilinear interpolation
+  const s0 = s00 * (1 - fx) + s10 * fx
+  const s1 = s01 * (1 - fx) + s11 * fx
+  return s0 * (1 - fy) + s1 * fy
 }
 
 /**

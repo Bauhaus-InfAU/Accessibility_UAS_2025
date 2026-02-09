@@ -6,7 +6,7 @@ import { createMap, setStreetLayersVisibility } from '../../visualization/mapLib
 import { updateBuildingColors, setBuildingLayersVisibility, applyBuildingFilterOpacity, resetBuildingFilterOpacity } from '../../visualization/buildingColorUpdater'
 import { updateHexagonColors, setHexagonLayersVisibility, applyHexagonFilterOpacity, resetHexagonFilterOpacity } from '../../visualization/hexagonColorUpdater'
 import { calculateGridAccessibility, normalizeGridScores, getGridScoreStats } from '../../computation/gridAccessibilityCalc'
-import { updateTerrainLayer, setTerrainLayerVisibility, isTerrainLayerInitialized, updateAttractorPins, createPinOverlayContainer, removePinOverlayContainer, getAttractorPinScreenPositions, setTerrainMeshOpacity, setTerrainStreetNetworkVisibility, setTerrainFilterRange } from '../../visualization/threeJsLayer'
+import { updateTerrainLayer, setTerrainLayerVisibility, isTerrainLayerInitialized, updateAttractorPins, createPinOverlayContainer, removePinOverlayContainer, getAttractorPinScreenPositions, setTerrainMeshOpacity, setTerrainStreetNetworkVisibility, setTerrainFilterRange, raycastTerrainScore, hasTerrainAttractors } from '../../visualization/threeJsLayer'
 import { createCurveEvaluatorForMode } from '../../computation/curveEvaluator'
 import { calculateEuclideanDistance, formatDistance, getPathMidpoint, getLineMidpoint } from '../../computation/measurementCalc'
 import { ACCENT_COLOR, ACCENT_COLOR_2 } from '../../config/constants'
@@ -254,6 +254,9 @@ export function MapView() {
     // Terrain slider parameters (Surface mode)
     terrainSmoothing,
     terrainHeightScale,
+    // Surface score stats for denormalization
+    surfaceMinScore,
+    surfaceMaxScore,
     // Gradient range mode
     gradientRangeMode,
     fixedGradientMin,
@@ -322,6 +325,18 @@ export function MapView() {
   isMeasurementActiveRef.current = isMeasurementActive
   addMeasurementPointRef.current = addMeasurementPoint
   updateMeasurementPointRef.current = updateMeasurementPoint
+
+  // Refs for terrain hover score denormalization
+  const surfaceMinScoreRef = useRef(surfaceMinScore)
+  const surfaceMaxScoreRef = useRef(surfaceMaxScore)
+  const gradientRangeModeRef = useRef(gradientRangeMode)
+  const fixedGradientMinRef = useRef(fixedGradientMin)
+  const fixedGradientMaxRef = useRef(fixedGradientMax)
+  surfaceMinScoreRef.current = surfaceMinScore
+  surfaceMaxScoreRef.current = surfaceMaxScore
+  gradientRangeModeRef.current = gradientRangeMode
+  fixedGradientMinRef.current = fixedGradientMin
+  fixedGradientMaxRef.current = fixedGradientMax
 
   // Initialize map (only depends on isLoading and buildings)
   useEffect(() => {
@@ -497,6 +512,64 @@ export function MapView() {
           popupRef.current = null
         }
         map.getCanvas().style.cursor = 'crosshair'
+      })
+
+      // Terrain hover handler for score popup (Surface mode)
+      // Uses raycast through Three.js camera to find the actual terrain surface point,
+      // since MapLibre's e.lngLat projects onto the ground plane (z=0) which is wrong
+      // when the terrain has elevation.
+      map.on('mousemove', (e) => {
+        if (!isSurfaceModeRef.current) return
+        if (isMeasurementActiveRef.current) return
+
+        // No attractors placed → no scores to show
+        if (!hasTerrainAttractors()) {
+          if (popupRef.current) {
+            popupRef.current.remove()
+            popupRef.current = null
+          }
+          map.getCanvas().style.cursor = 'crosshair'
+          return
+        }
+
+        // Raycast from screen position into terrain mesh
+        const hit = raycastTerrainScore(e.point.x, e.point.y)
+
+        // No terrain hit (cursor outside terrain bounds)
+        if (!hit) {
+          if (popupRef.current) {
+            popupRef.current.remove()
+            popupRef.current = null
+          }
+          map.getCanvas().style.cursor = 'crosshair'
+          return
+        }
+
+        const normalizedScore = hit.score
+
+        // Denormalize to raw score
+        let rawScore: number
+        if (gradientRangeModeRef.current === 'fixed') {
+          rawScore = normalizedScore * (fixedGradientMaxRef.current - fixedGradientMinRef.current) + fixedGradientMinRef.current
+        } else {
+          rawScore = normalizedScore * (surfaceMaxScoreRef.current - surfaceMinScoreRef.current) + surfaceMinScoreRef.current
+        }
+
+        const color = getScoreColor(normalizedScore)
+        map.getCanvas().style.cursor = 'pointer'
+
+        if (!popupRef.current) {
+          popupRef.current = new maplibregl.Popup({
+            closeButton: false,
+            closeOnClick: false,
+            className: 'score-popup',
+          })
+        }
+
+        popupRef.current
+          .setLngLat(e.lngLat)
+          .setHTML(`<div class="score-value" style="color: ${color}">${rawScore.toFixed(1)}</div>`)
+          .addTo(map)
       })
     }
 
@@ -712,6 +785,12 @@ export function MapView() {
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapLoaded) return
+
+    // Clear terrain hover popup when leaving Surface mode
+    if (!isSurfaceMode && popupRef.current) {
+      popupRef.current.remove()
+      popupRef.current = null
+    }
 
     if (isGridMode) {
       // Grid mode: show hexagons, hide terrain & buildings
@@ -1196,6 +1275,12 @@ export function MapView() {
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapLoadedRef.current) return
+
+    // Clear hover popup when measurement activates (especially terrain popup in Surface mode)
+    if (isMeasurementActive && popupRef.current) {
+      popupRef.current.remove()
+      popupRef.current = null
+    }
 
     const canvas = map.getCanvas()
     if (isMeasurementActive) {

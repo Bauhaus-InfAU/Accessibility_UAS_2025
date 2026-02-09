@@ -13,7 +13,9 @@ import {
   syncAttractorPins,
   updateAttractorPinHeights,
   sampleTerrainHeight,
+  sampleTerrainScore,
   lngLatToLocalMeters,
+  localMetersToLngLat,
   createContourLines,
   updateContourLines,
   updateContourFilterColors,
@@ -801,4 +803,86 @@ export function getAttractorPinScreenPositions(): Map<string, { x: number; y: nu
  */
 export function getTerrainLayerMap(): maplibregl.Map | null {
   return layerState?.map ?? null
+}
+
+/**
+ * Sample the terrain's normalized score at a given lng/lat.
+ * Returns the bilinearly interpolated smoothed score (0-1),
+ * or -1 if the terrain layer is not initialized or the point is out of bounds.
+ */
+export function sampleTerrainScoreAtLngLat(lngLat: [number, number]): number {
+  if (!layerState?.terrainMesh) return -1
+  return sampleTerrainScore(lngLat, layerState.terrainMesh)
+}
+
+/**
+ * Check whether the terrain currently has any attractors placed.
+ */
+export function hasTerrainAttractors(): boolean {
+  return (layerState?.attractorPinData?.size ?? 0) > 0
+}
+
+// Reusable objects for raycastTerrainScore to avoid GC pressure
+const _raycaster = new THREE.Raycaster()
+const _nearNDC = new THREE.Vector4()
+const _farNDC = new THREE.Vector4()
+
+/**
+ * Raycast from a screen position into the terrain mesh and return the
+ * normalized score at the intersection point.
+ *
+ * Unlike sampleTerrainScoreAtLngLat (which uses MapLibre's ground-plane lngLat),
+ * this correctly accounts for terrain elevation by raycasting through the Three.js
+ * camera's inverse projection matrix.
+ *
+ * @param cssX - X coordinate in CSS pixels (e.g. from MapLibre e.point.x)
+ * @param cssY - Y coordinate in CSS pixels (e.g. from MapLibre e.point.y)
+ * @returns { score, lngLat } or null if no terrain hit
+ */
+export function raycastTerrainScore(
+  cssX: number,
+  cssY: number
+): { score: number; lngLat: [number, number] } | null {
+  if (!layerState?.terrainMesh || !layerState.map || !layerState.config) return null
+
+  const canvas = layerState.map.getCanvas()
+  if (!canvas) return null
+
+  const dpr = window.devicePixelRatio || 1
+  const cssWidth = canvas.width / dpr
+  const cssHeight = canvas.height / dpr
+
+  // Convert CSS pixels to NDC
+  const ndcX = (cssX / cssWidth) * 2 - 1
+  const ndcY = 1 - (cssY / cssHeight) * 2
+
+  // Unproject near and far plane points through inverse MVP
+  const invMVP = layerState.camera.projectionMatrixInverse
+
+  _nearNDC.set(ndcX, ndcY, -1, 1).applyMatrix4(invMVP)
+  _farNDC.set(ndcX, ndcY, 1, 1).applyMatrix4(invMVP)
+
+  // Perspective divide
+  if (Math.abs(_nearNDC.w) < 1e-10 || Math.abs(_farNDC.w) < 1e-10) return null
+
+  const near = new THREE.Vector3(
+    _nearNDC.x / _nearNDC.w,
+    _nearNDC.y / _nearNDC.w,
+    _nearNDC.z / _nearNDC.w
+  )
+  const far = new THREE.Vector3(
+    _farNDC.x / _farNDC.w,
+    _farNDC.y / _farNDC.w,
+    _farNDC.z / _farNDC.w
+  )
+
+  _raycaster.ray.set(near, far.sub(near).normalize())
+  const hits = _raycaster.intersectObject(layerState.terrainMesh)
+  if (hits.length === 0) return null
+
+  const point = hits[0].point
+  const lngLat = localMetersToLngLat({ x: point.x, y: point.y }, layerState.config)
+  const score = sampleTerrainScore(lngLat, layerState.terrainMesh)
+
+  return score >= 0 ? { score, lngLat } : null
 }
