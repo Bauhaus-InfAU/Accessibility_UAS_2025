@@ -391,10 +391,8 @@ Score color scale (bottom-right on desktop, bottom-left on mobile):
   - Other Amenities Indicator: Grey (#a0a0a0) circle + "Other Amenities" label
 - **Grid mode**:
   - Custom Amenities Indicator: Yellow (#fcdb02) circle + amenity count
-  - Hexagon Grid Indicator: Gradient circle + "Hexagon Grid" label
 - **Surface mode**:
   - Custom Amenities Indicator: Yellow (#fcdb02) circle + amenity count
-  - Terrain Surface Indicator: Gradient circle + "Terrain Surface" label
 - **Divider**: Thin grey line separating indicators from score gradient
 - **Title Row**: "Accessibility Score" + Adaptive/Fixed pill toggle
   - **Adaptive mode** (default): Min/max values derived from data, updates dynamically
@@ -491,14 +489,14 @@ Key responsive styles:
 - **Resize Handle**:
   - `.resize-handle`: 12px height, `cursor: ns-resize`, centered flex container
   - `.resize-handle-grip`: 40×4px rounded bar, grey background with purple hover/active states
-- **Parameter Sliders** (`.param-slider-*` classes, used by ParameterSlider component):
-  - `.param-slider-row`: Flex container with `align-items: flex-end`, 6px gap, 4px margin-bottom
-  - `.param-slider-label`: 120px fixed width, 13px padding-bottom for alignment with track
-  - `.param-slider-container`: Flex 1, max-width 310px
-  - `.param-slider-value-track`: 12px height for floating value label
-  - `.param-slider-value`: Positioned value label above slider thumb
-  - `.param-slider`: White track, 6px height, purple thumb (14px), hover scale effect
-  - `.param-slider-minmax`: Min/max labels below slider
+- **Sliders** (`.app-slider-*` shared classes, used by both HexSizeSlider and ParameterSlider):
+  - `.app-slider-row`: Flex column container, 2px gap, 2px margin-bottom
+  - `.app-slider-label`: 14px, font-weight 500, gray-600
+  - `.app-slider-container`: Max-width 310px, 16px left padding
+  - `.app-slider-value-track`: 16px height for floating value label
+  - `.app-slider-value`: 14px bold (700) positioned label above slider thumb
+  - `.app-slider-input`: Semi-transparent track (rgba white 0.7), 6px height, white thumb (14px), hover scale effect
+  - `.app-slider-minmax`: 14px gray-600 min/max labels below slider, -2px top margin
 - **Mobile Media Query** (`max-width: 639px`):
   - `.glass-panel`: Square corners (`border-radius: 0`)
   - `.param-dropdown`: Smaller font (13px) and padding

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useAppContext } from '../../context/AppContext'
+import { LAND_USE_SHORT_NAMES } from '../../config/constants'
 
 // Helper: interpolate between two hex colors
 function interpolateColor(color1: string, color2: string, t: number): string {
@@ -341,19 +342,6 @@ export function Legend() {
             </div>
           </div>
 
-          {/* Hexagon Grid Indicator */}
-          <div className="flex items-center gap-3 mt-2">
-            <span className="text-xs text-white invisible">Low</span>
-            <div className="flex items-center gap-2">
-              <div
-                className="w-4 h-4 rounded-full"
-                style={{
-                  background: 'linear-gradient(135deg, #4A3AB4 0%, #FD681D 50%, #FD1D1D 100%)',
-                }}
-              />
-              <span className="text-sm text-white">Hexagon Grid</span>
-            </div>
-          </div>
         </>
       ) : isSurfaceMode ? (
         <>
@@ -371,19 +359,6 @@ export function Legend() {
             </div>
           </div>
 
-          {/* Terrain Surface Indicator */}
-          <div className="flex items-center gap-3 mt-2">
-            <span className="text-xs text-white invisible">Low</span>
-            <div className="flex items-center gap-2">
-              <div
-                className="w-4 h-4 rounded-full"
-                style={{
-                  background: 'linear-gradient(135deg, #4A3AB4 0%, #FD681D 50%, #FD1D1D 100%)',
-                }}
-              />
-              <span className="text-sm text-white">Terrain Surface</span>
-            </div>
-          </div>
         </>
       ) : (
         <>
@@ -398,7 +373,7 @@ export function Legend() {
               <span className="text-sm text-white">
                 {selectedLandUse === 'Custom'
                   ? `Custom Amenities (${gridAttractors.length})`
-                  : selectedLandUse}
+                  : LAND_USE_SHORT_NAMES[selectedLandUse]}
               </span>
             </div>
           </div>

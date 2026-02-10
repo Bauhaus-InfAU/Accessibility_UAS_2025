@@ -226,7 +226,7 @@ export function CurveEditor({
   return (
     <div ref={containerRef} className="w-full">
       {/* Curve mode selector */}
-      <p className="text-sm text-gray-500 mb-2">Select Distance Decay Function:</p>
+      <p className="text-sm font-medium text-gray-600 mb-2">Select Distance Decay Function:</p>
       <div className="inline-flex rounded-full bg-gray-200 p-0.5 mb-3">
         {CURVE_MODES.map((mode) => (
           <button
@@ -340,7 +340,7 @@ export function CurveEditor({
       {curveTabMode === 'custom' && (
         <>
           {/* Presets */}
-          <p className="text-sm text-gray-500 mt-4 mb-2">Presets:</p>
+          <p className="text-sm font-medium text-gray-600 mt-4 mb-2">Presets:</p>
           <div className="flex flex-wrap gap-2">
             <PresetButton name="exponential" label="Exponential" onClick={setExponential} />
             <PresetButton name="power" label="Power" onClick={setPower} />

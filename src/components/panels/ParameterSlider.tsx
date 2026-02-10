@@ -28,15 +28,15 @@ export function ParameterSlider({
   const displayValue = decimals > 0 ? value.toFixed(decimals) : value.toString()
 
   return (
-    <div className={`param-slider-row ${disabled ? 'opacity-50' : ''}`}>
+    <div className={`app-slider-row ${disabled ? 'opacity-50' : ''}`}>
       {/* Label */}
-      <span className="param-slider-label">{label}</span>
+      <span className="app-slider-label">{label}</span>
       {/* Slider with value above */}
-      <div className="param-slider-container">
+      <div className="app-slider-container">
         {/* Value label positioned above the handle */}
-        <div className="param-slider-value-track">
+        <div className="app-slider-value-track">
           <span
-            className="param-slider-value"
+            className="app-slider-value"
             style={{ left: `calc(7px + ${positionPercent / 100} * (100% - 14px))` }}
           >
             {displayValue}{unit}
@@ -51,10 +51,10 @@ export function ParameterSlider({
           value={value}
           onChange={(e) => onChange(Number(e.target.value))}
           disabled={disabled}
-          className="param-slider"
+          className="app-slider-input"
         />
         {/* Min/max labels */}
-        <div className="param-slider-minmax">
+        <div className="app-slider-minmax">
           <span>{min}{unit}</span>
           <span>{max}{unit}</span>
         </div>
