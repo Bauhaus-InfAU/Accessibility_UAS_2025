@@ -38,6 +38,7 @@ export function MeasurementWidget() {
       {isMeasurementActive && (
         <div className="measurement-properties">
           <div className="settings-title">Distance Mode</div>
+          <p className="text-[11px] text-gray-500 mb-1.5">Select the distance type used for the accessibility analysis.</p>
           <PillToggle
             options={[
               { value: 'network', label: 'Network' },

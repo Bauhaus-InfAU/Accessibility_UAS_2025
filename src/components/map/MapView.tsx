@@ -10,7 +10,7 @@ import { updateTerrainLayer, setTerrainLayerVisibility, isTerrainLayerInitialize
 import { createCurveEvaluatorForMode } from '../../computation/curveEvaluator'
 import { calculateEuclideanDistance, formatDistance, getPathMidpoint, getLineMidpoint } from '../../computation/measurementCalc'
 import { computeExplorerResults } from '../../computation/explorerCalc'
-import { ACCENT_COLOR, ACCENT_COLOR_2 } from '../../config/constants'
+import { ACCENT_COLOR } from '../../config/constants'
 
 // Flag to track if attractivity editing just finished (prevents map click from adding pin)
 let justFinishedEditingAttractivity = false
@@ -1276,10 +1276,15 @@ export function MapView() {
             id: 'measurement-network-path-layer',
             type: 'line',
             source: 'measurement-network-path',
+            layout: {
+              'line-cap': 'round',
+              'line-join': 'round'
+            },
             paint: {
-              'line-color': ACCENT_COLOR,
+              'line-color': distanceMode === 'network' ? ACCENT_COLOR : '#000000',
               'line-width': 5,
-              'line-opacity': 1
+              'line-opacity': distanceMode === 'network' ? 1 : 0.7,
+              'line-dasharray': distanceMode === 'network' ? [1, 0] : [1, 2.5]
             }
           })
         }
@@ -1289,7 +1294,7 @@ export function MapView() {
         const networkDistStr = formatDistance(networkDistance)
         let networkLabel = distanceLabelMarkersRef.current.get('network')
         if (!networkLabel) {
-          const el = createDistanceLabelElement(networkDistStr, ACCENT_COLOR, 'white', 10)
+          const el = createDistanceLabelElement(networkDistStr, distanceMode === 'network' ? ACCENT_COLOR : '#000000', 'white', distanceMode === 'network' ? 10 : 5)
           networkLabel = new maplibregl.Marker({
             element: el,
             anchor: 'center',
@@ -1315,7 +1320,7 @@ export function MapView() {
         // Position slightly above the euclidean midpoint
         const networkLabelPos: [number, number] = [eucMidpoint[0], eucMidpoint[1] + 0.0003]
         if (!networkLabel) {
-          const el = createDistanceLabelElement('N/A', ACCENT_COLOR, 'white', 10)
+          const el = createDistanceLabelElement('N/A', distanceMode === 'network' ? ACCENT_COLOR : '#000000', 'white', distanceMode === 'network' ? 10 : 5)
           networkLabel = new maplibregl.Marker({
             element: el,
             anchor: 'center',
@@ -1358,10 +1363,10 @@ export function MapView() {
             'line-join': 'round'
           },
           paint: {
-            'line-color': ACCENT_COLOR_2,
+            'line-color': distanceMode === 'euclidean' ? ACCENT_COLOR : '#000000',
             'line-width': 5,
-            'line-opacity': 0.7,
-            'line-dasharray': [1, 2.5]
+            'line-opacity': distanceMode === 'euclidean' ? 1 : 0.7,
+            'line-dasharray': distanceMode === 'euclidean' ? [1, 0] : [1, 2.5]
           }
         })
       }
@@ -1371,7 +1376,7 @@ export function MapView() {
       const euclideanDistStr = formatDistance(euclideanDist)
       let euclideanLabel = distanceLabelMarkersRef.current.get('euclidean')
       if (!euclideanLabel) {
-        const el = createDistanceLabelElement(euclideanDistStr, ACCENT_COLOR_2, 'black', 5)
+        const el = createDistanceLabelElement(euclideanDistStr, distanceMode === 'euclidean' ? ACCENT_COLOR : '#000000', 'white', distanceMode === 'euclidean' ? 10 : 5)
         euclideanLabel = new maplibregl.Marker({
           element: el,
           anchor: 'center',
@@ -1403,7 +1408,44 @@ export function MapView() {
       }
       distanceLabelMarkersRef.current.clear()
     }
-  }, [isMeasurementActive, measurementPointA, measurementPointB, networkPath, networkDistance])
+  }, [isMeasurementActive, measurementPointA, measurementPointB, networkPath, networkDistance, distanceMode])
+
+  // Update measurement line/label styling when distance mode changes
+  useEffect(() => {
+    if (!mapLoaded || !mapRef.current) return
+    const map = mapRef.current
+    const SUBDUED_COLOR = '#000000'
+    const isNetworkMode = distanceMode === 'network'
+
+    // Update network path layer paint
+    if (map.getLayer('measurement-network-path-layer')) {
+      map.setPaintProperty('measurement-network-path-layer', 'line-color', isNetworkMode ? ACCENT_COLOR : SUBDUED_COLOR)
+      map.setPaintProperty('measurement-network-path-layer', 'line-opacity', isNetworkMode ? 1 : 0.7)
+      map.setPaintProperty('measurement-network-path-layer', 'line-dasharray', isNetworkMode ? [1, 0] : [1, 2.5])
+    }
+
+    // Update euclidean line layer paint
+    if (map.getLayer('measurement-euclidean-line-layer')) {
+      map.setPaintProperty('measurement-euclidean-line-layer', 'line-color', isNetworkMode ? SUBDUED_COLOR : ACCENT_COLOR)
+      map.setPaintProperty('measurement-euclidean-line-layer', 'line-opacity', isNetworkMode ? 0.7 : 1)
+      map.setPaintProperty('measurement-euclidean-line-layer', 'line-dasharray', isNetworkMode ? [1, 2.5] : [1, 0])
+    }
+
+    // Update distance label styling
+    const networkLabelEl = distanceLabelMarkersRef.current.get('network')?.getElement()
+    if (networkLabelEl) {
+      networkLabelEl.style.backgroundColor = isNetworkMode ? ACCENT_COLOR : SUBDUED_COLOR
+      networkLabelEl.style.color = 'white'
+      networkLabelEl.style.zIndex = isNetworkMode ? '10' : '5'
+    }
+
+    const euclideanLabelEl = distanceLabelMarkersRef.current.get('euclidean')?.getElement()
+    if (euclideanLabelEl) {
+      euclideanLabelEl.style.backgroundColor = isNetworkMode ? SUBDUED_COLOR : ACCENT_COLOR
+      euclideanLabelEl.style.color = 'white'
+      euclideanLabelEl.style.zIndex = isNetworkMode ? '5' : '10'
+    }
+  }, [mapLoaded, distanceMode])
 
   // Explorer tool: compute results when location or parameters change
   useEffect(() => {

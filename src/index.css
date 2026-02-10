@@ -384,7 +384,7 @@ body {
   height: 28px;
   border-radius: 50%;
   background: #5631ad;
-  border: 3px solid #fcdb02;
+  border: 3px solid #000000;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   display: flex;
   align-items: center;
@@ -763,9 +763,14 @@ body {
 }
 
 .measurement-widget.expanded .measurement-properties {
-  padding: 12px 16px;
-  min-width: 160px;
+  padding: 10px 14px;
+  max-width: 200px;
   border-right: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.measurement-widget .settings-title {
+  margin-bottom: 6px;
+  padding-bottom: 5px;
 }
 
 /* Help Tip Widget */
