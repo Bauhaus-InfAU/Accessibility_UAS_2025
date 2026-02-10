@@ -78,7 +78,7 @@ const TUTORIAL_STEPS: TutorialStep[] = [
 export function HelpTipWidget() {
   const {
     tutorialStep, setTutorialStep, advanceTutorial, skipTutorial, isLoading, gridAttractors,
-    setAnalysisMode, setMeasurementActive, setExplorerActive,
+    setAnalysisMode, setMeasurementActive, setExplorerActive, clearMeasurement, clearExplorer,
     setFilterRangeActive, setFilterRangeMinPercent, setFilterRangeMaxPercent, clearFilterRange,
     isMobileLegendOpen, setIsMobileLegendOpen,
   } = useAppContext()
@@ -342,9 +342,9 @@ export function HelpTipWidget() {
   // Switch to the appropriate mode and handle tool activation when entering steps
   useEffect(() => {
     if (tutorialStep === null) {
-      // Tutorial ended: deactivate tools and clear filter
-      setMeasurementActive(false)
-      setExplorerActive(false)
+      // Tutorial ended: fully clear tools and filter
+      clearMeasurement()
+      clearExplorer()
       clearFilterRange()
     } else if (tutorialStep === 3) {
       setAnalysisMode('buildings')
@@ -363,8 +363,8 @@ export function HelpTipWidget() {
       setAnalysisMode('buildings')
       setExplorerActive(true)
     } else if (tutorialStep === 7) {
-      // Measurement step: deactivate explorer, collapse settings, activate measurement
-      setExplorerActive(false)
+      // Measurement step: clear explorer state, collapse settings, activate measurement
+      clearExplorer()
       const settingsProperties = document.querySelector('.settings-properties')
       if (settingsProperties) {
         const activeBtn = document.querySelector('.settings-icons .settings-icon-btn.active') as HTMLButtonElement
@@ -373,13 +373,13 @@ export function HelpTipWidget() {
       setAnalysisMode('buildings')
       setMeasurementActive(true)
     } else if (tutorialStep === 8) {
-      // Legend step: deactivate measurement, set 25-75% filter (keep Adaptive mode)
-      setMeasurementActive(false)
+      // Legend step: clear measurement state, set 25-75% filter (keep Adaptive mode)
+      clearMeasurement()
       setFilterRangeActive(true)
       setFilterRangeMinPercent(0.25)
       setFilterRangeMaxPercent(0.75)
     }
-  }, [tutorialStep, setAnalysisMode, setMeasurementActive, setExplorerActive, setFilterRangeActive, setFilterRangeMinPercent, setFilterRangeMaxPercent, clearFilterRange])
+  }, [tutorialStep, setAnalysisMode, setMeasurementActive, setExplorerActive, clearMeasurement, clearExplorer, setFilterRangeActive, setFilterRangeMinPercent, setFilterRangeMaxPercent, clearFilterRange])
 
   // Update position on step change and window resize
   useEffect(() => {

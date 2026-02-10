@@ -358,7 +358,7 @@ export function MapView() {
     explorerNodeId,
     explorerResults,
     explorerAmenityPreview,
-    setExplorerActive,
+    clearExplorer,
     setExplorerLocation,
     setExplorerResults,
     setHoveredExplorerId,
@@ -1543,7 +1543,7 @@ export function MapView() {
         el.addEventListener('contextmenu', (e) => {
           e.preventDefault()
           e.stopPropagation()
-          setExplorerActive(false)
+          clearExplorer()
         })
       } else {
         explorerFlagMarkerRef.current.setLngLat(explorerLocation)
@@ -1697,7 +1697,7 @@ export function MapView() {
         updateExplorerFlagScore(explorerFlagMarkerRef.current.getElement(), null)
       }
     }
-  }, [isExplorerActive, explorerLocation, explorerResults, explorerAmenityPreview, setExplorerResults, setExplorerActive, distanceMode])
+  }, [isExplorerActive, explorerLocation, explorerResults, explorerAmenityPreview, setExplorerResults, clearExplorer, distanceMode])
 
   // Update cursor when measurement mode changes
   useEffect(() => {

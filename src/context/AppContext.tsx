@@ -144,10 +144,12 @@ interface AppContextValue extends AppState {
   setDistanceMode: (mode: DistanceMode) => void
   // Measurement tool actions
   setMeasurementActive: (active: boolean) => void
+  clearMeasurement: () => void
   addMeasurementPoint: (coord: [number, number]) => void
   updateMeasurementPoint: (id: 'A' | 'B', coord: [number, number]) => void
   // Explorer tool actions
   setExplorerActive: (active: boolean) => void
+  clearExplorer: () => void
   setExplorerLocation: (coord: [number, number]) => void
   setExplorerResults: (results: ExplorerResult[] | null) => void
   setHoveredExplorerId: (id: string | null) => void
@@ -442,19 +444,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const setMeasurementActive = useCallback((active: boolean) => {
     setIsMeasurementActive(active)
     if (active) {
-      // Mutual exclusivity: deactivate explorer when measurement activates
+      // Mutual exclusivity: hide explorer when measurement activates
       setIsExplorerActive(false)
-      setExplorerLocationState(null)
-      setExplorerNodeId(null)
-      setExplorerResults(null)
     }
-    if (!active) {
-      // Clear points and path when deactivating
-      setMeasurementPointA(null)
-      setMeasurementPointB(null)
-      setNetworkPath(null)
-      setNetworkDistance(null)
-    }
+  }, [])
+
+  const clearMeasurement = useCallback(() => {
+    setIsMeasurementActive(false)
+    setMeasurementPointA(null)
+    setMeasurementPointB(null)
+    setNetworkPath(null)
+    setNetworkDistance(null)
   }, [])
 
   const addMeasurementPoint = useCallback((coord: [number, number]) => {
@@ -524,20 +524,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const setExplorerActive = useCallback((active: boolean) => {
     setIsExplorerActive(active)
     if (active) {
-      // Mutual exclusivity: deactivate measurement when explorer activates
+      // Mutual exclusivity: hide measurement when explorer activates
       setIsMeasurementActive(false)
-      setMeasurementPointA(null)
-      setMeasurementPointB(null)
-      setNetworkPath(null)
-      setNetworkDistance(null)
     }
-    if (!active) {
-      // Clear explorer state when deactivating
-      setExplorerLocationState(null)
-      setExplorerNodeId(null)
-      setExplorerResults(null)
-      setHoveredExplorerId(null)
-    }
+  }, [])
+
+  const clearExplorer = useCallback(() => {
+    setIsExplorerActive(false)
+    setExplorerLocationState(null)
+    setExplorerNodeId(null)
+    setExplorerResults(null)
+    setHoveredExplorerId(null)
   }, [])
 
   const setExplorerLocation = useCallback((coord: [number, number]) => {
@@ -825,6 +822,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     networkPath,
     networkDistance,
     setMeasurementActive,
+    clearMeasurement,
     addMeasurementPoint,
     updateMeasurementPoint,
     // Explorer tool
@@ -835,6 +833,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     explorerAmenityPreview,
     hoveredExplorerId,
     setExplorerActive,
+    clearExplorer,
     setExplorerLocation,
     setExplorerResults,
     setHoveredExplorerId,
