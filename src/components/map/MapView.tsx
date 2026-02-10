@@ -1283,8 +1283,7 @@ export function MapView() {
             paint: {
               'line-color': distanceMode === 'network' ? ACCENT_COLOR : '#000000',
               'line-width': 5,
-              'line-opacity': distanceMode === 'network' ? 1 : 0.7,
-              'line-dasharray': distanceMode === 'network' ? [1, 0] : [1, 2.5]
+              'line-opacity': distanceMode === 'network' ? 1 : 0.7
             }
           })
         }
@@ -1366,7 +1365,7 @@ export function MapView() {
             'line-color': distanceMode === 'euclidean' ? ACCENT_COLOR : '#000000',
             'line-width': 5,
             'line-opacity': distanceMode === 'euclidean' ? 1 : 0.7,
-            'line-dasharray': distanceMode === 'euclidean' ? [1, 0] : [1, 2.5]
+            'line-dasharray': [1, 2.5]
           }
         })
       }
@@ -1417,18 +1416,25 @@ export function MapView() {
     const SUBDUED_COLOR = '#000000'
     const isNetworkMode = distanceMode === 'network'
 
-    // Update network path layer paint
-    if (map.getLayer('measurement-network-path-layer')) {
+    // Update network path layer paint (always solid)
+    const hasNetwork = !!map.getLayer('measurement-network-path-layer')
+    const hasEuclidean = !!map.getLayer('measurement-euclidean-line-layer')
+
+    if (hasNetwork) {
       map.setPaintProperty('measurement-network-path-layer', 'line-color', isNetworkMode ? ACCENT_COLOR : SUBDUED_COLOR)
       map.setPaintProperty('measurement-network-path-layer', 'line-opacity', isNetworkMode ? 1 : 0.7)
-      map.setPaintProperty('measurement-network-path-layer', 'line-dasharray', isNetworkMode ? [1, 0] : [1, 2.5])
     }
 
-    // Update euclidean line layer paint
-    if (map.getLayer('measurement-euclidean-line-layer')) {
+    // Update euclidean line layer paint (always dashed)
+    if (hasEuclidean) {
       map.setPaintProperty('measurement-euclidean-line-layer', 'line-color', isNetworkMode ? SUBDUED_COLOR : ACCENT_COLOR)
       map.setPaintProperty('measurement-euclidean-line-layer', 'line-opacity', isNetworkMode ? 0.7 : 1)
-      map.setPaintProperty('measurement-euclidean-line-layer', 'line-dasharray', isNetworkMode ? [1, 2.5] : [1, 0])
+    }
+
+    // Move selected layer on top
+    if (hasNetwork && hasEuclidean) {
+      const topLayer = isNetworkMode ? 'measurement-network-path-layer' : 'measurement-euclidean-line-layer'
+      map.moveLayer(topLayer)
     }
 
     // Update distance label styling
