@@ -840,6 +840,9 @@ body {
   color: white;
 }
 
+.settings-icon-btn:focus {
+  outline: none;
+}
 
 .settings-divider {
   height: 1px;
