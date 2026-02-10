@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-const VERSION = 'v2026.1'
+const VERSION = 'v2026.2'
 const LICENSE = 'CC BY-NC 4.0'
 const AUTHOR = 'Martin Bielik'
 const REPO_URL = 'https://github.com/Bauhaus-InfAU/Accessibility_UAS_2025'
