@@ -179,7 +179,7 @@ export function ParametersPanel() {
               its influence via the <span className="equation-accent">decay function <span className="math-var" style={{ color: 'inherit' }}>f(d<sub>ij</sub>)</span></span>.
             </p>
             {/* Main equation (hidden when explorer is active with preview/results) */}
-            {!(explorerResults && explorerResults.length > 0) && !(isExplorerActive && explorerAmenityPreview) && (
+            {!(isExplorerActive && explorerResults && explorerResults.length > 0) && !(isExplorerActive && explorerAmenityPreview) && (
               <div className="equation text-center mb-4 flex items-center justify-center gap-1">
                 <span>Acc<sub>i</sub>{' ='}</span>
                 <span className="inline-flex flex-col items-center mx-1" style={{ fontSize: '0.65em', lineHeight: 1 }}>
@@ -226,7 +226,7 @@ export function ParametersPanel() {
             )}
 
             {/* Expanded equation when explorer results exist */}
-            {explorerResults && explorerResults.length > 0 && (
+            {isExplorerActive && explorerResults && explorerResults.length > 0 && (
               <div className="mb-4 text-xs sm:text-sm" style={{ fontFamily: "'Times New Roman', Georgia, serif", fontStyle: 'italic' }}>
                 {/* Row 1: symbolic terms [Att_1 × f(d_i1)] + ... */}
                 <div className="flex flex-wrap items-baseline gap-x-1 text-gray-500" style={{ fontSize: '14px' }}>
@@ -321,7 +321,7 @@ export function ParametersPanel() {
                 onExpPowerBChange={setExpPowerB}
                 onExpPowerCChange={setExpPowerC}
                 onHoverChange={handleHoverChange}
-                explorerResults={explorerResults}
+                explorerResults={isExplorerActive ? explorerResults : null}
                 hoveredAmenityId={hoveredExplorerId}
               />
             </div>
