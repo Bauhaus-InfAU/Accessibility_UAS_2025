@@ -563,6 +563,22 @@ body {
   padding: 8px;
 }
 
+.explorer-widget.expanded {
+  flex-direction: row;
+  align-items: stretch;
+  padding: 0;
+}
+
+.explorer-widget.expanded .explorer-icon-column {
+  padding: 8px;
+}
+
+.explorer-widget.expanded .explorer-properties {
+  padding: 10px 14px;
+  max-width: 200px;
+  border-right: 1px solid rgba(0, 0, 0, 0.1);
+}
+
 /* Explorer ghost flag (follows cursor before placement) */
 .explorer-ghost-flag {
   position: absolute;

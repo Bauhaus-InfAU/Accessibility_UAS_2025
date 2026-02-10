@@ -37,8 +37,9 @@ export function MeasurementWidget() {
       {/* Expanded panel when measurement active */}
       {isMeasurementActive && (
         <div className="measurement-properties">
-          <h3 className="panel-title">Distance Mode</h3>
+          <h3 className="panel-title">Distance</h3>
           <div className="settings-divider" />
+          <p className="text-[11px] text-gray-500 mb-3">Click two points on the map to measure the distance between them.</p>
           <p className="text-[11px] text-gray-500 mb-1.5">Select the distance type used for the accessibility analysis.</p>
           <PillToggle
             options={[

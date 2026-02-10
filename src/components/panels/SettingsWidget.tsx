@@ -265,6 +265,7 @@ export function SettingsWidget() {
               setIsExpanded(!isExpanded)
             } else {
               setAnalysisMode('buildings')
+              setIsExpanded(true)
             }
           }}
           icon={<BuildingsIcon />}
@@ -278,6 +279,7 @@ export function SettingsWidget() {
               setIsExpanded(!isExpanded)
             } else {
               setAnalysisMode('grid')
+              setIsExpanded(true)
             }
           }}
           icon={<GridIcon />}
@@ -291,6 +293,7 @@ export function SettingsWidget() {
               setIsExpanded(!isExpanded)
             } else {
               setAnalysisMode('surface')
+              setIsExpanded(true)
             }
           }}
           icon={<SurfaceIcon />}

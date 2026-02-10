@@ -27,14 +27,25 @@ export function ExplorerWidget() {
   }, [isExplorerActive, setExplorerActive])
 
   return (
-    <div className="explorer-widget flex">
-      <button
-        onClick={() => setExplorerActive(!isExplorerActive)}
-        className={`settings-icon-btn ${isExplorerActive ? 'active' : ''}`}
-        title={isExplorerActive ? 'Disable accessibility explorer' : 'Enable accessibility explorer'}
-      >
-        <FlagIcon />
-      </button>
+    <div className={`explorer-widget flex ${isExplorerActive ? 'expanded' : ''}`}>
+      {/* Expanded panel when explorer active */}
+      {isExplorerActive && (
+        <div className="explorer-properties">
+          <h3 className="panel-title">Explore</h3>
+          <div className="settings-divider" />
+          <p className="text-[11px] text-gray-500">Click on the map to inspect how a location's accessibility score is calculated.</p>
+        </div>
+      )}
+      {/* Toggle button */}
+      <div className={isExplorerActive ? 'explorer-icon-column' : ''}>
+        <button
+          onClick={() => setExplorerActive(!isExplorerActive)}
+          className={`settings-icon-btn ${isExplorerActive ? 'active' : ''}`}
+          title={isExplorerActive ? 'Disable accessibility explorer' : 'Enable accessibility explorer'}
+        >
+          <FlagIcon />
+        </button>
+      </div>
     </div>
   )
 }
