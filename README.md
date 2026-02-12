@@ -14,8 +14,7 @@ Acc_i = Σ Att_j × f(d_ij)
 
 Where **Att_j** is the attractivity of amenity *j*, **f(d_ij)** is the user-defined decay function, and **d_ij** is the shortest path distance via the street network.
 
-![Buildings Mode](docs/screenshots/overview-buildings.png)
-*Buildings colored by accessibility to retail amenities, with the interactive curve editor on the left*
+<video src="docs/screenshots/Reel%20v2_26-02-12.mp4" controls width="100%"></video>
 
 ## Features
 
@@ -25,65 +24,61 @@ Switch between modes using the toolbar on the right side of the map.
 
 **Buildings Mode** — Calculate accessibility for individual buildings based on proximity to 14 predefined amenity types (Retail, Education, Health, etc.) or user-placed custom pins.
 
-![Buildings Mode with Settings](docs/screenshots/building-filter.png)
-*Buildings mode with Residential scope filter, Retail amenities, and Floor Area attractivity*
+![Buildings Mode Settings](docs/screenshots/Reel%20v2_Buildings%20Mode%20Settings_26-02-12.gif)
 
 **Grid Mode** — Visualize accessibility on a hexagonal grid, independent of buildings. Place custom amenity points and adjust hexagon size (10-100m) for different levels of detail.
 
-![Grid Mode](docs/screenshots/hex-size.png)
-*Hexagonal grid with adjustable cell size and two custom amenity points*
+![Grid Mode Settings](docs/screenshots/Reel%20v2_Grid%20Mode%20Settings_26-02-12.gif)
 
 **Surface Mode** — Display accessibility as a 3D terrain surface where height represents scores. Includes contour lines, street network overlay, and configurable smoothing and height parameters.
 
-![Surface Mode](docs/screenshots/terrain-settings.png)
-*3D terrain with contour lines, street network, and smoothing/height controls*
+![Surface Mode Settings](docs/screenshots/Reel%20v2_Surface%20Mode%20Settings_26-02-12.gif)
 
 ### Distance Decay Function Builder
 
 Define how the utility of an amenity decreases with distance using three curve modes:
 
-**Custom** — Drag control points on a polyline to shape any curve. Includes presets (Exponential, Power, Linear, Step, Constant). Double-click to add points, right-click to remove.
+- **Custom** — Drag control points on a polyline to shape any curve. Includes presets (Exponential, Power, Linear, Step, Constant). Double-click to add points, right-click to remove.
+- **Negative Exponential** — *f(d) = e^(-α·d)* with adjustable decay rate α.
+- **Exponential Power** — *f(d) = e^{-(d/b)^c}* with adjustable scale *b* and shape *c*.
 
-**Negative Exponential** — *f(d) = e^(-α·d)* with adjustable decay rate α.
+![DDF Plot Tools](docs/screenshots/Reel%20v2_DDF%20Plot%20Tools_26-02-12.gif)
 
-![Negative Exponential](docs/screenshots/curve-neg-exp.png)
+### Euclidean vs Network Distance
 
-**Exponential Power** — *f(d) = e^{-(d/b)^c}* with adjustable scale *b* and shape *c*.
+Toggle between network distance (shortest path via streets) and straight-line Euclidean distance for all accessibility calculations. The distance mode affects buildings, grid, and surface analysis.
 
-![Exponential Power](docs/screenshots/curve-exp-power.png)
+![Euclidean vs Network](docs/screenshots/Reel%20v2_Euclidian%20vs%20Netowork_26-02-12.gif)
 
-### Custom Amenities & Attractivity
+### Accessibility Explorer
 
-Place custom amenity markers anywhere on the map. Each marker has an editable attractivity value displayed in a yellow box — click the box to change the value.
+Place a flag on the map to inspect how a point's accessibility score is calculated. Shows paths to all amenities with their distances and decay values.
 
-- Click the map to add a new amenity point
-- Drag markers to reposition
-- Right-click to remove
-- Works across all three analysis modes
-
-![Custom Pins](docs/screenshots/custom-pins.png)
-*Custom amenity pins with attractivity values on the map*
-
-### Score Filtering
-
-Click and drag on the gradient bar in the legend to highlight buildings or hexagons within a specific score range. Elements outside the range are greyed out. Choose between Adaptive (data-driven) and Fixed (user-defined) gradient ranges.
-
-![Filter Range](docs/screenshots/filter-range.png)
-*Filter range active — only buildings within the selected score range are highlighted*
+![Accessibility Explorer](docs/screenshots/Reel%20v2_Accessibility%20Explorer_26-02-12.gif)
 
 ### Distance Measurement Tool
 
 Compare network distance (via streets) against straight-line (Euclidean) distance between any two points. The solid purple line shows the network path; the dashed yellow line shows the direct distance.
 
-![Measurement Tool](docs/screenshots/measurement.png)
-*Network path (530m) vs Euclidean distance shown simultaneously*
+![Distance Measurement Tool](docs/screenshots/Reel%20v2_Distance%20Measurement%20Tool_26-02-12.gif)
+
+### Score Filtering
+
+Click and drag on the gradient bar in the legend to highlight buildings or hexagons within a specific score range. Elements outside the range are greyed out.
+
+![Filter](docs/screenshots/Reel%20v2_Filter_26-02-12.gif)
+
+### Adaptive & Fixed Range
+
+Choose between Adaptive (data-driven) and Fixed (user-defined) gradient ranges. Switching to Fixed copies the current adaptive values as initial bounds, which can then be edited manually.
+
+![Adaptive and Fixed Range](docs/screenshots/Reel%20v2_Adaptive%20and%20Fixed%20Range_26-02-12.gif)
 
 ### Interactive Tutorial
 
-An 8-step guided walkthrough introduces all features. Click the help icon to start.
+A 9-step guided walkthrough introduces all features. Click the help icon to start.
 
-![Tutorial](docs/screenshots/tutorial.png)
-*Glass morphism tooltip with step indicators and navigation*
+![Tutorial](docs/screenshots/Reel%20v2_Tutorial_26-02-12.gif)
 
 ## Tech Stack
 
